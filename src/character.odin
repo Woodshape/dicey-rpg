@@ -131,7 +131,7 @@ character_draw :: proc(character: ^Character, drag: ^Drag_State) {
 
 draw_assigned_dice :: proc(character: ^Character, drag: ^Drag_State, hover_slot: int) {
 	// Is the character a valid drop target for the current drag?
-	is_drop_target := drag.active && drag.source == .Hand && character_can_assign(character, drag.die_type)
+	is_drop_target := drag.active && (drag.source == .Hand || drag.source == .Board) && character_can_assign(character, drag.die_type)
 
 	for i in 0 ..< character.max_dice {
 		x, y := char_slot_position(i)

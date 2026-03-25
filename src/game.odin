@@ -49,10 +49,10 @@ game_update :: proc(gs: ^Game_State) {
 }
 
 try_start_drag :: proc(gs: ^Game_State, mouse_x, mouse_y: i32) {
-	// Board → Hand drag (only if hand not full)
+	// Board drag (can drop on hand or character)
 	row, col := mouse_to_cell(mouse_x, mouse_y)
 	if row >= 0 && col >= 0 {
-		if !hand_is_full(&gs.hand) && cell_is_perimeter(&gs.board, row, col) {
+		if cell_is_perimeter(&gs.board, row, col) {
 			gs.drag = Drag_State{
 				active    = true,
 				source    = .Board,
@@ -93,17 +93,19 @@ try_start_drag :: proc(gs: ^Game_State, mouse_x, mouse_y: i32) {
 try_drop :: proc(gs: ^Game_State, mouse_x, mouse_y: i32) {
 	#partial switch gs.drag.source {
 	case .Board:
-		// Board can only drop on hand
+		// Board can drop on hand or directly on character
 		hand_slot := mouse_to_hand_slot(mouse_x, mouse_y)
-		if hand_slot >= 0 {
+		in_hand := hand_slot >= 0 || mouse_in_hand_region(mouse_x, mouse_y)
+		if in_hand && !hand_is_full(&gs.hand) {
 			board_remove(&gs.board, gs.drag.board_row, gs.drag.board_col)
 			hand_add(&gs.hand, gs.drag.die_type)
+			return
 		}
-		// Also allow dropping anywhere in the hand area (not just on a specific slot)
-		// by checking if mouse is in the general hand region
-		if hand_slot < 0 && mouse_in_hand_region(mouse_x, mouse_y) {
+
+		char_slot := mouse_to_char_slot(mouse_x, mouse_y, gs.player.max_dice)
+		if char_slot >= 0 && character_can_assign(&gs.player, gs.drag.die_type) {
 			board_remove(&gs.board, gs.drag.board_row, gs.drag.board_col)
-			hand_add(&gs.hand, gs.drag.die_type)
+			character_assign(&gs.player, gs.drag.die_type)
 		}
 
 	case .Hand:
