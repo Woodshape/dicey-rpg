@@ -51,6 +51,49 @@ DIE_TYPE_COLORS_DIM := [Die_Type]rl.Color{
 	.D12  = rl.Color{120, 30, 35, 255},
 }
 
+DIE_FACES := [Die_Type]int{
+	.None = 0,
+	.D4   = 4,
+	.D6   = 6,
+	.D8   = 8,
+	.D10  = 10,
+	.D12  = 12,
+}
+
+MAX_DIE_VALUE :: 12
+
+// Match patterns (ordered by strength)
+Match_Pattern :: enum u8 {
+	None,             // zero value — no matches found
+	Pair,             // 2 of a kind
+	Two_Pairs,        // 2+2
+	Three_Of_A_Kind,  // 3 of a kind
+	Full_House,       // 3+2
+	Four_Of_A_Kind,   // 4 of a kind
+	Five_Of_A_Kind,   // 5+ of a kind (capped here even with 6 dice)
+}
+
+MATCH_PATTERN_NAMES := [Match_Pattern]cstring{
+	.None            = "No Match",
+	.Pair            = "Pair",
+	.Two_Pairs       = "Two Pairs",
+	.Three_Of_A_Kind = "Three of a Kind",
+	.Full_House      = "Full House",
+	.Four_Of_A_Kind  = "Four of a Kind",
+	.Five_Of_A_Kind  = "Five of a Kind",
+}
+
+// Result of rolling and evaluating a character's dice
+Roll_Result :: struct {
+	values:          [MAX_CHARACTER_DICE]int,   // rolled face values (1-12)
+	count:           int,                       // number of dice rolled
+	pattern:         Match_Pattern,
+	matched_value:   int,                       // value of the best match group
+	matched:         [MAX_CHARACTER_DICE]bool,  // true = part of a match group
+	matched_count:   int,
+	unmatched_count: int,
+}
+
 // Board cell
 Board_Cell :: struct {
 	die_type: Die_Type,
@@ -113,6 +156,9 @@ Character :: struct {
 	max_dice:       int,
 	assigned:       [MAX_CHARACTER_DICE]Die_Type,
 	assigned_count: int,
+	// Roll state
+	has_rolled:     bool,
+	roll:           Roll_Result,
 }
 
 // Check if a character slot is active (alive and present)

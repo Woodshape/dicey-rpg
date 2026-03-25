@@ -24,6 +24,21 @@ game_update :: proc(gs: ^Game_State) {
 		mouse_x := rl.GetMouseX()
 		mouse_y := rl.GetMouseY()
 
+		// If character has rolled, only allow clear button
+		if gs.player.has_rolled {
+			if mouse_on_clear_button(mouse_x, mouse_y) {
+				character_clear_roll(&gs.player)
+			}
+			return
+		}
+
+		// Check roll button
+		if gs.player.assigned_count > 0 && mouse_on_roll_button(mouse_x, mouse_y) {
+			gs.selection = {}
+			character_roll(&gs.player)
+			return
+		}
+
 		// Check board click
 		row, col := mouse_to_cell(mouse_x, mouse_y)
 		if row >= 0 && col >= 0 {
@@ -56,10 +71,8 @@ game_update :: proc(gs: ^Game_State) {
 }
 
 handle_board_click :: proc(gs: ^Game_State, row, col: int) {
-	// Deselect any selection first
 	gs.selection = {}
 
-	// Pick die from board into hand
 	if hand_is_full(&gs.hand) {
 		return
 	}
@@ -71,12 +84,10 @@ handle_board_click :: proc(gs: ^Game_State, row, col: int) {
 
 handle_hand_click :: proc(gs: ^Game_State, slot: int) {
 	if slot >= gs.hand.count {
-		// Clicked empty hand slot — deselect
 		gs.selection = {}
 		return
 	}
 
-	// Toggle selection on this hand die
 	if gs.selection.source == .Hand && gs.selection.index == slot {
 		gs.selection = {}
 	} else {
@@ -86,7 +97,6 @@ handle_hand_click :: proc(gs: ^Game_State, slot: int) {
 
 handle_char_click :: proc(gs: ^Game_State, slot: int) {
 	if gs.selection.source == .Hand {
-		// Assign selected hand die to character
 		hand_index := gs.selection.index
 		if hand_index < gs.hand.count {
 			die_type := gs.hand.dice[hand_index]
@@ -97,7 +107,6 @@ handle_char_click :: proc(gs: ^Game_State, slot: int) {
 		}
 		gs.selection = {}
 	} else if slot < gs.player.assigned_count {
-		// Unassign: return die from character to hand
 		if !hand_is_full(&gs.hand) {
 			die_type, ok := character_unassign(&gs.player, slot)
 			if ok {
