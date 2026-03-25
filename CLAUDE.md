@@ -7,17 +7,19 @@ A turn-based dice-drafting RPG built with Odin and Raylib.
 ```
 src/                    -- all game source (single package: "game")
   main.odin             -- entry point, window, game loop
-  game.odin             -- game state struct, top-level update/draw
+  game.odin             -- game state struct, update/draw, drag-and-drop logic
   types.odin            -- shared types, enums, constants
   board.odin            -- board grid, rarity gradient, perimeter logic
-  dice.odin             -- dice types, rolling, match detection
+  dice.odin             -- dice rolling, match detection (pure logic)
   hand.odin             -- hand management (max 5 dice)
-  character.odin        -- character structs, abilities, slots
-  combat.odin           -- turn state machine, action resolution
-  ai.odin               -- enemy drafting heuristics
-  ui.odin               -- drawing helpers, layout constants
+  character.odin        -- character structs, assignment, roll state, UI
+  combat.odin           -- turn state machine, action resolution (planned)
+  ai.odin               -- enemy drafting heuristics (planned)
 tests/                  -- test package (separate from game)
-  tests.odin            -- core logic tests (match detection, board, hand, etc.)
+  board_test.odin       -- board ring, perimeter, removal, gradient tests
+  hand_test.odin        -- hand capacity, removal, vacated slot tests
+  character_test.odin   -- assignment, type constraint, rarity, state tests
+  dice_test.odin        -- match detection for all patterns, edge cases, invariants
 assets/                 -- placeholder assets
 docs/
   design/core-mechanics.md   -- game design document (source of truth for mechanics)
@@ -48,7 +50,8 @@ odin run src/ -out:build/dicey-rpg -debug
 - **Structs + procedures** as the primary pattern.
 - **State machine** (enum + switch) for turn flow in `combat.odin`.
 - **Abilities** as procedure pointers in structs — modular, easy to extend.
-- **Match detection** as a pure function: input = rolled values, output = best pattern + matched value + unmatched list.
+- **Match detection** as a pure function: input = rolled values, output = best pattern + matched value + matched/unmatched counts.
+- **Drag-and-drop** for all dice movement. No click-to-select. Drag source is ghosted, die follows cursor, valid targets glow green.
 - **Raylib** imported as `rl`: `import rl "vendor:raylib"`.
 
 ## Odin Conventions
@@ -146,6 +149,10 @@ Any operation that removes, shifts, or reorders elements in a fixed-size array *
 
 This applies to any array with a separate count/length field: hand dice, character assigned dice, and any future collection using the same pattern.
 
+### Structural Invariants
+
+When a struct has fields that must maintain a fixed relationship (e.g., `matched_count + unmatched_count == count`), test that invariant explicitly. Use a helper procedure called from every relevant test so the check is never skipped. Be careful to assert against the logical count (`result.count`), not the fixed array length (`len(result.values)`) — these differ when the array is larger than the active data.
+
 ### Sentinel Zero Values in Enums
 
 Every enum that can appear in a fixed-size array with a count, or where zero-initialization has semantic meaning, **must** have an explicit sentinel as its first (zero) value. This makes uninitialized, vacated, or invalid data immediately distinguishable from legitimate values.
@@ -170,7 +177,8 @@ The game design document at `docs/design/core-mechanics.md` is the **source of t
 - **Match patterns:** Pair, Three of a Kind, Two Pairs, Four of a Kind, Full House, Five of a Kind
 - **Two axes:** Match pattern (breadth) and matched value (depth)
 - **Unmatched dice** charge the character's super meter
-- **Actions:** Pick (costs turn), Assign (free), Roll (costs turn)
+- **Actions:** Pick (costs turn), Assign (free, drag-and-drop), Roll (costs turn)
+- **Dice movement:** Drag board→hand, board→character, hand→character, character→hand. All via drag-and-drop.
 - **Visibility:** Assigned die types visible to both sides (telegraphing)
 
 Always consult the design doc before implementing a mechanic. If the code diverges from the doc, update the doc first.

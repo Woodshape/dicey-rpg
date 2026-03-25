@@ -84,10 +84,9 @@ Each milestone is independently testable. Later milestones build on earlier ones
 - [x] Render hand at bottom of screen
 - [x] Pick from board -> die goes to hand
 - [x] Render one player character on the left (Common = 3 slots)
-- [x] Click/drag dice from hand to character slot
+- [x] Drag-and-drop dice from board to hand, board to character, hand to character, character to hand
 - [x] Pure die type constraint enforced (reject mixed types on a character)
-- [x] Click dice on character -> returns to hand
-- [x] Visual feedback for valid/invalid assignment
+- [x] Visual feedback: source ghosted, die follows cursor, valid targets glow green
 
 **Status:** Done
 

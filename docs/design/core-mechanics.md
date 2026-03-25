@@ -103,8 +103,8 @@ Board refill timing is TBD — this affects how often the exposure dilemma reset
 
 The game is action-economy based rather than strictly round-based. Both sides interleave actions:
 
-- **Pick** (action): Take one die from the board. It goes to your hand (max 5).
-- **Assign** (free): Move any die between your hand and a character slot, or back. No cost.
+- **Pick** (action): Drag one die from the board to your hand (max 5) or directly to a character slot.
+- **Assign** (free): Drag dice between your hand and a character slot via drag-and-drop. No action cost. Pure die type constraint enforced.
 - **Roll** (action): Roll all dice currently assigned to one character. Triggers their ability or charges their meter. Assigned dice are consumed.
 
 Actions alternate between player and enemy. Building up a character telegraphs your intent (assigned die types are visible to both sides) but enables stronger match patterns.
