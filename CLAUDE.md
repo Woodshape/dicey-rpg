@@ -1,0 +1,164 @@
+# Dicey RPG
+
+A turn-based dice-drafting RPG built with Odin and Raylib.
+
+## Project Structure
+
+```
+src/                    -- all game source (single package: "game")
+  main.odin             -- entry point, window, game loop
+  game.odin             -- game state struct, top-level update/draw
+  types.odin            -- shared types, enums, constants
+  board.odin            -- board grid, rarity gradient, perimeter logic
+  dice.odin             -- dice types, rolling, match detection
+  hand.odin             -- hand management (max 5 dice)
+  character.odin        -- character structs, abilities, slots
+  combat.odin           -- turn state machine, action resolution
+  ai.odin               -- enemy drafting heuristics
+  ui.odin               -- drawing helpers, layout constants
+tests/                  -- test package (separate from game)
+  tests.odin            -- core logic tests (match detection, board, hand, etc.)
+assets/                 -- placeholder assets
+docs/
+  design/core-mechanics.md   -- game design document (source of truth for mechanics)
+  implementation-plan.md     -- milestone-based implementation plan
+```
+
+All `src/` files share `package game`. Tests live in `tests/` as a separate package.
+
+## Build & Run
+
+```bash
+# Build and run
+odin run src/ -out:build/dicey-rpg
+
+# Build only
+odin build src/ -out:build/dicey-rpg
+
+# Run tests
+odin test tests/
+
+# Debug build
+odin run src/ -out:build/dicey-rpg -debug
+```
+
+## Architecture
+
+- **Single game state struct** passed by pointer — no globals.
+- **Structs + procedures** as the primary pattern.
+- **State machine** (enum + switch) for turn flow in `combat.odin`.
+- **Abilities** as procedure pointers in structs — modular, easy to extend.
+- **Match detection** as a pure function: input = rolled values, output = best pattern + matched value + unmatched list.
+- **Raylib** imported as `rl`: `import rl "vendor:raylib"`.
+
+## Odin Conventions
+
+Follow these strictly across all source files:
+
+### Naming
+
+- **snake_case** for variables, procedure names, and parameters: `roll_dice`, `match_result`, `board_size`
+- **Pascal_Case** for types and structs: `Game_State`, `Die_Type`, `Match_Pattern`, `Board_Cell`
+- **SCREAMING_CASE** for constants: `MAX_HAND_SIZE`, `BOARD_WIDTH`
+- Enum values use Pascal_Case: `Die_Type.D4`, `Match_Pattern.Full_House`
+- Keep names descriptive but concise. Avoid abbreviations except widely understood ones (HP, AI, UI).
+
+### Procedures
+
+- All parameters are immutable by default. Shadow with `x := x` if mutation is needed.
+- Use named return values for clarity when returning multiple values.
+- Use `or_return` for error propagation: `result := try_something() or_return`
+- Prefer explicit `return` over bare returns except in very short procedures.
+
+### Memory
+
+- Use `defer` for cleanup: `defer delete(dynamic_array)`
+- All dynamic arrays and maps must have a matching `delete()`.
+- Use the context allocator system — do not call malloc/free directly.
+- Prefer stack allocation (fixed arrays, structs by value) over heap where possible.
+
+### Error Handling
+
+- Return `(T, bool)` or `(T, Error)` tuples for operations that can fail.
+- Use `or_return`, `or_continue`, `or_else` for concise error handling.
+- No exceptions — handle errors explicitly at call sites.
+
+### Raylib API
+
+- Raylib uses **PascalCase** in Odin bindings (matches C API): `rl.InitWindow()`, `rl.BeginDrawing()`, `rl.DrawRectangle()`
+- Colours are constants: `rl.RAYWHITE`, `rl.RED`, `rl.DARKGRAY`
+- Always alias import: `import rl "vendor:raylib"`
+
+### Code Style
+
+- No forward declarations needed — Odin resolves within a package.
+- Use `when` for compile-time conditionals (platform checks, debug features).
+- Use `#partial switch` when intentionally not covering all enum cases.
+- Switches do NOT fall through by default. Use `fallthrough` explicitly if needed.
+- Visibility: everything is public by default. Use `@(private)` for package-private, `@(private="file")` for file-private.
+- Keep procedures short. Extract logic into well-named helpers when a procedure exceeds ~50 lines.
+
+## Testing Strategy
+
+Validate core game logic with meaningful test cases. No test flooding — focus on the subsystems where correctness matters most.
+
+### What to Test
+
+- **Match detection** (`dice.odin`): the heart of the game. Test every pattern (Pair through Five of a Kind), edge cases (no match, all same, multiple groups), and "best pattern" selection from ambiguous rolls.
+- **Board logic** (`board.odin`): rarity gradient correctness, perimeter calculation, tile removal exposing inner tiles.
+- **Hand management** (`hand.odin`): capacity enforcement (max 5), pure die type constraint on character assignment.
+- **Ability resolution** (`character.odin`): correct scaling (match-based, value-based, hybrid), super meter charging from unmatched dice.
+
+### What NOT to Test
+
+- Rendering / UI code (visual verification only).
+- Raylib wrapper calls.
+- Trivial getters or struct construction.
+
+### Test Style
+
+```odin
+package tests
+
+import "core:testing"
+
+@(test)
+match_pair :: proc(t: ^testing.T) {
+    result := detect_match({3, 7, 3, 11, 5})
+    testing.expect_value(t, result.pattern, Match_Pattern.Pair)
+    testing.expect_value(t, result.matched_value, 3)
+    testing.expect_value(t, result.unmatched_count, 3)
+}
+```
+
+- One `@(test)` procedure per meaningful scenario.
+- Use `testing.expect_value` for comparisons (auto-generates mismatch messages).
+- Use `testing.expectf` when custom failure messages aid debugging.
+- Name tests descriptively: `match_full_house`, `board_perimeter_after_removal`, `hand_rejects_mixed_types`.
+
+## Design Reference
+
+The game design document at `docs/design/core-mechanics.md` is the **source of truth** for all game mechanics. Key rules:
+
+- **Dice types:** d4, d6, d8, d10, d12
+- **Board:** Square grid, perimeter-only picks, rarity gradient (outer=d4/d6, middle=d8/d10, centre=d12)
+- **Hand:** Max 5 dice. Free assignment to characters. Pure die type per character.
+- **Character rarity:** Common=3 slots, Rare=4, Epic=5, Legendary=6
+- **Match patterns:** Pair, Three of a Kind, Two Pairs, Four of a Kind, Full House, Five of a Kind
+- **Two axes:** Match pattern (breadth) and matched value (depth)
+- **Unmatched dice** charge the character's super meter
+- **Actions:** Pick (costs turn), Assign (free), Roll (costs turn)
+- **Visibility:** Assigned die types visible to both sides (telegraphing)
+
+Always consult the design doc before implementing a mechanic. If the code diverges from the doc, update the doc first.
+
+## Implementation Plan
+
+See `docs/implementation-plan.md` for the milestone breakdown. Work through milestones sequentially — each is independently testable. Current milestone status is tracked in that file.
+
+## Workflow
+
+- Keep commits small and focused — one logical change per commit.
+- Update milestone checkboxes in `docs/implementation-plan.md` as tasks are completed.
+- Run `odin test tests/` after any logic change to match detection, board, hand, or ability systems.
+- When adding a new mechanic, write the test first, then implement.
