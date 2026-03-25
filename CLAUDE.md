@@ -136,6 +136,29 @@ match_pair :: proc(t: ^testing.T) {
 - Use `testing.expectf` when custom failure messages aid debugging.
 - Name tests descriptively: `match_full_house`, `board_perimeter_after_removal`, `hand_rejects_mixed_types`.
 
+### Data Integrity
+
+Any operation that removes, shifts, or reorders elements in a fixed-size array **must** be tested for stale data in vacated slots. This is critical because:
+
+- Odin zero-initializes memory, so stale values can hide behind zero-equivalent enum variants.
+- Tests for removal/shift operations must use **non-zero enum values** so stale data is distinguishable from a properly zeroed slot.
+- Always verify that slots beyond the active count are zeroed after removal.
+
+This applies to any array with a separate count/length field: hand dice, character assigned dice, and any future collection using the same pattern.
+
+### Sentinel Zero Values in Enums
+
+Every enum that can appear in a fixed-size array with a count, or where zero-initialization has semantic meaning, **must** have an explicit sentinel as its first (zero) value. This makes uninitialized, vacated, or invalid data immediately distinguishable from legitimate values.
+
+Established sentinels:
+- `Die_Type.None` — no die present. Asserted against at entry points (`hand_add`, `character_assign`). Renders as magenta `"??"` to be visually obvious if it leaks into rendering.
+- `Character_State.Empty` — no character in this party slot. A zero-initialized `Character` struct is `.Empty` by default.
+
+Rules:
+- **Do not overload game-meaningful enum values as sentinels.** Slot state (empty/alive/dead) is separate from character properties (rarity). A dead Common character is still Common.
+- New enums that appear in arrays or optional contexts should follow this pattern.
+- Sentinel values in lookup tables (colours, names) should use obviously wrong values (magenta, `"??"`) so bugs are visible immediately.
+
 ## Design Reference
 
 The game design document at `docs/design/core-mechanics.md` is the **source of truth** for all game mechanics. Key rules:
