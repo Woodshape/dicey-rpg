@@ -74,10 +74,10 @@ cell_is_perimeter :: proc(board: ^Board, row, col: int) -> bool {
 // Remove a die from the board. Returns the die type that was there.
 board_remove :: proc(board: ^Board, row, col: int) -> (Die_Type, bool) {
 	if !board.cells[row][col].occupied {
-		return .D4, false
+		return .None, false
 	}
 	if !cell_is_perimeter(board, row, col) {
-		return .D4, false
+		return .None, false
 	}
 
 	die_type := board.cells[row][col].die_type
