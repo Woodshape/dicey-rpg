@@ -80,16 +80,16 @@ Each milestone is independently testable. Later milestones build on earlier ones
 
 **Goal:** Dice flow from board to hand to character slots.
 
-- [ ] Hand data structure, max 5 dice
-- [ ] Render hand at bottom of screen
-- [ ] Pick from board -> die goes to hand
-- [ ] Render one player character on the left (Common = 3 slots)
-- [ ] Click/drag dice from hand to character slot
-- [ ] Pure die type constraint enforced (reject mixed types on a character)
-- [ ] Click dice on character -> returns to hand
-- [ ] Visual feedback for valid/invalid assignment
+- [x] Hand data structure, max 5 dice
+- [x] Render hand at bottom of screen
+- [x] Pick from board -> die goes to hand
+- [x] Render one player character on the left (Common = 3 slots)
+- [x] Click/drag dice from hand to character slot
+- [x] Pure die type constraint enforced (reject mixed types on a character)
+- [x] Click dice on character -> returns to hand
+- [x] Visual feedback for valid/invalid assignment
 
-**Status:** Not Started
+**Status:** Done
 
 ---
 
@@ -97,14 +97,14 @@ Each milestone is independently testable. Later milestones build on earlier ones
 
 **Goal:** Rolling works, matches are detected and displayed.
 
-- [ ] Roll action: roll all assigned dice on a character
-- [ ] Match detection algorithm (find best pattern: Pair through Five of a Kind)
-- [ ] Display rolled values on dice
-- [ ] Highlight matched dice vs unmatched dice
-- [ ] Show match pattern name and potency value
-- [ ] Unmatched dice flagged for super meter contribution
+- [x] Roll action: roll all assigned dice on a character
+- [x] Match detection algorithm (find best pattern: Pair through Five of a Kind)
+- [x] Display rolled values on dice
+- [x] Highlight matched dice vs unmatched dice
+- [x] Show match pattern name and potency value
+- [x] Unmatched dice flagged for super meter contribution
 
-**Status:** Not Started
+**Status:** Done
 
 ---
 
