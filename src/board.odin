@@ -1,0 +1,185 @@
+package game
+
+import "core:math/rand"
+import rl "vendor:raylib"
+
+// Calculate which ring a cell belongs to (0 = outermost)
+cell_ring :: proc(row, col, size: int) -> int {
+	return min(row, col, size - 1 - row, size - 1 - col)
+}
+
+// Determine die type for a given ring based on rarity gradient
+ring_die_type :: proc(ring, max_ring: int) -> Die_Type {
+	if max_ring <= 0 {
+		return .D12
+	}
+
+	// Map ring depth to die type:
+	// outer (ring 0)   = d4/d6
+	// middle           = d8/d10
+	// centre (max_ring) = d12
+	ratio := f32(ring) / f32(max_ring)
+
+	if ratio < 0.4 {
+		return rand.choice([]Die_Type{.D4, .D6})
+	} else if ratio < 0.8 {
+		return rand.choice([]Die_Type{.D8, .D10})
+	} else {
+		return .D12
+	}
+}
+
+// Initialize board with dice placed by rarity gradient
+board_init :: proc() -> Board {
+	board: Board
+	max_ring := (BOARD_SIZE - 1) / 2
+
+	for row in 0 ..< BOARD_SIZE {
+		for col in 0 ..< BOARD_SIZE {
+			ring := cell_ring(row, col, BOARD_SIZE)
+			board.cells[row][col] = Board_Cell{
+				die_type = ring_die_type(ring, max_ring),
+				occupied = true,
+				ring     = ring,
+			}
+		}
+	}
+
+	return board
+}
+
+// Check if a cell is on the current perimeter (pickable).
+// A cell is pickable if it's occupied and has at least one
+// neighbour that is empty or out of bounds.
+cell_is_perimeter :: proc(board: ^Board, row, col: int) -> bool {
+	if !board.cells[row][col].occupied {
+		return false
+	}
+
+	neighbours := [4][2]int{{-1, 0}, {1, 0}, {0, -1}, {0, 1}}
+	for offset in neighbours {
+		nr := row + offset[0]
+		nc := col + offset[1]
+		if nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE {
+			return true // edge of grid
+		}
+		if !board.cells[nr][nc].occupied {
+			return true // adjacent empty cell
+		}
+	}
+
+	return false
+}
+
+// Remove a die from the board. Returns the die type that was there.
+board_remove :: proc(board: ^Board, row, col: int) -> (Die_Type, bool) {
+	if !board.cells[row][col].occupied {
+		return .D4, false
+	}
+	if !cell_is_perimeter(board, row, col) {
+		return .D4, false
+	}
+
+	die_type := board.cells[row][col].die_type
+	board.cells[row][col].occupied = false
+	return die_type, true
+}
+
+// Count remaining dice on the board
+board_count :: proc(board: ^Board) -> int {
+	count := 0
+	for row in 0 ..< BOARD_SIZE {
+		for col in 0 ..< BOARD_SIZE {
+			if board.cells[row][col].occupied {
+				count += 1
+			}
+		}
+	}
+	return count
+}
+
+// Get the top-left pixel position of the board (centred on screen)
+board_origin :: proc() -> (i32, i32) {
+	board_px := i32(BOARD_SIZE * CELL_STRIDE - CELL_GAP)
+	x := (WINDOW_WIDTH - board_px) / 2
+	y := (WINDOW_HEIGHT - board_px) / 2
+	return x, y
+}
+
+// Convert a grid position to pixel position
+cell_position :: proc(row, col: int) -> (i32, i32) {
+	ox, oy := board_origin()
+	x := ox + i32(col * CELL_STRIDE)
+	y := oy + i32(row * CELL_STRIDE)
+	return x, y
+}
+
+// Convert mouse position to grid row/col. Returns (-1,-1) if outside the board.
+mouse_to_cell :: proc(mouse_x, mouse_y: i32) -> (int, int) {
+	ox, oy := board_origin()
+	rel_x := mouse_x - ox
+	rel_y := mouse_y - oy
+
+	if rel_x < 0 || rel_y < 0 {
+		return -1, -1
+	}
+
+	col := int(rel_x) / CELL_STRIDE
+	row := int(rel_y) / CELL_STRIDE
+
+	if row >= BOARD_SIZE || col >= BOARD_SIZE {
+		return -1, -1
+	}
+
+	// Check we're inside the cell, not in the gap
+	cell_local_x := int(rel_x) % CELL_STRIDE
+	cell_local_y := int(rel_y) % CELL_STRIDE
+	if cell_local_x >= CELL_SIZE || cell_local_y >= CELL_SIZE {
+		return -1, -1
+	}
+
+	return row, col
+}
+
+// Draw the board
+board_draw :: proc(board: ^Board) {
+	mouse_x := rl.GetMouseX()
+	mouse_y := rl.GetMouseY()
+	hover_row, hover_col := mouse_to_cell(mouse_x, mouse_y)
+
+	for row in 0 ..< BOARD_SIZE {
+		for col in 0 ..< BOARD_SIZE {
+			cell := &board.cells[row][col]
+			if !cell.occupied {
+				continue
+			}
+
+			x, y := cell_position(row, col)
+			is_perimeter := cell_is_perimeter(board, row, col)
+			is_hovered := row == hover_row && col == hover_col && is_perimeter
+
+			// Cell background
+			color: rl.Color
+			if is_perimeter {
+				color = DIE_TYPE_COLORS[cell.die_type]
+			} else {
+				color = DIE_TYPE_COLORS_DIM[cell.die_type]
+			}
+
+			rl.DrawRectangle(x, y, CELL_SIZE, CELL_SIZE, color)
+
+			// Hover highlight
+			if is_hovered {
+				rl.DrawRectangle(x, y, CELL_SIZE, CELL_SIZE, rl.Color{255, 255, 255, 50})
+				rl.DrawRectangleLines(x, y, CELL_SIZE, CELL_SIZE, rl.WHITE)
+			} else if is_perimeter {
+				rl.DrawRectangleLines(x, y, CELL_SIZE, CELL_SIZE, rl.Color{255, 255, 255, 80})
+			}
+
+			// Die type label
+			label := DIE_TYPE_NAMES[cell.die_type]
+			text_w := rl.MeasureText(label, 16)
+			rl.DrawText(label, x + (CELL_SIZE - text_w) / 2, y + (CELL_SIZE - 16) / 2, 16, rl.WHITE)
+		}
+	}
+}

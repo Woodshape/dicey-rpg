@@ -51,13 +51,13 @@ Each milestone is independently testable. Later milestones build on earlier ones
 
 **Goal:** Window opens, draws background, closes cleanly.
 
-- [ ] Init git repo, create folder structure
-- [ ] Raylib window at 1280x720
-- [ ] Basic game loop: init -> update -> draw -> cleanup
-- [ ] Background colour, window title "Dicey RPG"
-- [ ] Verify build on host platform
+- [x] Init git repo, create folder structure
+- [x] Raylib window at 1280x720
+- [x] Basic game loop: init -> update -> draw -> cleanup
+- [x] Background colour, window title "Dicey RPG"
+- [x] Verify build on host platform
 
-**Status:** Not Started
+**Status:** Done
 
 ---
 
@@ -65,14 +65,14 @@ Each milestone is independently testable. Later milestones build on earlier ones
 
 **Goal:** Board is visible, perimeter tiles are clickable.
 
-- [ ] Square grid data structure with concentric rings
-- [ ] Rarity gradient: outer ring = d4/d6, middle ring = d8/d10, centre = d12
-- [ ] Render board with coloured placeholder shapes (one colour per die type)
-- [ ] Visually distinguish perimeter (pickable) tiles from locked inner tiles
-- [ ] Click a perimeter tile to remove it (no hand yet, just board interaction)
-- [ ] Board renders centred on screen
+- [x] Square grid data structure with concentric rings
+- [x] Rarity gradient: outer ring = d4/d6, middle ring = d8/d10, centre = d12
+- [x] Render board with coloured placeholder shapes (one colour per die type)
+- [x] Visually distinguish perimeter (pickable) tiles from locked inner tiles
+- [x] Click a perimeter tile to remove it (no hand yet, just board interaction)
+- [x] Board renders centred on screen
 
-**Status:** Not Started
+**Status:** Done
 
 ---
 
