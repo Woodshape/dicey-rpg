@@ -104,7 +104,7 @@ mouse_on_roll_button :: proc(mouse_x, mouse_y: i32) -> bool {
 }
 
 // Draw a character panel
-character_draw :: proc(character: ^Character, selection: ^Selection) {
+character_draw :: proc(character: ^Character, drag: ^Drag_State) {
 	if !character_is_active(character) {
 		return
 	}
@@ -118,44 +118,55 @@ character_draw :: proc(character: ^Character, selection: ^Selection) {
 	rl.DrawText(RARITY_NAMES[character.rarity], CHAR_PANEL_X, CHAR_PANEL_Y + 24, 14, rl.GRAY)
 
 	if character.has_rolled {
-		// Post-roll: show rolled values with match highlighting
 		draw_rolled_dice(character)
 	} else {
-		// Pre-roll: show assigned dice with interaction
-		draw_assigned_dice(character, selection, hover_slot)
+		draw_assigned_dice(character, drag, hover_slot)
 
-		// Roll button (only when dice are assigned)
-		if character.assigned_count > 0 {
+		// Roll button (only when dice are assigned and not dragging)
+		if character.assigned_count > 0 && !drag.active {
 			draw_roll_button(mouse_x, mouse_y)
 		}
 	}
 }
 
-draw_assigned_dice :: proc(character: ^Character, selection: ^Selection, hover_slot: int) {
+draw_assigned_dice :: proc(character: ^Character, drag: ^Drag_State, hover_slot: int) {
+	// Is the character a valid drop target for the current drag?
+	is_drop_target := drag.active && drag.source == .Hand && character_can_assign(character, drag.die_type)
+
 	for i in 0 ..< character.max_dice {
 		x, y := char_slot_position(i)
 
 		if i < character.assigned_count {
-			die_type := character.assigned[i]
-			color := DIE_TYPE_COLORS[die_type]
-			rl.DrawRectangle(x, y, CHAR_SLOT_SIZE, CHAR_SLOT_SIZE, color)
+			is_dragged := drag.active && drag.source == .Character && drag.index == i
 
-			label := DIE_TYPE_NAMES[die_type]
-			text_w := rl.MeasureText(label, 12)
-			rl.DrawText(label, x + (CHAR_SLOT_SIZE - text_w) / 2, y + (CHAR_SLOT_SIZE - 12) / 2, 12, rl.WHITE)
+			if is_dragged {
+				// Ghost the slot being dragged
+				rl.DrawRectangle(x, y, CHAR_SLOT_SIZE, CHAR_SLOT_SIZE, rl.Color{60, 60, 70, 120})
+				rl.DrawRectangleLines(x, y, CHAR_SLOT_SIZE, CHAR_SLOT_SIZE, rl.Color{255, 255, 255, 40})
+			} else {
+				die_type := character.assigned[i]
+				color := DIE_TYPE_COLORS[die_type]
+				rl.DrawRectangle(x, y, CHAR_SLOT_SIZE, CHAR_SLOT_SIZE, color)
 
-			if i == hover_slot && selection.source == .None {
-				rl.DrawRectangle(x, y, CHAR_SLOT_SIZE, CHAR_SLOT_SIZE, rl.Color{255, 255, 255, 40})
-				rl.DrawRectangleLines(x, y, CHAR_SLOT_SIZE, CHAR_SLOT_SIZE, rl.WHITE)
+				label := DIE_TYPE_NAMES[die_type]
+				text_w := rl.MeasureText(label, 12)
+				rl.DrawText(label, x + (CHAR_SLOT_SIZE - text_w) / 2, y + (CHAR_SLOT_SIZE - 12) / 2, 12, rl.WHITE)
+
+				// Hover highlight (only when not dragging)
+				if i == hover_slot && !drag.active {
+					rl.DrawRectangle(x, y, CHAR_SLOT_SIZE, CHAR_SLOT_SIZE, rl.Color{255, 255, 255, 40})
+					rl.DrawRectangleLines(x, y, CHAR_SLOT_SIZE, CHAR_SLOT_SIZE, rl.WHITE)
+				}
 			}
 		} else {
+			// Empty slot
 			border_color := rl.Color{255, 255, 255, 30}
-			if selection.source == .Hand {
+			if is_drop_target {
 				border_color = rl.Color{60, 200, 80, 180}
 			}
 			rl.DrawRectangleLines(x, y, CHAR_SLOT_SIZE, CHAR_SLOT_SIZE, border_color)
 
-			if i == hover_slot && selection.source == .Hand {
+			if is_drop_target && i == hover_slot {
 				rl.DrawRectangle(x, y, CHAR_SLOT_SIZE, CHAR_SLOT_SIZE, rl.Color{60, 200, 80, 40})
 			}
 		}

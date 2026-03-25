@@ -173,14 +173,20 @@ CHAR_PANEL_WIDTH  :: 160
 CHAR_SLOT_SIZE    :: 44
 CHAR_SLOT_GAP     :: 6
 
-// Selection state
-Selection_Source :: enum {
-	None,
+// Drag-and-drop state
+Drag_Source :: enum {
+	None,    // zero value — not dragging
+	Board,
 	Hand,
 	Character,
 }
 
-Selection :: struct {
-	source: Selection_Source,
-	index:  int,             // hand slot index or character die index
+Drag_State :: struct {
+	active:     bool,
+	source:     Drag_Source,
+	die_type:   Die_Type,
+	// Source identification (for ghosting the source slot)
+	board_row:  int,
+	board_col:  int,
+	index:      int,   // hand slot index or character die index
 }

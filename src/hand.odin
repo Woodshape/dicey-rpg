@@ -58,38 +58,64 @@ mouse_to_hand_slot :: proc(mouse_x, mouse_y: i32) -> int {
 	return -1
 }
 
+// Check if mouse is in the general hand region (for loose drop targeting)
+mouse_in_hand_region :: proc(mouse_x, mouse_y: i32) -> bool {
+	first_x, first_y := hand_slot_position(0)
+	last_x, _ := hand_slot_position(MAX_HAND_SIZE - 1)
+	region_right := last_x + HAND_SLOT_SIZE
+
+	padding :: 10
+	return mouse_x >= first_x - padding && mouse_x <= region_right + padding &&
+	       mouse_y >= first_y - padding && mouse_y <= first_y + HAND_SLOT_SIZE + padding
+}
+
 // Draw the hand
-hand_draw :: proc(hand: ^Hand, selection: ^Selection) {
+hand_draw :: proc(hand: ^Hand, drag: ^Drag_State) {
 	mouse_x := rl.GetMouseX()
 	mouse_y := rl.GetMouseY()
 	hover_slot := mouse_to_hand_slot(mouse_x, mouse_y)
+
+	// Is the hand a valid drop target right now?
+	is_drop_target := drag.active && (drag.source == .Board || drag.source == .Character)
 
 	for i in 0 ..< MAX_HAND_SIZE {
 		x, y := hand_slot_position(i)
 
 		if i < hand.count {
-			// Filled slot
-			die_type := hand.dice[i]
-			color := DIE_TYPE_COLORS[die_type]
-			rl.DrawRectangle(x, y, HAND_SLOT_SIZE, HAND_SLOT_SIZE, color)
+			is_dragged := drag.active && drag.source == .Hand && drag.index == i
 
-			// Die type label
-			label := DIE_TYPE_NAMES[die_type]
-			text_w := rl.MeasureText(label, 14)
-			rl.DrawText(label, x + (HAND_SLOT_SIZE - text_w) / 2, y + (HAND_SLOT_SIZE - 14) / 2, 14, rl.WHITE)
+			if is_dragged {
+				// Ghost the slot being dragged
+				rl.DrawRectangle(x, y, HAND_SLOT_SIZE, HAND_SLOT_SIZE, rl.Color{60, 60, 70, 120})
+				rl.DrawRectangleLines(x, y, HAND_SLOT_SIZE, HAND_SLOT_SIZE, rl.Color{255, 255, 255, 40})
+			} else {
+				// Normal filled slot
+				die_type := hand.dice[i]
+				color := DIE_TYPE_COLORS[die_type]
+				rl.DrawRectangle(x, y, HAND_SLOT_SIZE, HAND_SLOT_SIZE, color)
 
-			// Selection highlight
-			is_selected := selection.source == .Hand && selection.index == i
-			if is_selected {
-				rl.DrawRectangleLines(x - 2, y - 2, HAND_SLOT_SIZE + 4, HAND_SLOT_SIZE + 4, rl.YELLOW)
-				rl.DrawRectangleLines(x - 1, y - 1, HAND_SLOT_SIZE + 2, HAND_SLOT_SIZE + 2, rl.YELLOW)
-			} else if i == hover_slot {
-				rl.DrawRectangle(x, y, HAND_SLOT_SIZE, HAND_SLOT_SIZE, rl.Color{255, 255, 255, 40})
-				rl.DrawRectangleLines(x, y, HAND_SLOT_SIZE, HAND_SLOT_SIZE, rl.WHITE)
+				label := DIE_TYPE_NAMES[die_type]
+				text_w := rl.MeasureText(label, 14)
+				rl.DrawText(label, x + (HAND_SLOT_SIZE - text_w) / 2, y + (HAND_SLOT_SIZE - 14) / 2, 14, rl.WHITE)
+
+				// Hover highlight (only when not dragging)
+				if i == hover_slot && !drag.active {
+					rl.DrawRectangle(x, y, HAND_SLOT_SIZE, HAND_SLOT_SIZE, rl.Color{255, 255, 255, 40})
+					rl.DrawRectangleLines(x, y, HAND_SLOT_SIZE, HAND_SLOT_SIZE, rl.WHITE)
+				}
 			}
 		} else {
 			// Empty slot
-			rl.DrawRectangleLines(x, y, HAND_SLOT_SIZE, HAND_SLOT_SIZE, rl.Color{255, 255, 255, 30})
+			border_color := rl.Color{255, 255, 255, 30}
+			if is_drop_target {
+				border_color = rl.Color{60, 200, 80, 180}
+			}
+			rl.DrawRectangleLines(x, y, HAND_SLOT_SIZE, HAND_SLOT_SIZE, border_color)
+
+			// Hover glow on empty slots when they're a drop target
+			if is_drop_target && i == hover_slot {
+				rl.DrawRectangle(x, y, HAND_SLOT_SIZE, HAND_SLOT_SIZE, rl.Color{60, 200, 80, 40})
+			}
 		}
 	}
 

@@ -142,7 +142,7 @@ mouse_to_cell :: proc(mouse_x, mouse_y: i32) -> (int, int) {
 }
 
 // Draw the board
-board_draw :: proc(board: ^Board) {
+board_draw :: proc(board: ^Board, drag: ^Drag_State) {
 	mouse_x := rl.GetMouseX()
 	mouse_y := rl.GetMouseY()
 	hover_row, hover_col := mouse_to_cell(mouse_x, mouse_y)
@@ -156,7 +156,16 @@ board_draw :: proc(board: ^Board) {
 
 			x, y := cell_position(row, col)
 			is_perimeter := cell_is_perimeter(board, row, col)
-			is_hovered := row == hover_row && col == hover_col && is_perimeter
+			is_dragged := drag.active && drag.source == .Board && drag.board_row == row && drag.board_col == col
+
+			// Ghost the cell being dragged
+			if is_dragged {
+				rl.DrawRectangle(x, y, CELL_SIZE, CELL_SIZE, rl.Color{60, 60, 70, 120})
+				rl.DrawRectangleLines(x, y, CELL_SIZE, CELL_SIZE, rl.Color{255, 255, 255, 40})
+				continue
+			}
+
+			is_hovered := row == hover_row && col == hover_col && is_perimeter && !drag.active
 
 			// Cell background
 			color: rl.Color
@@ -168,7 +177,7 @@ board_draw :: proc(board: ^Board) {
 
 			rl.DrawRectangle(x, y, CELL_SIZE, CELL_SIZE, color)
 
-			// Hover highlight
+			// Hover highlight (only when not dragging)
 			if is_hovered {
 				rl.DrawRectangle(x, y, CELL_SIZE, CELL_SIZE, rl.Color{255, 255, 255, 50})
 				rl.DrawRectangleLines(x, y, CELL_SIZE, CELL_SIZE, rl.WHITE)
