@@ -4,25 +4,59 @@ import "core:math/rand"
 
 // Roll a single die, returning a value from 1 to faces.
 roll_die :: proc(die_type: Die_Type) -> int {
-	assert(die_type != .None, "cannot roll Die_Type.None")
+	assert(die_type_is_normal(die_type), "can only roll normal dice")
 	faces := DIE_FACES[die_type]
 	return rand.int_max(faces) + 1
 }
 
 // Roll all assigned dice on a character and detect matches.
+// Skull dice are separated from normal dice: skulls count attacks,
+// normal dice are evaluated for match patterns.
 character_roll :: proc(character: ^Character) {
 	assert(character.assigned_count > 0, "cannot roll with no assigned dice")
 
 	result: Roll_Result
 	result.count = character.assigned_count
 
-	// Roll each die
+	// Separate skull and normal dice, roll normal dice
+	normal_values: [MAX_CHARACTER_DICE]int
+	normal_count := 0
+
 	for i in 0 ..< character.assigned_count {
-		result.values[i] = roll_die(character.assigned[i])
+		if character.assigned[i] == .Skull {
+			result.is_skull[i] = true
+			result.skull_count += 1
+		} else {
+			val := roll_die(character.assigned[i])
+			result.values[i] = val
+			normal_values[normal_count] = val
+			normal_count += 1
+		}
 	}
 
-	// Detect matches
-	result = detect_match(result.values[:result.count])
+	// Detect matches on normal dice only
+	if normal_count > 0 {
+		match_result := detect_match(normal_values[:normal_count])
+
+		result.pattern = match_result.pattern
+		result.matched_value = match_result.matched_value
+
+		// Map matched flags back to full array (skipping skull slots)
+		normal_idx := 0
+		for i in 0 ..< result.count {
+			if !result.is_skull[i] {
+				result.matched[i] = match_result.matched[normal_idx]
+				if result.matched[i] {
+					result.matched_count += 1
+				} else {
+					result.unmatched_count += 1
+				}
+				normal_idx += 1
+			}
+		}
+	}
+
+	assert(result.matched_count + result.unmatched_count + result.skull_count == result.count)
 
 	character.roll = result
 	character.has_rolled = true
@@ -40,6 +74,7 @@ character_clear_roll :: proc(character: ^Character) {
 
 // Detect the best match pattern from rolled values.
 // Pure function — no side effects, no randomness.
+// Only receives normal dice values (no skull dice).
 detect_match :: proc(values: []int) -> Roll_Result {
 	result: Roll_Result
 	result.count = len(values)

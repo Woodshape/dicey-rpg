@@ -22,43 +22,59 @@ Die_Type :: enum u8 {
 	D8,
 	D10,
 	D12,
+	Skull, // damage die — exempt from pure type constraint
+}
+
+die_type_is_normal :: proc(dt: Die_Type) -> bool {
+	#partial switch dt {
+	case .D4, .D6, .D8, .D10, .D12:
+		return true
+	}
+	return false
 }
 
 DIE_TYPE_NAMES := [Die_Type]cstring{
-	.None = "??",
-	.D4   = "d4",
-	.D6   = "d6",
-	.D8   = "d8",
-	.D10  = "d10",
-	.D12  = "d12",
+	.None  = "??",
+	.D4    = "d4",
+	.D6    = "d6",
+	.D8    = "d8",
+	.D10   = "d10",
+	.D12   = "d12",
+	.Skull = "Skl",
 }
 
 DIE_TYPE_COLORS := [Die_Type]rl.Color{
-	.None = rl.MAGENTA,                      // highly visible — should never render
-	.D4   = rl.Color{80, 140, 220, 255},     // blue
-	.D6   = rl.Color{60, 180, 100, 255},     // green
-	.D8   = rl.Color{230, 200, 50, 255},     // yellow
-	.D10  = rl.Color{230, 140, 40, 255},     // orange
-	.D12  = rl.Color{210, 50, 60, 255},      // red
+	.None  = rl.MAGENTA,                      // should never render
+	.D4    = rl.Color{80, 140, 220, 255},     // blue
+	.D6    = rl.Color{60, 180, 100, 255},     // green
+	.D8    = rl.Color{230, 200, 50, 255},     // yellow
+	.D10   = rl.Color{230, 140, 40, 255},     // orange
+	.D12   = rl.Color{210, 50, 60, 255},      // red
+	.Skull = rl.Color{200, 200, 210, 255},    // pale bone white
 }
 
 DIE_TYPE_COLORS_DIM := [Die_Type]rl.Color{
-	.None = rl.MAGENTA,
-	.D4   = rl.Color{50, 80, 120, 255},
-	.D6   = rl.Color{35, 100, 55, 255},
-	.D8   = rl.Color{130, 110, 30, 255},
-	.D10  = rl.Color{130, 80, 25, 255},
-	.D12  = rl.Color{120, 30, 35, 255},
+	.None  = rl.MAGENTA,
+	.D4    = rl.Color{50, 80, 120, 255},
+	.D6    = rl.Color{35, 100, 55, 255},
+	.D8    = rl.Color{130, 110, 30, 255},
+	.D10   = rl.Color{130, 80, 25, 255},
+	.D12   = rl.Color{120, 30, 35, 255},
+	.Skull = rl.Color{100, 100, 105, 255},
 }
 
 DIE_FACES := [Die_Type]int{
-	.None = 0,
-	.D4   = 4,
-	.D6   = 6,
-	.D8   = 8,
-	.D10  = 10,
-	.D12  = 12,
+	.None  = 0,
+	.D4    = 4,
+	.D6    = 6,
+	.D8    = 8,
+	.D10   = 10,
+	.D12   = 12,
+	.Skull = 0,  // skull dice are not rolled for a value
 }
+
+// Probability (out of 100) that any board cell becomes a skull die
+SKULL_CHANCE :: 20
 
 MAX_DIE_VALUE :: 12
 
@@ -85,13 +101,16 @@ MATCH_PATTERN_NAMES := [Match_Pattern]cstring{
 
 // Result of rolling and evaluating a character's dice
 Roll_Result :: struct {
-	values:          [MAX_CHARACTER_DICE]int,   // rolled face values (1-12)
-	count:           int,                       // number of dice rolled
-	pattern:         Match_Pattern,
+	values:          [MAX_CHARACTER_DICE]int,   // rolled face values (1-12), 0 for skull dice
+	count:           int,                       // total dice rolled (skull + normal)
+	is_skull:        [MAX_CHARACTER_DICE]bool,  // true if this die is a skull
+	skull_count:     int,                       // number of skull dice in this roll
+	pattern:         Match_Pattern,             // best pattern from normal dice only
 	matched_value:   int,                       // value of the best match group
-	matched:         [MAX_CHARACTER_DICE]bool,  // true = part of a match group
-	matched_count:   int,
-	unmatched_count: int,
+	matched:         [MAX_CHARACTER_DICE]bool,  // true = part of a match group (never true for skulls)
+	matched_count:   int,                       // normal dice in match groups
+	unmatched_count: int,                       // normal dice NOT in match groups
+	// Invariant: matched_count + unmatched_count + skull_count == count
 }
 
 // Board cell
@@ -149,11 +168,20 @@ Character_State :: enum u8 {
 	Dead,
 }
 
+Character_Stats :: struct {
+	hp:      int,
+	max_hp:  int,
+	attack:  int,
+	defense: int,
+}
+
 Character :: struct {
 	state:          Character_State,
 	name:           cstring,
 	rarity:         Character_Rarity,
 	max_dice:       int,
+	stats:          Character_Stats,
+	// Dice
 	assigned:       [MAX_CHARACTER_DICE]Die_Type,
 	assigned_count: int,
 	// Roll state
