@@ -80,6 +80,29 @@ ai_does_not_roll_empty_character :: proc(t: ^testing.T) {
 	testing.expect(t, !should, "AI should not roll with no assigned dice")
 }
 
+@(test)
+ai_does_not_roll_with_only_skulls :: proc(t: ^testing.T) {
+	gs := game.game_init()
+	// Assign 2 skull dice — no normal dice
+	game.character_assign_die(&gs.enemy_party.characters[0], .Skull)
+	game.character_assign_die(&gs.enemy_party.characters[0], .Skull)
+
+	should, _ := game.ai_should_roll(&gs)
+	testing.expect(t, !should, "AI should not roll with only skull dice (no ability can fire)")
+}
+
+@(test)
+ai_rolls_with_normal_dice :: proc(t: ^testing.T) {
+	gs := game.game_init()
+	// Assign 2 normal + 1 skull, character is full (Common = 3)
+	game.character_assign_die(&gs.enemy_party.characters[0], .D6)
+	game.character_assign_die(&gs.enemy_party.characters[0], .D6)
+	game.character_assign_die(&gs.enemy_party.characters[0], .Skull)
+
+	should, _ := game.ai_should_roll(&gs)
+	testing.expect(t, should, "AI should roll when character is full with normal dice")
+}
+
 // --- AI pick ---
 
 @(test)

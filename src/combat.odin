@@ -85,29 +85,15 @@ resolve_roll :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character) 
 		)
 	}
 
+	// Snapshot resolve before resolution (it may reset)
+	resolve_before := attacker.resolve
+
 	// Ability + resolve
 	if target != nil {
 		resolve_abilities(attacker, target)
 	}
 
-	// Log ability
-	if attacker.ability_fired {
-		desc: cstring = attacker.ability.name
-		if attacker.ability.describe != nil {
-			desc = attacker.ability.describe(roll)
-		}
-		combat_log_add(
-			&gs.log,
-			rl.Color{100, 200, 255, 255},
-			"%s: %s (%s) -> %s",
-			attacker.name,
-			attacker.ability.name,
-			desc,
-			target.name,
-		)
-	}
-
-	// Log match info
+	// Log match info first
 	if roll.matched_count > 0 {
 		combat_log_add(
 			&gs.log,
@@ -121,15 +107,35 @@ resolve_roll :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character) 
 		combat_log_add(&gs.log, rl.Color{180, 80, 80, 255}, "%s: No match", attacker.name)
 	}
 
-	// Log resolve meter
+	// Log ability
+	if attacker.ability_fired {
+		desc: cstring = attacker.ability.name
+		if attacker.ability.describe != nil {
+			desc = attacker.ability.describe(roll)
+		}
+		if target != nil {
+			combat_log_add(
+				&gs.log,
+				rl.Color{100, 200, 255, 255},
+				"%s: %s (%s) -> %s",
+				attacker.name,
+				attacker.ability.name,
+				desc,
+				target.name,
+			)
+		}
+	}
+
+	// Log resolve meter (using pre-resolution value + charge)
 	if roll.unmatched_count > 0 {
+		charged_to := resolve_before + roll.unmatched_count
 		combat_log_add(
 			&gs.log,
 			rl.Color{150, 120, 220, 255},
 			"%s: Resolve +%d (%d/%d)",
 			attacker.name,
 			roll.unmatched_count,
-			attacker.resolve,
+			charged_to,
 			attacker.resolve_max,
 		)
 	}
