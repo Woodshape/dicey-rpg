@@ -94,7 +94,7 @@ character_unassign_die :: proc(character: ^Character, index: int) -> (Die_Type, 
 char_slot_position :: proc(slot_index: int) -> (i32, i32) {
 	slot_stride := i32(CHAR_SLOT_SIZE + CHAR_SLOT_GAP)
 	x := i32(CHAR_PANEL_X) + i32(slot_index) * slot_stride
-	y := i32(CHAR_PANEL_Y) + 66  // below name/rarity/HP bar
+	y := i32(CHAR_PANEL_Y) + 80  // below name/rarity/stats
 	return x, y
 }
 
@@ -145,8 +145,11 @@ character_draw :: proc(character: ^Character, drag: ^Drag_State) {
 	rl.DrawText(character.name, CHAR_PANEL_X, CHAR_PANEL_Y, 20, rl.RAYWHITE)
 	rl.DrawText(RARITY_NAMES[character.rarity], CHAR_PANEL_X, CHAR_PANEL_Y + 24, 14, rl.GRAY)
 
-	// HP bar
-	draw_hp_bar(character, CHAR_PANEL_X, CHAR_PANEL_Y + 42)
+	// Stats
+	hp_str := fmt.ctprintf("HP  %d", character.stats.hp)
+	rl.DrawText(hp_str, CHAR_PANEL_X, CHAR_PANEL_Y + 44, 14, rl.Color{100, 220, 100, 255})
+	atk_def_str := fmt.ctprintf("ATK %d   DEF %d", character.stats.attack, character.stats.defense)
+	rl.DrawText(atk_def_str, CHAR_PANEL_X, CHAR_PANEL_Y + 60, 14, rl.Color{180, 180, 180, 255})
 
 	if character.has_rolled {
 		draw_rolled_dice(character)
@@ -308,34 +311,3 @@ mouse_on_clear_button :: proc(mouse_x, mouse_y: i32) -> bool {
 	       f32(mouse_y) >= r.y && f32(mouse_y) < r.y + r.height
 }
 
-// Draw HP bar
-HP_BAR_WIDTH  :: 140
-HP_BAR_HEIGHT :: 12
-
-draw_hp_bar :: proc(character: ^Character, x, y: i32) {
-	// Background
-	rl.DrawRectangle(x, y, HP_BAR_WIDTH, HP_BAR_HEIGHT, rl.Color{40, 40, 40, 255})
-
-	// Fill
-	if character.stats.max_hp > 0 {
-		fill := i32(f32(HP_BAR_WIDTH) * f32(character.stats.hp) / f32(character.stats.max_hp))
-		bar_color: rl.Color
-		ratio := f32(character.stats.hp) / f32(character.stats.max_hp)
-		if ratio > 0.5 {
-			bar_color = rl.Color{60, 180, 60, 255}
-		} else if ratio > 0.25 {
-			bar_color = rl.Color{220, 180, 40, 255}
-		} else {
-			bar_color = rl.Color{200, 50, 50, 255}
-		}
-		rl.DrawRectangle(x, y, fill, HP_BAR_HEIGHT, bar_color)
-	}
-
-	// Border
-	rl.DrawRectangleLines(x, y, HP_BAR_WIDTH, HP_BAR_HEIGHT, rl.Color{100, 100, 100, 255})
-
-	// Text
-	hp_str := fmt.ctprintf("%d/%d", character.stats.hp, character.stats.max_hp)
-	text_w := rl.MeasureText(hp_str, 10)
-	rl.DrawText(hp_str, x + (HP_BAR_WIDTH - text_w) / 2, y + 1, 10, rl.WHITE)
-}

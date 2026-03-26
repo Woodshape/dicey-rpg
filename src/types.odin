@@ -150,7 +150,6 @@ Character_State :: enum u8 {
 
 Character_Stats :: struct {
 	hp:      int,
-	max_hp:  int,
 	attack:  int,
 	defense: int,
 }

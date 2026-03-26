@@ -4,7 +4,7 @@ import "core:fmt"
 import rl "vendor:raylib"
 
 // Enemy panel position (right side)
-ENEMY_PANEL_X :: WINDOW_WIDTH - CHAR_PANEL_X - HP_BAR_WIDTH
+ENEMY_PANEL_X :: WINDOW_WIDTH - CHAR_PANEL_X - CHAR_PANEL_WIDTH
 ENEMY_PANEL_Y :: CHAR_PANEL_Y
 
 Game_State :: struct {
@@ -20,8 +20,8 @@ game_init :: proc() -> Game_State {
 	return Game_State{
 		running = true,
 		board   = board_init(),
-		player  = character_create("Warrior", .Common, Character_Stats{hp = 20, max_hp = 20, attack = 3, defense = 1}),
-		enemy   = character_create("Goblin",  .Common, Character_Stats{hp = 15, max_hp = 15, attack = 2, defense = 0}),
+		player  = character_create("Warrior", .Common, Character_Stats{hp = 20, attack = 3, defense = 1}),
+		enemy   = character_create("Goblin",  .Common, Character_Stats{hp = 15, attack = 2, defense = 0}),
 	}
 }
 
@@ -177,10 +177,10 @@ draw_enemy_panel :: proc(enemy: ^Character) {
 	rl.DrawText(RARITY_NAMES[enemy.rarity], x, y + 24, 14, rl.GRAY)
 
 	// Stats
-	stats_str := fmt.ctprintf("ATK %d  DEF %d", enemy.stats.attack, enemy.stats.defense)
-	rl.DrawText(stats_str, x, y + 42, 12, rl.Color{180, 180, 180, 255})
-
-	draw_hp_bar(enemy, x, y + 58)
+	hp_str := fmt.ctprintf("HP  %d", enemy.stats.hp)
+	rl.DrawText(hp_str, x, y + 44, 14, rl.Color{100, 220, 100, 255})
+	atk_def_str := fmt.ctprintf("ATK %d   DEF %d", enemy.stats.attack, enemy.stats.defense)
+	rl.DrawText(atk_def_str, x, y + 60, 14, rl.Color{180, 180, 180, 255})
 }
 
 // Draw the die being dragged at the cursor position
