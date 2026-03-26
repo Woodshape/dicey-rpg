@@ -143,6 +143,11 @@ RARITY_NAMES := [Character_Rarity]cstring {
 
 MAX_PARTY_SIZE :: 4
 
+Party :: struct {
+	characters: [MAX_PARTY_SIZE]Character,
+	count:      int,
+}
+
 Character_State :: enum u8 {
 	Empty, // zero value — no character in this slot
 	Alive,
@@ -214,10 +219,11 @@ character_is_active :: proc(character: ^Character) -> bool {
 
 // UI layout for character panel
 CHAR_PANEL_X :: 30
-CHAR_PANEL_Y :: 100
+CHAR_PANEL_Y :: 80
 CHAR_PANEL_WIDTH :: 160
 CHAR_SLOT_SIZE :: 44
 CHAR_SLOT_GAP :: 6
+CHAR_PANEL_STRIDE :: 200 // vertical spacing between stacked character panels
 
 // Turn state machine
 Turn_Phase :: enum u8 {
@@ -229,6 +235,24 @@ Turn_Phase :: enum u8 {
 	Defeat, // player lost
 }
 
+// Combat log
+MAX_LOG_ENTRIES :: 12
+MAX_LOG_LENGTH  :: 128
+
+Log_Entry :: struct {
+	text:  [MAX_LOG_LENGTH]u8,
+	len:   int,
+	color: rl.Color,
+}
+
+Combat_Log :: struct {
+	entries:      [MAX_LOG_ENTRIES]Log_Entry,
+	count:        int,
+	head:         int,  // ring buffer write position
+	game_number:  int,  // increments on each Play Again
+	file_enabled: bool, // only true when running the actual game (not tests)
+}
+
 // Drag-and-drop state
 Drag_Source :: enum {
 	None, // zero value — not dragging
@@ -238,11 +262,12 @@ Drag_Source :: enum {
 }
 
 Drag_State :: struct {
-	active:    bool,
-	source:    Drag_Source,
-	die_type:  Die_Type,
+	active:     bool,
+	source:     Drag_Source,
+	die_type:   Die_Type,
 	// Source identification (for ghosting the source slot)
-	board_row: int,
-	board_col: int,
-	index:     int, // hand slot index or character die index
+	board_row:  int,
+	board_col:  int,
+	index:      int, // hand slot index or character die index
+	char_index: int, // which character in the party (for Character source)
 }

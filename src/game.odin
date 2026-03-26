@@ -8,24 +8,36 @@ ENEMY_PANEL_X :: WINDOW_WIDTH - CHAR_PANEL_X - CHAR_PANEL_WIDTH
 ENEMY_PANEL_Y :: CHAR_PANEL_Y
 
 Game_State :: struct {
-	running:    bool,
-	board:      Board,
-	hand:       Hand,
-	player:     Character,
-	enemy:      Character,
-	enemy_hand: Hand,
-	drag:       Drag_State,
-	turn:       Turn_Phase,
-	turn_timer: f32,
+	running:       bool,
+	board:         Board,
+	hand:          Hand,
+	enemy_hand:    Hand,
+	player_party:  Party,
+	enemy_party:   Party,
+	drag:          Drag_State,
+	turn:          Turn_Phase,
+	turn_timer:    f32,
+	rolling_index: int, // which character is currently showing roll results
+	log:           Combat_Log,
 }
 
-game_init :: proc() -> Game_State {
-	return Game_State {
+game_init :: proc(prev_log: ^Combat_Log = nil) -> Game_State {
+	gs := Game_State {
 		running = true,
 		board   = board_init(),
-		player  = warrior_create(),
-		enemy   = goblin_create(),
 	}
+	// Preserve log across restarts
+	if prev_log != nil {
+		gs.log = prev_log^
+	}
+	combat_log_new_game(&gs.log)
+	gs.player_party.characters[0] = warrior_create()
+	gs.player_party.characters[1] = healer_create()
+	gs.player_party.count = 2
+	gs.enemy_party.characters[0] = goblin_create()
+	gs.enemy_party.characters[1] = shaman_create()
+	gs.enemy_party.count = 2
+	return gs
 }
 
 game_update :: proc(gs: ^Game_State) {
@@ -60,15 +72,17 @@ try_start_drag :: proc(gs: ^Game_State, mouse_x, mouse_y: i32) {
 		return
 	}
 
-	// Character die drag (only if hand not full — die returns to hand)
-	if !gs.player.has_rolled {
-		char_slot := mouse_to_char_slot(mouse_x, mouse_y, gs.player.max_dice)
-		if char_slot >= 0 && char_slot < gs.player.assigned_count {
-			gs.drag = Drag_State{
-				active   = true,
-				source   = .Character,
-				die_type = gs.player.assigned[char_slot],
-				index    = char_slot,
+	// Character die drag — check all player characters
+	ci, slot := mouse_to_party_char_slot(&gs.player_party, CHAR_PANEL_X, mouse_x, mouse_y)
+	if ci >= 0 {
+		ch := &gs.player_party.characters[ci]
+		if !ch.has_rolled && slot < ch.assigned_count {
+			gs.drag = Drag_State {
+				active     = true,
+				source     = .Character,
+				die_type   = ch.assigned[slot],
+				index      = slot,
+				char_index = ci,
 			}
 		}
 	}
@@ -84,22 +98,24 @@ try_drop :: proc(gs: ^Game_State, mouse_x, mouse_y: i32) -> bool {
 		if in_hand && !hand_is_full(&gs.hand) {
 			board_remove_die(&gs.board, gs.drag.board_row, gs.drag.board_col)
 			hand_add(&gs.hand, gs.drag.die_type)
+			combat_log_write(&gs.log, "You pick %s -> hand", DIE_TYPE_NAMES[gs.drag.die_type])
 			return true
 		}
 
-		char_slot := mouse_to_char_slot(mouse_x, mouse_y, gs.player.max_dice)
-		if char_slot >= 0 && character_can_assign_die(&gs.player, gs.drag.die_type) {
+		ci, _ := mouse_to_party_char_slot(&gs.player_party, CHAR_PANEL_X, mouse_x, mouse_y)
+		if ci >= 0 && character_can_assign_die(&gs.player_party.characters[ci], gs.drag.die_type) {
 			board_remove_die(&gs.board, gs.drag.board_row, gs.drag.board_col)
-			character_assign_die(&gs.player, gs.drag.die_type)
+			character_assign_die(&gs.player_party.characters[ci], gs.drag.die_type)
+			combat_log_write(&gs.log, "You pick %s -> %s", DIE_TYPE_NAMES[gs.drag.die_type], gs.player_party.characters[ci].name)
 			return true
 		}
 
 	case .Hand:
-		// Hand to character is a free Assign
-		char_slot := mouse_to_char_slot(mouse_x, mouse_y, gs.player.max_dice)
-		if char_slot >= 0 && character_can_assign_die(&gs.player, gs.drag.die_type) {
+		// Hand to character is a free Assign — check all player characters
+		ci, _ := mouse_to_party_char_slot(&gs.player_party, CHAR_PANEL_X, mouse_x, mouse_y)
+		if ci >= 0 && character_can_assign_die(&gs.player_party.characters[ci], gs.drag.die_type) {
 			hand_remove(&gs.hand, gs.drag.index)
-			character_assign_die(&gs.player, gs.drag.die_type)
+			character_assign_die(&gs.player_party.characters[ci], gs.drag.die_type)
 		}
 
 	case .Character:
@@ -107,7 +123,7 @@ try_drop :: proc(gs: ^Game_State, mouse_x, mouse_y: i32) -> bool {
 		hand_slot := mouse_to_hand_slot(mouse_x, mouse_y)
 		in_hand := hand_slot >= 0 || mouse_in_hand_region(mouse_x, mouse_y)
 		if in_hand && !hand_is_full(&gs.hand) {
-			character_unassign_die(&gs.player, gs.drag.index)
+			character_unassign_die(&gs.player_party.characters[gs.drag.char_index], gs.drag.index)
 			hand_add(&gs.hand, gs.drag.die_type)
 		}
 	}
@@ -123,8 +139,8 @@ game_draw :: proc(gs: ^Game_State) {
 
 	board_draw(&gs.board, &gs.drag)
 	hand_draw(&gs.hand, &gs.drag)
-	character_draw(&gs.player, &gs.drag)
-	character_draw_at(&gs.enemy, ENEMY_PANEL_X, ENEMY_PANEL_Y, &gs.drag, false, rl.Color{220, 100, 100, 255})
+	party_draw(&gs.player_party, CHAR_PANEL_X, &gs.drag, true, rl.RAYWHITE)
+	party_draw(&gs.enemy_party, ENEMY_PANEL_X, &gs.drag, false, rl.Color{220, 100, 100, 255})
 	hand_draw_at(&gs.enemy_hand, ENEMY_HAND_CENTER_X, &gs.drag, false)
 
 	// Dragged die follows cursor
@@ -146,6 +162,9 @@ game_draw :: proc(gs: ^Game_State) {
 
 	// Turn indicator
 	draw_turn_indicator(gs.turn)
+
+	// Combat log
+	combat_log_draw(&gs.log)
 
 	// Game over overlay
 	if gs.turn == .Victory || gs.turn == .Defeat {

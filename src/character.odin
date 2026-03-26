@@ -92,6 +92,11 @@ character_unassign_die :: proc(character: ^Character, index: int) -> (Die_Type, 
 
 // --- Position helpers (parameterized by panel origin) ---
 
+// Get Y position for the Nth character panel on a side.
+char_panel_y :: proc(char_index: int) -> i32 {
+	return CHAR_PANEL_Y + i32(char_index) * CHAR_PANEL_STRIDE
+}
+
 // Get pixel position for a die slot relative to a panel origin.
 panel_slot_position :: proc(panel_x, panel_y: i32, slot_index: int) -> (i32, i32) {
 	slot_stride := i32(CHAR_SLOT_SIZE + CHAR_SLOT_GAP)
@@ -100,15 +105,10 @@ panel_slot_position :: proc(panel_x, panel_y: i32, slot_index: int) -> (i32, i32
 	return x, y
 }
 
-// Player-side convenience wrappers (used for hit-testing player interaction)
-char_slot_position :: proc(slot_index: int) -> (i32, i32) {
-	return panel_slot_position(CHAR_PANEL_X, CHAR_PANEL_Y, slot_index)
-}
-
-// Check if mouse is over a character die slot. Returns slot index or -1.
-mouse_to_char_slot :: proc(mouse_x, mouse_y: i32, max_dice: int) -> int {
+// Check if mouse is over a die slot for a panel at (panel_x, panel_y). Returns slot index or -1.
+mouse_to_char_slot_at :: proc(mouse_x, mouse_y: i32, panel_x, panel_y: i32, max_dice: int) -> int {
 	for i in 0 ..< max_dice {
-		x, y := char_slot_position(i)
+		x, y := panel_slot_position(panel_x, panel_y, i)
 		if mouse_x >= x && mouse_x < x + CHAR_SLOT_SIZE &&
 		   mouse_y >= y && mouse_y < y + CHAR_SLOT_SIZE {
 			return i
@@ -117,25 +117,48 @@ mouse_to_char_slot :: proc(mouse_x, mouse_y: i32, max_dice: int) -> int {
 	return -1
 }
 
-// Roll button position (below dice slots)
+// Find which player character and slot the mouse is over.
+// Returns (char_index, slot_index). Both are -1 if not over any.
+mouse_to_party_char_slot :: proc(party: ^Party, panel_x: i32, mouse_x, mouse_y: i32) -> (int, int) {
+	for ci in 0 ..< party.count {
+		ch := &party.characters[ci]
+		if !character_is_active(ch) { continue }
+		py := char_panel_y(ci)
+		slot := mouse_to_char_slot_at(mouse_x, mouse_y, panel_x, py, ch.max_dice)
+		if slot >= 0 {
+			return ci, slot
+		}
+	}
+	return -1, -1
+}
+
+// Roll button position for a panel at (panel_x, panel_y).
 ROLL_BTN_WIDTH  :: 70
 ROLL_BTN_HEIGHT :: 28
 
-roll_button_rect :: proc() -> rl.Rectangle {
-	_, slot_y := char_slot_position(0)
-	return rl.Rectangle{
-		x      = f32(CHAR_PANEL_X),
+roll_button_rect_at :: proc(panel_x, panel_y: i32) -> rl.Rectangle {
+	_, slot_y := panel_slot_position(panel_x, panel_y, 0)
+	return rl.Rectangle {
+		x      = f32(panel_x),
 		y      = f32(slot_y + CHAR_SLOT_SIZE + 10),
 		width  = ROLL_BTN_WIDTH,
 		height = ROLL_BTN_HEIGHT,
 	}
 }
 
-// Check if mouse is over the roll button
-mouse_on_roll_button :: proc(mouse_x, mouse_y: i32) -> bool {
-	r := roll_button_rect()
-	return f32(mouse_x) >= r.x && f32(mouse_x) < r.x + r.width &&
-	       f32(mouse_y) >= r.y && f32(mouse_y) < r.y + r.height
+// Find which player character's roll button the mouse is over. Returns char_index or -1.
+mouse_on_party_roll_button :: proc(party: ^Party, panel_x: i32, mouse_x, mouse_y: i32) -> int {
+	for ci in 0 ..< party.count {
+		ch := &party.characters[ci]
+		if !character_is_active(ch) || ch.assigned_count <= 0 || ch.has_rolled { continue }
+		py := char_panel_y(ci)
+		r := roll_button_rect_at(panel_x, py)
+		if f32(mouse_x) >= r.x && f32(mouse_x) < r.x + r.width &&
+		   f32(mouse_y) >= r.y && f32(mouse_y) < r.y + r.height {
+			return ci
+		}
+	}
+	return -1
 }
 
 
@@ -169,14 +192,17 @@ character_draw_at :: proc(character: ^Character, panel_x, panel_y: i32, drag: ^D
 		if interactive && character.assigned_count > 0 && !drag.active {
 			mouse_x := rl.GetMouseX()
 			mouse_y := rl.GetMouseY()
-			draw_roll_button(mouse_x, mouse_y)
+			draw_roll_button_at(panel_x, panel_y, mouse_x, mouse_y)
 		}
 	}
 }
 
-// Player-side draw (convenience wrapper)
-character_draw :: proc(character: ^Character, drag: ^Drag_State) {
-	character_draw_at(character, CHAR_PANEL_X, CHAR_PANEL_Y, drag, true, rl.RAYWHITE)
+// Draw all characters in a party, stacked vertically.
+party_draw :: proc(party: ^Party, panel_x: i32, drag: ^Drag_State, interactive: bool, name_color: rl.Color) {
+	for i in 0 ..< party.count {
+		py := char_panel_y(i)
+		character_draw_at(&party.characters[i], panel_x, py, drag, interactive, name_color)
+	}
 }
 
 draw_assigned_dice_at :: proc(character: ^Character, panel_x, panel_y: i32, drag: ^Drag_State, interactive: bool) {
@@ -186,7 +212,7 @@ draw_assigned_dice_at :: proc(character: ^Character, panel_x, panel_y: i32, drag
 	// Hover slot only matters for interactive side
 	hover_slot := -1
 	if interactive {
-		hover_slot = mouse_to_char_slot(mouse_x, mouse_y, character.max_dice)
+		hover_slot = mouse_to_char_slot_at(mouse_x, mouse_y, panel_x, panel_y, character.max_dice)
 	}
 
 	// Drop target highlight only for interactive side
@@ -316,9 +342,10 @@ draw_rolled_dice_at :: proc(character: ^Character, panel_x, panel_y: i32, intera
 
 }
 
-draw_roll_button :: proc(mouse_x, mouse_y: i32) {
-	r := roll_button_rect()
-	hovered := mouse_on_roll_button(mouse_x, mouse_y)
+draw_roll_button_at :: proc(panel_x, panel_y, mouse_x, mouse_y: i32) {
+	r := roll_button_rect_at(panel_x, panel_y)
+	hovered := f32(mouse_x) >= r.x && f32(mouse_x) < r.x + r.width &&
+	           f32(mouse_y) >= r.y && f32(mouse_y) < r.y + r.height
 
 	bg_color := rl.Color{50, 120, 50, 255}
 	if hovered {

@@ -124,6 +124,30 @@ warrior_create :: proc() -> Character {
 	return ch
 }
 
+healer_create :: proc() -> Character {
+	ch := character_create("Healer", .Common, Character_Stats {
+		hp      = 16,
+		attack  = 1,
+		defense = 0,
+	})
+	ch.ability = Ability {
+		name        = "Heal",
+		scaling     = .Value,
+		min_matches = 2,
+		effect      = ability_heal,
+		describe    = describe_heal,
+	}
+	ch.resolve_ability = Ability {
+		name        = "Mass Heal",
+		scaling     = .Match,
+		min_matches = 0,
+		effect      = ability_resolve_warrior, // placeholder: same as warrior for now
+		describe    = describe_resolve_warrior,
+	}
+	ch.resolve_max = 5
+	return ch
+}
+
 goblin_create :: proc() -> Character {
 	ch := character_create("Goblin", .Common, Character_Stats {
 		hp      = 15,
@@ -139,6 +163,30 @@ goblin_create :: proc() -> Character {
 	}
 	ch.resolve_ability = Ability {
 		name        = "Goblin Rally",
+		scaling     = .Match,
+		min_matches = 0,
+		effect      = ability_resolve_goblin,
+		describe    = describe_resolve_goblin,
+	}
+	ch.resolve_max = 5
+	return ch
+}
+
+shaman_create :: proc() -> Character {
+	ch := character_create("Shaman", .Common, Character_Stats {
+		hp      = 12,
+		attack  = 1,
+		defense = 0,
+	})
+	ch.ability = Ability {
+		name        = "Smite",
+		scaling     = .Value,
+		min_matches = 2,
+		effect      = ability_smite,
+		describe    = describe_smite,
+	}
+	ch.resolve_ability = Ability {
+		name        = "Dark Ritual",
 		scaling     = .Match,
 		min_matches = 0,
 		effect      = ability_resolve_goblin,

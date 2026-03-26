@@ -7,10 +7,13 @@ ai_take_turn :: proc(gs: ^Game_State) {
 	ai_assign_from_hand(gs)
 
 	// Decide: roll or pick
-	if ai_should_roll(gs) {
-		character_roll(&gs.enemy)
-		apply_skull_damage(&gs.enemy, &gs.player)
-		resolve_abilities(&gs.enemy, &gs.player)
+	should_roll, roll_ci := ai_should_roll(gs)
+	if should_roll {
+		attacker := &gs.enemy_party.characters[roll_ci]
+		target := get_target(&gs.player_party, roll_ci)
+		character_roll(attacker)
+		resolve_roll(gs, attacker, target)
+		gs.rolling_index = roll_ci
 		gs.turn = .Enemy_Roll_Result
 		gs.turn_timer = 0
 		return
@@ -22,41 +25,51 @@ ai_take_turn :: proc(gs: ^Game_State) {
 		die_type := gs.board.cells[row][col].die_type
 		board_remove_die(&gs.board, row, col)
 		hand_add(&gs.enemy_hand, die_type)
+		combat_log_write(&gs.log, "Enemy picks %s", DIE_TYPE_NAMES[die_type])
 		ai_assign_from_hand(gs)
 		gs.turn = .Player_Turn
 		return
 	}
 
 	// No valid action — skip turn
+	combat_log_write(&gs.log, "Enemy skips turn")
 	gs.turn = .Player_Turn
 }
 
-// Assign all compatible dice from enemy hand to enemy character.
+// Assign all compatible dice from enemy hand to enemy characters.
 ai_assign_from_hand :: proc(gs: ^Game_State) {
-	// Iterate backwards so removal doesn't skip indices
+	// Iterate hand backwards so removal doesn't skip indices
 	for i := gs.enemy_hand.count - 1; i >= 0; i -= 1 {
 		die_type := gs.enemy_hand.dice[i]
-		if character_can_assign_die(&gs.enemy, die_type) {
-			hand_remove(&gs.enemy_hand, i)
-			character_assign_die(&gs.enemy, die_type)
+		// Try each alive enemy character
+		for ci in 0 ..< gs.enemy_party.count {
+			ch := &gs.enemy_party.characters[ci]
+			if ch.stats.hp <= 0 { continue }
+			if character_can_assign_die(ch, die_type) {
+				hand_remove(&gs.enemy_hand, i)
+				character_assign_die(ch, die_type)
+				break
+			}
 		}
 	}
 }
 
-// Decide whether the enemy should roll (vs pick another die).
-ai_should_roll :: proc(gs: ^Game_State) -> bool {
-	if gs.enemy.assigned_count <= 0 {
-		return false
+// Decide whether the enemy should roll and which character.
+// Returns (should_roll, char_index).
+ai_should_roll :: proc(gs: ^Game_State) -> (bool, int) {
+	for ci in 0 ..< gs.enemy_party.count {
+		ch := &gs.enemy_party.characters[ci]
+		if ch.stats.hp <= 0 || ch.assigned_count <= 0 { continue }
+		// Roll if character is full
+		if ch.assigned_count >= ch.max_dice {
+			return true, ci
+		}
+		// Roll if at least 2 dice and nothing left to pick
+		if ch.assigned_count >= 2 && !can_pick(gs, &gs.enemy_hand) {
+			return true, ci
+		}
 	}
-	// Roll if character is full
-	if gs.enemy.assigned_count >= gs.enemy.max_dice {
-		return true
-	}
-	// Roll if at least 2 dice and nothing left to pick
-	if gs.enemy.assigned_count >= 2 && !can_pick(gs, &gs.enemy_hand) {
-		return true
-	}
-	return false
+	return false, 0
 }
 
 // Find the best die on the board for the enemy to pick.
@@ -69,10 +82,32 @@ ai_pick_best_die :: proc(gs: ^Game_State) -> (int, int, bool) {
 	best_row, best_col := -1, -1
 	best_score := -1
 
-	// What type is the enemy building?
-	enemy_type, enemy_has_type := character_assigned_normal_die_type(&gs.enemy)
-	// What type is the player building?
-	player_type, player_has_type := character_assigned_normal_die_type(&gs.player)
+	// What type is the first alive enemy building?
+	enemy_type: Die_Type = .None
+	enemy_has_type := false
+	for ci in 0 ..< gs.enemy_party.count {
+		ch := &gs.enemy_party.characters[ci]
+		if ch.stats.hp <= 0 { continue }
+		t, has := character_assigned_normal_die_type(ch)
+		if has {
+			enemy_type = t
+			enemy_has_type = true
+			break
+		}
+	}
+	// What type is the first alive player building? (for denial)
+	player_type: Die_Type = .None
+	player_has_type := false
+	for ci in 0 ..< gs.player_party.count {
+		ch := &gs.player_party.characters[ci]
+		if ch.stats.hp <= 0 { continue }
+		t, has := character_assigned_normal_die_type(ch)
+		if has {
+			player_type = t
+			player_has_type = true
+			break
+		}
+	}
 
 	for row in 0 ..< gs.board.size {
 		for col in 0 ..< gs.board.size {
