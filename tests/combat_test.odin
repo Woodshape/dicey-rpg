@@ -51,3 +51,97 @@ can_pick_with_space_in_hand :: proc(t: ^testing.T) {
 	gs := game.game_init()
 	testing.expect(t, game.can_pick(&gs, &gs.hand), "should be able to pick with empty hand and board dice available")
 }
+
+// --- Win/Lose ---
+
+@(test)
+enemy_death_triggers_victory :: proc(t: ^testing.T) {
+	gs := game.game_init()
+	gs.enemy.stats.hp = 0
+
+	result := game.check_win_lose(&gs, .Player_Turn)
+	testing.expect_value(t, result, game.Turn_Phase.Victory)
+}
+
+@(test)
+player_death_triggers_defeat :: proc(t: ^testing.T) {
+	gs := game.game_init()
+	gs.player.stats.hp = 0
+
+	result := game.check_win_lose(&gs, .Enemy_Turn)
+	testing.expect_value(t, result, game.Turn_Phase.Defeat)
+}
+
+@(test)
+both_alive_returns_default :: proc(t: ^testing.T) {
+	gs := game.game_init()
+
+	result := game.check_win_lose(&gs, .Enemy_Turn)
+	testing.expect_value(t, result, game.Turn_Phase.Enemy_Turn)
+}
+
+@(test)
+enemy_death_takes_priority :: proc(t: ^testing.T) {
+	// If both are dead (e.g., simultaneous damage), enemy death = victory
+	gs := game.game_init()
+	gs.player.stats.hp = 0
+	gs.enemy.stats.hp = 0
+
+	result := game.check_win_lose(&gs, .Player_Turn)
+	testing.expect_value(t, result, game.Turn_Phase.Victory)
+}
+
+// --- Board Refill ---
+
+@(test)
+board_refills_when_empty :: proc(t: ^testing.T) {
+	gs := game.game_init()
+
+	// Empty the board
+	for row in 0 ..< game.BOARD_SIZE {
+		for col in 0 ..< game.BOARD_SIZE {
+			gs.board.cells[row][col].occupied = false
+		}
+	}
+	testing.expect_value(t, game.board_count_dice(&gs.board), 0)
+
+	game.check_board_refill(&gs)
+
+	testing.expect_value(t, game.board_count_dice(&gs.board), game.BOARD_SIZE * game.BOARD_SIZE)
+}
+
+@(test)
+board_does_not_refill_when_dice_remain :: proc(t: ^testing.T) {
+	gs := game.game_init()
+	initial := game.board_count_dice(&gs.board)
+
+	// Remove one die
+	game.board_remove_die(&gs.board, 0, 0)
+	testing.expect_value(t, game.board_count_dice(&gs.board), initial - 1)
+
+	game.check_board_refill(&gs)
+
+	// Should NOT refill — still has dice
+	testing.expect_value(t, game.board_count_dice(&gs.board), initial - 1)
+}
+
+// --- Play Again ---
+
+@(test)
+play_again_resets_game_state :: proc(t: ^testing.T) {
+	gs := game.game_init()
+
+	// Simulate a game that ended
+	gs.turn = .Victory
+	gs.player.stats.hp = 5
+	gs.enemy.stats.hp = 0
+	game.hand_add(&gs.hand, .D6)
+
+	// Reset
+	gs = game.game_init()
+
+	testing.expect_value(t, gs.turn, game.Turn_Phase.Player_Turn)
+	testing.expect_value(t, gs.hand.count, 0)
+	testing.expect(t, gs.player.stats.hp > 0, "player should have full HP after restart")
+	testing.expect(t, gs.enemy.stats.hp > 0, "enemy should have full HP after restart")
+}

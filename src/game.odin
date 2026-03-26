@@ -146,6 +146,11 @@ game_draw :: proc(gs: ^Game_State) {
 
 	// Turn indicator
 	draw_turn_indicator(gs.turn)
+
+	// Game over overlay
+	if gs.turn == .Victory || gs.turn == .Defeat {
+		draw_game_over(gs.turn)
+	}
 }
 
 // Draw turn phase indicator at top-centre of screen
@@ -171,6 +176,62 @@ draw_turn_indicator :: proc(turn: Turn_Phase) {
 	text_w := rl.MeasureText(label, 20)
 	x := (WINDOW_WIDTH - text_w) / 2
 	rl.DrawText(label, x, 20, 20, color)
+}
+
+// --- Game Over ---
+
+PLAY_AGAIN_WIDTH  :: 160
+PLAY_AGAIN_HEIGHT :: 40
+
+play_again_rect :: proc() -> rl.Rectangle {
+	return rl.Rectangle {
+		x      = f32(WINDOW_WIDTH / 2 - PLAY_AGAIN_WIDTH / 2),
+		y      = f32(WINDOW_HEIGHT / 2 + 30),
+		width  = PLAY_AGAIN_WIDTH,
+		height = PLAY_AGAIN_HEIGHT,
+	}
+}
+
+mouse_on_play_again :: proc(mouse_x, mouse_y: i32) -> bool {
+	r := play_again_rect()
+	return f32(mouse_x) >= r.x && f32(mouse_x) < r.x + r.width &&
+	       f32(mouse_y) >= r.y && f32(mouse_y) < r.y + r.height
+}
+
+draw_game_over :: proc(turn: Turn_Phase) {
+	// Dim overlay
+	rl.DrawRectangle(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, rl.Color{0, 0, 0, 160})
+
+	// Result text
+	label: cstring
+	color: rl.Color
+	if turn == .Victory {
+		label = "VICTORY"
+		color = rl.Color{80, 220, 80, 255}
+	} else {
+		label = "DEFEAT"
+		color = rl.Color{220, 60, 60, 255}
+	}
+
+	text_w := rl.MeasureText(label, 48)
+	rl.DrawText(label, (WINDOW_WIDTH - text_w) / 2, WINDOW_HEIGHT / 2 - 40, 48, color)
+
+	// Play Again button
+	r := play_again_rect()
+	mouse_x := rl.GetMouseX()
+	mouse_y := rl.GetMouseY()
+	hovered := mouse_on_play_again(mouse_x, mouse_y)
+
+	bg := rl.Color{60, 60, 80, 255}
+	if hovered {
+		bg = rl.Color{80, 80, 110, 255}
+	}
+	rl.DrawRectangle(i32(r.x), i32(r.y), i32(r.width), i32(r.height), bg)
+	rl.DrawRectangleLines(i32(r.x), i32(r.y), i32(r.width), i32(r.height), rl.RAYWHITE)
+
+	btn_label: cstring = "Play Again"
+	btn_w := rl.MeasureText(btn_label, 20)
+	rl.DrawText(btn_label, i32(r.x) + (i32(r.width) - btn_w) / 2, i32(r.y) + 10, 20, rl.RAYWHITE)
 }
 
 // Draw the die being dragged at the cursor position

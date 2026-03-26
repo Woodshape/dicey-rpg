@@ -225,6 +225,8 @@ Turn_Phase :: enum u8 {
 	Player_Roll_Result, // showing player's roll results, click Clear to advance
 	Enemy_Turn, // AI evaluates and executes one action
 	Enemy_Roll_Result, // brief pause showing enemy roll results, then auto-advances
+	Victory, // player won
+	Defeat, // player lost
 }
 
 // Drag-and-drop state
