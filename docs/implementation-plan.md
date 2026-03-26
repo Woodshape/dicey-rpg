@@ -131,15 +131,15 @@ Each milestone is independently testable. Later milestones build on earlier ones
 
 **Goal:** Player and enemy alternate actions with a basic AI opponent.
 
-- [ ] Turn state machine: PLAYER_TURN -> ENEMY_TURN (each can pick or roll)
-- [ ] Player can pick from board OR roll a character on their turn
-- [ ] Enemy AI: prefers die types matching its character's needs, also grabs skull dice
-- [ ] Enemy AI: considers denying die types the player is building
-- [ ] Turn indicator in UI
-- [ ] Assigned dice visible to both sides (telegraphing)
-- [ ] Action validation (can't roll empty character, can't pick with full hand)
+- [x] Turn state machine: PLAYER_TURN -> ENEMY_TURN (each can pick or roll)
+- [x] Player can pick from board OR roll a character on their turn
+- [x] Enemy AI: prefers die types matching its character's needs, also grabs skull dice
+- [x] Enemy AI: considers denying die types the player is building
+- [x] Turn indicator in UI
+- [x] Assigned dice visible to both sides (telegraphing)
+- [x] Action validation (can't roll empty character, can't pick with full hand)
 
-**Status:** Not Started
+**Status:** Done
 
 ---
 

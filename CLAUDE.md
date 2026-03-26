@@ -13,13 +13,15 @@ src/                    -- all game source (single package: "game")
   dice.odin             -- dice rolling, match detection (pure logic)
   hand.odin             -- hand management (max 5 dice)
   character.odin        -- character structs, assignment, roll state, UI
-  combat.odin           -- turn state machine, action resolution (planned)
-  ai.odin               -- enemy drafting heuristics (planned)
+  combat.odin           -- turn state machine, action resolution, phase transitions
+  ai.odin               -- enemy AI: die scoring, pick/roll decisions, assignment
 tests/                  -- test package (separate from game)
   board_test.odin       -- board ring, perimeter, removal, gradient tests
   hand_test.odin        -- hand capacity, removal, vacated slot tests
   character_test.odin   -- assignment, type constraint, rarity, state tests
   dice_test.odin        -- match detection for all patterns, edge cases, invariants
+  combat_test.odin      -- turn state machine, action validation
+  ai_test.odin          -- AI scoring, assignment, roll decisions
 assets/                 -- placeholder assets
 docs/
   design/core-mechanics.md   -- game design document (source of truth for mechanics)
@@ -139,6 +141,18 @@ match_pair :: proc(t: ^testing.T) {
 - Use `testing.expectf` when custom failure messages aid debugging.
 - Name tests descriptively: `match_full_house`, `board_perimeter_after_removal`, `hand_rejects_mixed_types`.
 
+### No Hardcoded Constants in Tests
+
+Tests must **never** hardcode values that derive from configurable constants (like `BOARD_SIZE`). Always reference the constant from the game package. For example:
+
+- Use `game.BOARD_SIZE / 2` for the centre cell, not `2` or `3`.
+- Use `game.MAX_HAND_SIZE` for capacity checks, not `5`.
+- Use `game.RARITY_MAX_DICE[.Common]` for slot limits, not `3`.
+
+When a configurable value changes (e.g., `BOARD_SIZE` from 5 to 7), every test must continue to pass without modification. If a test would break from changing a constant in `types.odin`, it's written wrong.
+
+Similarly, when changing the behavior of a core system (e.g., board rarity gradient, die distribution pools), **read all related tests first** and update them to match the new behavior before running the test suite.
+
 ### Data Integrity
 
 Any operation that removes, shifts, or reorders elements in a fixed-size array **must** be tested for stale data in vacated slots. This is critical because:
@@ -171,7 +185,7 @@ Rules:
 The game design document at `docs/design/core-mechanics.md` is the **source of truth** for all game mechanics. Key rules:
 
 - **Dice types:** d4, d6, d8, d10, d12
-- **Board:** Square grid, perimeter-only picks, rarity gradient (outer=d4/d6, middle=d8/d10, centre=d12)
+- **Board:** Square grid (configurable size), perimeter-only picks, pool-based rarity gradient (outer=d4/d6, blending through d8/d10 in middle rings, centre=d10/d12)
 - **Hand:** Max 5 dice. Free assignment to characters. Pure die type per character.
 - **Character rarity:** Common=3 slots, Rare=4, Epic=5, Legendary=6
 - **Two axes:** [MATCHES] (count of matched dice, breadth) and [VALUE] (face value of best group, depth). No named pattern tiers — abilities use these numbers directly.
@@ -204,4 +218,5 @@ See `docs/implementation-plan.md` for the milestone breakdown. Work through mile
 - Keep commits small and focused — one logical change per commit.
 - Update milestone checkboxes in `docs/implementation-plan.md` as tasks are completed.
 - Run `odin test tests/` after any logic change to match detection, board, hand, or ability systems.
+- **Before changing core constants or system behavior**, read all related test files to identify tests that will break, and update them as part of the same change.
 - When adding a new mechanic, write the test first, then implement.

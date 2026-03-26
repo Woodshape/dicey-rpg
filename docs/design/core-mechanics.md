@@ -51,6 +51,22 @@ Additional rarities can be slotted between or beyond these tiers as the design e
 - Switching a character's die type requires pulling their current dice back to hand first, which consumes hand slots and costs tempo.
 - The hand acts as a staging area: you may hold different die types simultaneously, routing each type to the appropriate character.
 - With 4 characters potentially wanting different die types, you can rarely build up more than 1–2 characters at once. This forces turn-by-turn prioritisation.
+- **Both sides have a hand.** The enemy also picks dice into a hand before assigning. This matters because the hand is a targetable surface — abilities and status effects can interact with it.
+
+### Open Design: Hand as Interaction Surface
+
+The hand is not just a routing buffer — it's a vulnerable staging area. Dice sitting in a hand (yours or the enemy's) are exposed to disruption abilities. Design space includes:
+
+- **Steal:** Take a die from the enemy's hand and add it to yours. Denies their build and advances yours.
+- **Destroy:** Remove a die from the enemy's hand entirely. Pure denial — costs them a pick action for nothing.
+- **Downgrade:** Replace a die in the enemy's hand with a smaller type (e.g., d12 → d8). Weakens their [VALUE] ceiling.
+- **Upgrade:** Replace a die in your own hand with a larger type (e.g., d6 → d10). Costs an action but boosts [VALUE].
+- **Corrupt:** Turn a normal die into a skull die in the enemy's hand. Forces base damage when they wanted ability dice.
+- **Freeze:** Lock a die in the enemy's hand so it can't be assigned for N turns. Clogs their hand slots.
+
+These all create counterplay around the hand's role as a staging area. A hand that's full of stolen/frozen/corrupted dice is a real problem — it blocks new picks and disrupts assignment plans. This makes hand management a tactical consideration, not just logistics.
+
+Whether these are character abilities, status effects, or board events is TBD. The key insight is that the hand must exist as a distinct zone (not just an implicit pass-through) for this interaction space to work.
 
 ---
 
