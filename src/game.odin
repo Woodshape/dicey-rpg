@@ -8,12 +8,15 @@ ENEMY_PANEL_X :: WINDOW_WIDTH - CHAR_PANEL_X - CHAR_PANEL_WIDTH
 ENEMY_PANEL_Y :: CHAR_PANEL_Y
 
 Game_State :: struct {
-	running: bool,
-	board:   Board,
-	hand:    Hand,
-	player:  Character,
-	enemy:   Character,
-	drag:    Drag_State,
+	running:    bool,
+	board:      Board,
+	hand:       Hand,
+	player:     Character,
+	enemy:      Character,
+	enemy_hand: Hand,
+	drag:       Drag_State,
+	turn:       Turn_Phase,
+	turn_timer: f32,
 }
 
 game_init :: proc() -> Game_State {
@@ -26,34 +29,7 @@ game_init :: proc() -> Game_State {
 }
 
 game_update :: proc(gs: ^Game_State) {
-	mouse_x := rl.GetMouseX()
-	mouse_y := rl.GetMouseY()
-
-	if rl.IsMouseButtonPressed(.LEFT) {
-		// If rolled, only allow clear button
-		if gs.player.has_rolled {
-			if mouse_on_clear_button(mouse_x, mouse_y) {
-				character_clear_roll(&gs.player)
-			}
-			return
-		}
-
-		// Check roll button first (not draggable)
-		if gs.player.assigned_count > 0 && mouse_on_roll_button(mouse_x, mouse_y) {
-			character_roll(&gs.player)
-			// Apply skull damage to enemy
-			apply_skull_damage(&gs.player, &gs.enemy)
-			return
-		}
-
-		// Try to start a drag
-		try_start_drag(gs, mouse_x, mouse_y)
-	}
-
-	if rl.IsMouseButtonReleased(.LEFT) && gs.drag.active {
-		try_drop(gs, mouse_x, mouse_y)
-		gs.drag = {}
-	}
+	combat_update(gs)
 }
 
 try_start_drag :: proc(gs: ^Game_State, mouse_x, mouse_y: i32) {
@@ -98,26 +74,28 @@ try_start_drag :: proc(gs: ^Game_State, mouse_x, mouse_y: i32) {
 	}
 }
 
-try_drop :: proc(gs: ^Game_State, mouse_x, mouse_y: i32) {
+// Returns true if a Pick action was consumed (ends turn), false for free Assign moves.
+try_drop :: proc(gs: ^Game_State, mouse_x, mouse_y: i32) -> bool {
 	#partial switch gs.drag.source {
 	case .Board:
-		// Board can drop on hand or directly on character
+		// Board drops are Pick actions (cost a turn)
 		hand_slot := mouse_to_hand_slot(mouse_x, mouse_y)
 		in_hand := hand_slot >= 0 || mouse_in_hand_region(mouse_x, mouse_y)
 		if in_hand && !hand_is_full(&gs.hand) {
 			board_remove_die(&gs.board, gs.drag.board_row, gs.drag.board_col)
 			hand_add(&gs.hand, gs.drag.die_type)
-			return
+			return true
 		}
 
 		char_slot := mouse_to_char_slot(mouse_x, mouse_y, gs.player.max_dice)
 		if char_slot >= 0 && character_can_assign_die(&gs.player, gs.drag.die_type) {
 			board_remove_die(&gs.board, gs.drag.board_row, gs.drag.board_col)
 			character_assign_die(&gs.player, gs.drag.die_type)
+			return true
 		}
 
 	case .Hand:
-		// Hand can only drop on character
+		// Hand to character is a free Assign
 		char_slot := mouse_to_char_slot(mouse_x, mouse_y, gs.player.max_dice)
 		if char_slot >= 0 && character_can_assign_die(&gs.player, gs.drag.die_type) {
 			hand_remove(&gs.hand, gs.drag.index)
@@ -125,7 +103,7 @@ try_drop :: proc(gs: ^Game_State, mouse_x, mouse_y: i32) {
 		}
 
 	case .Character:
-		// Character can only drop on hand
+		// Character to hand is a free Assign
 		hand_slot := mouse_to_hand_slot(mouse_x, mouse_y)
 		in_hand := hand_slot >= 0 || mouse_in_hand_region(mouse_x, mouse_y)
 		if in_hand && !hand_is_full(&gs.hand) {
@@ -133,6 +111,8 @@ try_drop :: proc(gs: ^Game_State, mouse_x, mouse_y: i32) {
 			hand_add(&gs.hand, gs.drag.die_type)
 		}
 	}
+
+	return false
 }
 
 game_draw :: proc(gs: ^Game_State) {
@@ -144,7 +124,8 @@ game_draw :: proc(gs: ^Game_State) {
 	board_draw(&gs.board, &gs.drag)
 	hand_draw(&gs.hand, &gs.drag)
 	character_draw(&gs.player, &gs.drag)
-	draw_enemy_panel(&gs.enemy)
+	character_draw_at(&gs.enemy, ENEMY_PANEL_X, ENEMY_PANEL_Y, &gs.drag, false, rl.Color{220, 100, 100, 255})
+	hand_draw_at(&gs.enemy_hand, ENEMY_HAND_CENTER_X, &gs.drag, false)
 
 	// Dragged die follows cursor
 	if gs.drag.active {
@@ -162,25 +143,34 @@ game_draw :: proc(gs: ^Game_State) {
 		gs.hand.count, MAX_HAND_SIZE,
 	)
 	rl.DrawText(count_str, 20, 50, 16, rl.GRAY)
+
+	// Turn indicator
+	draw_turn_indicator(gs.turn)
 }
 
-// Draw a simple enemy panel on the right side
-draw_enemy_panel :: proc(enemy: ^Character) {
-	if !character_is_active(enemy) {
-		return
+// Draw turn phase indicator at top-centre of screen
+draw_turn_indicator :: proc(turn: Turn_Phase) {
+	label: cstring
+	color: rl.Color
+
+	#partial switch turn {
+	case .Player_Turn:
+		label = "Your Turn"
+		color = rl.Color{80, 200, 80, 255}
+	case .Player_Roll_Result:
+		label = "Roll Result"
+		color = rl.Color{220, 200, 60, 255}
+	case .Enemy_Turn:
+		label = "Enemy Turn"
+		color = rl.Color{220, 80, 80, 255}
+	case .Enemy_Roll_Result:
+		label = "Enemy Roll"
+		color = rl.Color{220, 120, 80, 255}
 	}
 
-	x := i32(ENEMY_PANEL_X)
-	y := i32(ENEMY_PANEL_Y)
-
-	rl.DrawText(enemy.name, x, y, 20, rl.Color{220, 100, 100, 255})
-	rl.DrawText(RARITY_NAMES[enemy.rarity], x, y + 24, 14, rl.GRAY)
-
-	// Stats
-	hp_str := fmt.ctprintf("HP  %d", enemy.stats.hp)
-	rl.DrawText(hp_str, x, y + 44, 14, rl.Color{100, 220, 100, 255})
-	atk_def_str := fmt.ctprintf("ATK %d   DEF %d", enemy.stats.attack, enemy.stats.defense)
-	rl.DrawText(atk_def_str, x, y + 60, 14, rl.Color{180, 180, 180, 255})
+	text_w := rl.MeasureText(label, 20)
+	x := (WINDOW_WIDTH - text_w) / 2
+	rl.DrawText(label, x, 20, 20, color)
 }
 
 // Draw the die being dragged at the cursor position

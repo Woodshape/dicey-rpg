@@ -36,17 +36,28 @@ hand_is_full :: proc(hand: ^Hand) -> bool {
 	return hand.count >= MAX_HAND_SIZE
 }
 
-// Get pixel position for a hand slot (centred at bottom of screen)
-hand_slot_position :: proc(index: int) -> (i32, i32) {
+// --- Position helpers ---
+
+// Hand screen positions: player at left third, enemy at right third
+PLAYER_HAND_CENTER_X :: WINDOW_WIDTH / 6
+ENEMY_HAND_CENTER_X  :: WINDOW_WIDTH * 5 / 6
+HAND_Y               :: WINDOW_HEIGHT - HAND_Y_OFFSET
+
+// Get pixel position for a hand slot centred around a given X anchor.
+hand_slot_position_at :: proc(center_x: i32, index: int) -> (i32, i32) {
 	slot_stride := i32(HAND_SLOT_SIZE + HAND_SLOT_GAP)
 	total_width := slot_stride * MAX_HAND_SIZE - HAND_SLOT_GAP
-	start_x := (WINDOW_WIDTH - total_width) / 2
+	start_x := center_x - total_width / 2
 	x := start_x + i32(index) * slot_stride
-	y := i32(WINDOW_HEIGHT - HAND_Y_OFFSET)
-	return x, y
+	return x, HAND_Y
 }
 
-// Check if mouse is over a hand slot. Returns slot index or -1.
+// Player hand position (used for hit-testing player interaction)
+hand_slot_position :: proc(index: int) -> (i32, i32) {
+	return hand_slot_position_at(PLAYER_HAND_CENTER_X, index)
+}
+
+// Check if mouse is over a player hand slot. Returns slot index or -1.
 mouse_to_hand_slot :: proc(mouse_x, mouse_y: i32) -> int {
 	for i in 0 ..< MAX_HAND_SIZE {
 		x, y := hand_slot_position(i)
@@ -58,7 +69,7 @@ mouse_to_hand_slot :: proc(mouse_x, mouse_y: i32) -> int {
 	return -1
 }
 
-// Check if mouse is in the general hand region (for loose drop targeting)
+// Check if mouse is in the general player hand region (for loose drop targeting)
 mouse_in_hand_region :: proc(mouse_x, mouse_y: i32) -> bool {
 	first_x, first_y := hand_slot_position(0)
 	last_x, _ := hand_slot_position(MAX_HAND_SIZE - 1)
@@ -69,20 +80,32 @@ mouse_in_hand_region :: proc(mouse_x, mouse_y: i32) -> bool {
 	       mouse_y >= first_y - padding && mouse_y <= first_y + HAND_SLOT_SIZE + padding
 }
 
-// Draw the hand
+// --- Drawing ---
+
+// Draw an interactive hand (player side — supports drag, hover, drop targets)
 hand_draw :: proc(hand: ^Hand, drag: ^Drag_State) {
+	hand_draw_at(hand, PLAYER_HAND_CENTER_X, drag, true)
+}
+
+// Draw a hand at a given centre X position.
+// interactive: true for player (drag/hover/drop), false for enemy (read-only).
+hand_draw_at :: proc(hand: ^Hand, center_x: i32, drag: ^Drag_State, interactive: bool) {
 	mouse_x := rl.GetMouseX()
 	mouse_y := rl.GetMouseY()
-	hover_slot := mouse_to_hand_slot(mouse_x, mouse_y)
+
+	hover_slot := -1
+	if interactive {
+		hover_slot = mouse_to_hand_slot(mouse_x, mouse_y)
+	}
 
 	// Is the hand a valid drop target right now?
-	is_drop_target := drag.active && (drag.source == .Board || drag.source == .Character)
+	is_drop_target := interactive && drag.active && (drag.source == .Board || drag.source == .Character)
 
 	for i in 0 ..< MAX_HAND_SIZE {
-		x, y := hand_slot_position(i)
+		x, y := hand_slot_position_at(center_x, i)
 
 		if i < hand.count {
-			is_dragged := drag.active && drag.source == .Hand && drag.index == i
+			is_dragged := interactive && drag.active && drag.source == .Hand && drag.index == i
 
 			if is_dragged {
 				// Ghost the slot being dragged
@@ -98,8 +121,8 @@ hand_draw :: proc(hand: ^Hand, drag: ^Drag_State) {
 				text_w := rl.MeasureText(label, 14)
 				rl.DrawText(label, x + (HAND_SLOT_SIZE - text_w) / 2, y + (HAND_SLOT_SIZE - 14) / 2, 14, rl.WHITE)
 
-				// Hover highlight (only when not dragging)
-				if i == hover_slot && !drag.active {
+				// Hover highlight (only when not dragging, interactive only)
+				if interactive && i == hover_slot && !drag.active {
 					rl.DrawRectangle(x, y, HAND_SLOT_SIZE, HAND_SLOT_SIZE, rl.Color{255, 255, 255, 40})
 					rl.DrawRectangleLines(x, y, HAND_SLOT_SIZE, HAND_SLOT_SIZE, rl.WHITE)
 				}
@@ -120,6 +143,6 @@ hand_draw :: proc(hand: ^Hand, drag: ^Drag_State) {
 	}
 
 	// Label
-	slot_x, slot_y := hand_slot_position(0)
+	slot_x, slot_y := hand_slot_position_at(center_x, 0)
 	rl.DrawText("Hand", slot_x, slot_y - 20, 16, rl.GRAY)
 }
