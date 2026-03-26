@@ -347,6 +347,69 @@ Roll: `[11, 11, 3]` *(3 d12s assigned)*
 
 ---
 
+## Skull Dice: Base Damage Mechanic
+
+**Problem:** Not all characters have attack abilities. Some focus on blocking, healing, stunning, or manipulating the board/dice. These characters still need a way to deal damage, or combat stalls when only support characters remain.
+
+### Decision: Skull Dice
+
+Skull dice appear on the board alongside normal dice. They are the universal damage mechanic — every character can deal damage by picking up skull dice, regardless of their abilities.
+
+### Rules
+
+- Skull dice appear on the board and are picked/assigned like normal dice.
+- **Skull dice are exempt from the pure type rule.** A character can hold skull dice alongside any one normal die type. Skull dice are always "compatible."
+- Skull dice are **not rolled for a value**. They are fixed (no face value matters).
+- When a character's roll contains **N skull dice**, that character attacks **N times** using their base **Attack stat**.
+- Skull dice do **not** participate in match pattern detection. Only normal dice form Pairs, Triples, etc.
+- Skull dice do **not** count as unmatched (they don't charge the super meter).
+
+### Roll Resolution With Mixed Dice
+
+A character with 2 skull dice + 3 d8s rolls all 5 at once. Resolution:
+
+1. **Skull dice resolve first:** 2 skull dice = 2 attacks at the character's Attack stat.
+2. **Normal dice resolve second:** The 3 d8s are evaluated for match patterns and trigger abilities as normal.
+
+Both effects happen in the same roll — skull dice provide the damage floor, normal dice provide the ability ceiling.
+
+### Board Placement
+
+- Skull dice appear across all rings of the board (not restricted to a specific ring).
+- Distribution TBD — could be fixed count per board fill, random, or encounter-seeded.
+- Visually distinct from normal dice (skull icon or unique colour).
+
+### Design Implications
+
+- **Support characters become viable damage dealers** by loading skull dice. A healer with 2 skulls + 1 d4 heals AND attacks.
+- **Damage-focused characters** can stack skulls for multi-attacks, but sacrifice ability dice slots.
+- **Denial extends to damage:** grabbing skull dice denies your opponent's base damage output.
+- **The draft tension deepens:** every skull die you pick is one less ability die, and vice versa.
+
+---
+
+## Character Stats
+
+Character abilities scale from dice rolls (match patterns and values), but skull dice attack using a character's **base stats**. Stats are needed.
+
+### Core Stats (Placeholder)
+
+| Stat    | Description |
+|---------|-------------|
+| HP      | Hit points. Character dies at 0. |
+| Attack  | Damage dealt per skull die in a roll. |
+| Defense | Damage reduction from incoming attacks (flat reduction or percentage — TBD). |
+
+### Open Questions: Stats
+
+- **Should Attack scale with level/gear, or is it fixed per character?**
+- **Is Defense flat reduction (Attack - Defense = damage) or percentage-based?**
+- **Do we need Speed/Initiative?** Currently turn order is alternating actions. A speed stat could determine who picks first after a board refill.
+- **Should stats vary by rarity?** A Legendary character might have higher base Attack than a Common one, making skull dice more valuable on them.
+- **Stat modifiers from abilities?** E.g., a buff ability that temporarily increases Attack, making skull dice deal more damage for a few turns.
+
+---
+
 ## Open Questions
 
 - **Board size:** What square grid size feels right? 5×5 (25 tiles), 7×7 (49), or something else? Should it scale with number of combatants?

@@ -107,13 +107,32 @@ Each milestone is independently testable. Later milestones build on earlier ones
 
 ---
 
-### Milestone 4: Turn Sequence & Basic AI
+### Milestone 4: Skull Dice & Character Stats
+
+**Goal:** Skull dice appear on the board, can be assigned alongside normal dice, and deal damage using character stats.
+
+- [ ] Add Skull to Die_Type (exempt from pure type constraint)
+- [ ] Skull dice appear on the board (distributed across all rings)
+- [ ] Skull dice visually distinct (unique colour/icon)
+- [ ] Skull dice can be assigned alongside any normal die type on a character
+- [ ] Roll resolution: skull dice trigger N attacks at character's Attack stat, normal dice resolve for match patterns
+- [ ] Skull dice excluded from match detection and super meter
+- [ ] Character stats: HP, Attack, Defense (placeholder values)
+- [ ] Damage calculation: each skull die deals Attack - target Defense (min 0)
+- [ ] HP bars rendered, damage applied and visible
+- [ ] Tests: skull dice exempt from pure type, mixed roll resolution, damage calculation
+
+**Status:** Not Started
+
+---
+
+### Milestone 5: Turn Sequence & Basic AI
 
 **Goal:** Player and enemy alternate actions with a basic AI opponent.
 
 - [ ] Turn state machine: PLAYER_TURN -> ENEMY_TURN (each can pick or roll)
 - [ ] Player can pick from board OR roll a character on their turn
-- [ ] Enemy AI: prefers die types matching its character's needs
+- [ ] Enemy AI: prefers die types matching its character's needs, also grabs skull dice
 - [ ] Enemy AI: considers denying die types the player is building
 - [ ] Turn indicator in UI
 - [ ] Assigned dice visible to both sides (telegraphing)
@@ -123,16 +142,14 @@ Each milestone is independently testable. Later milestones build on earlier ones
 
 ---
 
-### Milestone 5: Characters & Abilities
+### Milestone 6: Characters & Abilities
 
-**Goal:** Characters have HP, abilities fire from match results.
+**Goal:** Characters have abilities that fire from match results.
 
-- [ ] Character struct: name, rarity, HP, max HP, abilities, super meter
 - [ ] 2 placeholder characters (1 player, 1 enemy) with 2-3 abilities each
 - [ ] Ability struct with: required match pattern, scaling axis (match/value/hybrid), effect procedure
 - [ ] Abilities trigger based on match pattern + potency after rolling
-- [ ] Damage and healing resolution
-- [ ] HP bars rendered for both sides
+- [ ] Healing and damage abilities resolve alongside skull dice damage
 - [ ] Super meter fills from unmatched dice
 - [ ] Super ability triggers when meter is full (one per character, placeholder effect)
 
@@ -140,7 +157,7 @@ Each milestone is independently testable. Later milestones build on earlier ones
 
 ---
 
-### Milestone 6: Combat Loop & Win/Lose
+### Milestone 7: Combat Loop & Win/Lose
 
 **Goal:** A complete game can be played from start to finish.
 
@@ -154,7 +171,7 @@ Each milestone is independently testable. Later milestones build on earlier ones
 
 ---
 
-### Milestone 7: Polish to MVP
+### Milestone 8: Polish to MVP
 
 **Goal:** The game feels like a coherent experience.
 
@@ -163,7 +180,7 @@ Each milestone is independently testable. Later milestones build on earlier ones
 - [ ] Ability names and effects shown on screen
 - [ ] Turn log / action history
 - [ ] At least one status effect (Paralyze as proof of concept)
-- [ ] Balance pass on HP, ability damage, super meter charge rate
+- [ ] Balance pass on HP, Attack, Defense, ability damage, super meter charge rate
 - [ ] Board size tuning based on playtesting
 
 **Status:** Not Started
