@@ -14,7 +14,7 @@ empty_character_slot_is_inactive :: proc(t: ^testing.T) {
 
 @(test)
 created_character_is_active :: proc(t: ^testing.T) {
-	ch := game.character_create("Test", .Common)
+	ch := game.character_create("Test", .Common, {hp = 20, max_hp = 20, attack = 3, defense = 1})
 	testing.expect_value(t, ch.state, game.Character_State.Alive)
 	testing.expect(t, game.character_is_active(&ch), "created character should be active")
 }
@@ -23,7 +23,7 @@ created_character_is_active :: proc(t: ^testing.T) {
 
 @(test)
 character_assign_first_die_any_type :: proc(t: ^testing.T) {
-	ch := game.character_create("Test", .Common)
+	ch := game.character_create("Test", .Common, {hp = 20, max_hp = 20, attack = 3, defense = 1})
 
 	testing.expect(t, game.character_can_assign(&ch, .D4), "empty character should accept any type")
 	testing.expect(t, game.character_can_assign(&ch, .D12), "empty character should accept any type")
@@ -35,7 +35,7 @@ character_assign_first_die_any_type :: proc(t: ^testing.T) {
 
 @(test)
 character_assign_same_type :: proc(t: ^testing.T) {
-	ch := game.character_create("Test", .Common)
+	ch := game.character_create("Test", .Common, {hp = 20, max_hp = 20, attack = 3, defense = 1})
 	game.character_assign(&ch, .D6)
 
 	ok := game.character_assign(&ch, .D6)
@@ -45,7 +45,7 @@ character_assign_same_type :: proc(t: ^testing.T) {
 
 @(test)
 character_rejects_mixed_type :: proc(t: ^testing.T) {
-	ch := game.character_create("Test", .Common)
+	ch := game.character_create("Test", .Common, {hp = 20, max_hp = 20, attack = 3, defense = 1})
 	game.character_assign(&ch, .D4)
 
 	testing.expect(t, !game.character_can_assign(&ch, .D8), "different type should be rejected")
@@ -56,7 +56,7 @@ character_rejects_mixed_type :: proc(t: ^testing.T) {
 
 @(test)
 character_respects_rarity_max :: proc(t: ^testing.T) {
-	ch := game.character_create("Test", .Common)  // max 3
+	ch := game.character_create("Test", .Common, {hp = 20, max_hp = 20, attack = 3, defense = 1})  // max 3
 
 	for _ in 0 ..< 3 {
 		game.character_assign(&ch, .D6)
@@ -70,7 +70,7 @@ character_respects_rarity_max :: proc(t: ^testing.T) {
 
 @(test)
 character_unassign_returns_die :: proc(t: ^testing.T) {
-	ch := game.character_create("Test", .Rare)
+	ch := game.character_create("Test", .Rare, {hp = 20, max_hp = 20, attack = 3, defense = 1})
 	game.character_assign(&ch, .D10)
 	game.character_assign(&ch, .D10)
 
@@ -82,7 +82,7 @@ character_unassign_returns_die :: proc(t: ^testing.T) {
 
 @(test)
 character_unassign_clears_vacated_slots :: proc(t: ^testing.T) {
-	ch := game.character_create("Test", .Rare)  // max 4
+	ch := game.character_create("Test", .Rare, {hp = 20, max_hp = 20, attack = 3, defense = 1})  // max 4
 	// Use non-zero die types so stale data is distinguishable from zeroed memory
 	game.character_assign(&ch, .D10)
 	game.character_assign(&ch, .D10)
@@ -101,7 +101,7 @@ character_unassign_clears_vacated_slots :: proc(t: ^testing.T) {
 
 @(test)
 character_accepts_new_type_after_clearing :: proc(t: ^testing.T) {
-	ch := game.character_create("Test", .Common)
+	ch := game.character_create("Test", .Common, {hp = 20, max_hp = 20, attack = 3, defense = 1})
 	game.character_assign(&ch, .D4)
 	game.character_assign(&ch, .D4)
 
@@ -118,7 +118,7 @@ character_accepts_new_type_after_clearing :: proc(t: ^testing.T) {
 
 @(test)
 character_assigned_type_tracks_correctly :: proc(t: ^testing.T) {
-	ch := game.character_create("Test", .Common)
+	ch := game.character_create("Test", .Common, {hp = 20, max_hp = 20, attack = 3, defense = 1})
 
 	_, has_type := game.character_assigned_type(&ch)
 	testing.expect(t, !has_type, "empty character should have no assigned type")

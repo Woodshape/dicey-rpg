@@ -113,10 +113,10 @@ board_count_decreases_on_removal :: proc(t: ^testing.T) {
 board_gradient_outer_ring_has_small_dice :: proc(t: ^testing.T) {
 	board := game.board_init()
 
-	// Every outer ring cell should be d4 or d6
+	// Every outer ring cell should be d4, d6, or Skull
 	for i in 0 ..< game.BOARD_SIZE {
 		check_outer_die :: proc(t: ^testing.T, dt: game.Die_Type, label: string) {
-			testing.expectf(t, dt == .D4 || dt == .D6, "%s: expected d4 or d6, got %v", label, dt)
+			testing.expectf(t, dt == .D4 || dt == .D6 || dt == .Skull, "%s: expected d4, d6, or Skull, got %v", label, dt)
 		}
 		check_outer_die(t, board.cells[0][i].die_type, "top row")
 		check_outer_die(t, board.cells[game.BOARD_SIZE - 1][i].die_type, "bottom row")
@@ -128,8 +128,8 @@ board_gradient_outer_ring_has_small_dice :: proc(t: ^testing.T) {
 }
 
 @(test)
-board_gradient_centre_is_d12 :: proc(t: ^testing.T) {
+board_gradient_centre_is_d12_or_skull :: proc(t: ^testing.T) {
 	board := game.board_init()
 	centre := board.cells[2][2].die_type
-	testing.expect_value(t, centre, game.Die_Type.D12)
+	testing.expectf(t, centre == .D12 || centre == .Skull, "centre should be D12 or Skull, got %v", centre)
 }
