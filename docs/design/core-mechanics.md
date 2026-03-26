@@ -505,6 +505,25 @@ Character abilities scale from dice rolls (match patterns and values), but skull
 
 ---
 
+## Discard
+
+Players and enemies can **discard** a die from their hand at any time during their turn. Discarding is a **free action** — it does not consume a pick or roll action.
+
+### Rules
+
+- Discard removes one die from the hand entirely (it is destroyed, not returned to the board).
+- A die affected by a **blocking status effect** (e.g. Frozen) cannot be discarded. The blocker must expire or be removed first.
+- Both sides can discard. The enemy AI only discards when its hand is full **and** no alive character can use any die in it (true deadlock).
+
+### Design Intent
+
+- **Prevents player deadlock.** Without discard, a player can clog their hand and characters with incompatible dice, leaving no valid pick or roll. Discard lets them clear the jam without wasting a turn.
+- **Has a real cost.** The discarded die is gone — it cost a pick action to acquire and now yields nothing. Discard is an escape valve, not a free respec.
+- **Interacts with hand disruption.** Freezing a die in the enemy hand is more punishing because they can't even discard it. Corrupt (turning a die into a skull) is softer — the player can discard the skull, but that wastes their pick tempo.
+- **Player input:** Right-click a hand die to discard it.
+
+---
+
 ## Open Questions
 
 - **Board size:** What square grid size feels right? 5×5 (25 tiles), 7×7 (49), or something else? Should it scale with number of combatants?
@@ -519,8 +538,6 @@ Character abilities scale from dice rolls (match patterns and values), but skull
 - **Die distribution on board:** Purely random, or weighted/seeded per encounter for balance?
 - **Disruption abilities:** How do status effects like Paralyze interact with loaded dice — do they stay, return to hand, or discard?
 - **Party death:** When a character dies, what happens to their assigned dice?
-- **Player deadlock:** The player can clog their hand and characters with incompatible dice, leaving no valid pick or roll. Needs a resolution mechanic — discard action, skip turn, mulligan (return hand to board), or forced hand clear.
-
 ---
 
 ## Data-Driven Characters (Planned)

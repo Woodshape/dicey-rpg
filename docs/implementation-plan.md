@@ -183,7 +183,7 @@ Each milestone is independently testable. Later milestones build on earlier ones
 - [ ] At least one status effect (Paralyze as proof of concept)
 - [ ] Balance pass on HP, Attack, Defense, ability damage, resolve meter charge rate
 - [ ] Board size tuning based on playtesting
-- [ ] **Player deadlock prevention:** The player can clog their hand and characters with incompatible dice, leaving no valid pick or roll. Needs a way out — options include: discard action (return a die from hand to the void), skip turn button, auto-discard hand on deadlock, or a "mulligan" that returns all hand dice to the board.
+- [x] **Player deadlock prevention:** Discard action — right-click a hand die to destroy it (free action, no turn cost). AI also discards unusable dice when stuck. Blocked by future status effects (e.g. Frozen).
 
 **Status:** In Progress
 
