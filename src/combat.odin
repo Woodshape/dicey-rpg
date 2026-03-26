@@ -2,9 +2,6 @@ package game
 
 import rl "vendor:raylib"
 
-// Minimum dice on board before refill triggers.
-BOARD_REFILL_THRESHOLD :: 0
-
 // Top-level update dispatcher. Routes to the appropriate phase handler.
 combat_update :: proc(gs: ^Game_State) {
 	#partial switch gs.turn {
@@ -159,9 +156,10 @@ resolve_roll :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character) 
 
 // --- Board Refill ---
 
-// Refill the board if it's at or below the threshold.
+// Refill the board if no pickable dice remain.
+// This covers both an empty board and a board with only inaccessible inner tiles.
 check_board_refill :: proc(gs: ^Game_State) {
-	if board_count_dice(&gs.board) <= BOARD_REFILL_THRESHOLD {
+	if !board_has_pickable(&gs.board) {
 		gs.board = board_init()
 		combat_log_add(&gs.log, rl.Color{180, 180, 100, 255}, "Board refilled")
 	}
@@ -174,6 +172,16 @@ player_turn_update :: proc(gs: ^Game_State) {
 
 	mouse_x := rl.GetMouseX()
 	mouse_y := rl.GetMouseY()
+
+	// Right-click on a hand die to discard it (free action)
+	if rl.IsMouseButtonPressed(.RIGHT) {
+		slot := mouse_to_hand_slot(mouse_x, mouse_y)
+		if slot >= 0 && slot < gs.hand.count && hand_can_discard(&gs.hand, slot) {
+			die_type := gs.hand.dice[slot]
+			hand_discard(&gs.hand, slot)
+			combat_log_write(&gs.log, "You discard %s", DIE_TYPE_NAMES[die_type])
+		}
+	}
 
 	if rl.IsMouseButtonPressed(.LEFT) {
 		// Check roll button for any player character

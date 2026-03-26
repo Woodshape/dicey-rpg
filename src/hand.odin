@@ -31,6 +31,28 @@ hand_remove :: proc(hand: ^Hand, index: int) -> (Die_Type, bool) {
 	return die_type, true
 }
 
+// Discard a die from the hand by index. The die is destroyed (not placed anywhere).
+// Returns false if the index is invalid or the die cannot be discarded (e.g. frozen).
+hand_discard :: proc(hand: ^Hand, index: int) -> bool {
+	if index < 0 || index >= hand.count {
+		return false
+	}
+	if !hand_can_discard(hand, index) {
+		return false
+	}
+	hand_remove(hand, index)
+	return true
+}
+
+// Check if a die at the given index can be discarded.
+// Future: returns false for dice affected by blocking status effects (e.g. Frozen).
+hand_can_discard :: proc(hand: ^Hand, index: int) -> bool {
+	if index < 0 || index >= hand.count {
+		return false
+	}
+	return true
+}
+
 // Check if hand is full
 hand_is_full :: proc(hand: ^Hand) -> bool {
 	return hand.count >= MAX_HAND_SIZE
