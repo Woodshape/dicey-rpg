@@ -183,6 +183,12 @@ The game design document at `docs/design/core-mechanics.md` is the **source of t
 
 Always consult the design doc before implementing a mechanic. If the code diverges from the doc, update the doc first.
 
+## Design Philosophy
+
+**Scoped but future-proof.** Implement only what's needed now (see Scope Discipline), but think about how systems will evolve when designing them. Data should live where it logically belongs (e.g. `board.size` on the `Board` struct, not passed as a loose parameter). Thread context through procedures rather than relying on global constants — this makes systems ready for variable configurations (different board sizes per encounter, different hand limits per character, etc.) without requiring a rewrite later.
+
+When making a change, trace all consequences through the codebase before starting. Don't make partial changes that leave some call sites using the old pattern while others use the new one. A refactor is done when every affected reference is updated.
+
 ## Scope Discipline
 
 **Only implement what is explicitly requested or listed in the current milestone.** Do not add features, systems, or game objects beyond the scope of the task at hand — even if they seem like a natural next step. If a milestone says "skull dice and character stats", do not also add an enemy character, wire up damage to a target, or build UI for systems that aren't asked for yet.
