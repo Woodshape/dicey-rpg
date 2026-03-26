@@ -138,23 +138,6 @@ mouse_on_roll_button :: proc(mouse_x, mouse_y: i32) -> bool {
 	       f32(mouse_y) >= r.y && f32(mouse_y) < r.y + r.height
 }
 
-// Clear button: positioned generously below roll results area.
-// Extra space for ability result lines.
-clear_button_rect :: proc() -> rl.Rectangle {
-	btn := roll_button_rect()
-	return rl.Rectangle{
-		x      = btn.x,
-		y      = btn.y + 140,
-		width  = ROLL_BTN_WIDTH,
-		height = ROLL_BTN_HEIGHT,
-	}
-}
-
-mouse_on_clear_button :: proc(mouse_x, mouse_y: i32) -> bool {
-	r := clear_button_rect()
-	return f32(mouse_x) >= r.x && f32(mouse_x) < r.x + r.width &&
-	       f32(mouse_y) >= r.y && f32(mouse_y) < r.y + r.height
-}
 
 // --- Drawing (parameterized by panel position) ---
 
@@ -331,16 +314,6 @@ draw_rolled_dice_at :: proc(character: ^Character, panel_x, panel_y: i32, intera
 		}
 	}
 
-	// Clear button (player side only)
-	if interactive {
-		r := clear_button_rect()
-		clear_x := i32(r.x)
-		clear_y := i32(r.y)
-		rl.DrawRectangle(clear_x, clear_y, ROLL_BTN_WIDTH, ROLL_BTN_HEIGHT, rl.Color{80, 80, 80, 255})
-		rl.DrawRectangleLines(clear_x, clear_y, ROLL_BTN_WIDTH, ROLL_BTN_HEIGHT, rl.GRAY)
-		clear_w := rl.MeasureText("Clear", 14)
-		rl.DrawText("Clear", clear_x + (ROLL_BTN_WIDTH - clear_w) / 2, clear_y + 7, 14, rl.RAYWHITE)
-	}
 }
 
 draw_roll_button :: proc(mouse_x, mouse_y: i32) {
