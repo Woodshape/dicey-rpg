@@ -131,17 +131,17 @@ board_refills_when_empty :: proc(t: ^testing.T) {
 }
 
 @(test)
-board_does_not_refill_when_dice_remain :: proc(t: ^testing.T) {
+board_does_not_refill_when_pickable_dice_remain :: proc(t: ^testing.T) {
 	gs := game.game_init()
 	initial := game.board_count_dice(&gs.board)
 
-	// Remove one die
+	// Remove one die — plenty of pickable dice still on the board
 	game.board_remove_die(&gs.board, 0, 0)
 	testing.expect_value(t, game.board_count_dice(&gs.board), initial - 1)
 
 	game.check_board_refill(&gs)
 
-	// Should NOT refill — still has dice
+	// Should NOT refill — pickable dice still exist
 	testing.expect_value(t, game.board_count_dice(&gs.board), initial - 1)
 }
 

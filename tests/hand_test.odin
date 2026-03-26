@@ -81,3 +81,61 @@ hand_remove_invalid_index :: proc(t: ^testing.T) {
 	_, ok2 := game.hand_remove(&hand, 5)
 	testing.expect(t, !ok2, "out of bounds index should fail")
 }
+
+// --- Discard ---
+
+@(test)
+hand_discard_removes_die :: proc(t: ^testing.T) {
+	hand: game.Hand
+	game.hand_add(&hand, .D4)
+	game.hand_add(&hand, .D8)
+	game.hand_add(&hand, .D12)
+
+	ok := game.hand_discard(&hand, 1) // discard the d8
+	testing.expect(t, ok, "discard should succeed")
+	testing.expect_value(t, hand.count, 2)
+	testing.expect_value(t, hand.dice[0], game.Die_Type.D4)
+	testing.expect_value(t, hand.dice[1], game.Die_Type.D12)
+	testing.expect_value(t, hand.dice[2], game.Die_Type.None) // vacated slot zeroed
+}
+
+@(test)
+hand_discard_invalid_index :: proc(t: ^testing.T) {
+	hand: game.Hand
+	game.hand_add(&hand, .D6)
+
+	ok1 := game.hand_discard(&hand, -1)
+	testing.expect(t, !ok1, "discard at negative index should fail")
+
+	ok2 := game.hand_discard(&hand, 5)
+	testing.expect(t, !ok2, "discard at out of bounds index should fail")
+
+	// Count unchanged
+	testing.expect_value(t, hand.count, 1)
+}
+
+@(test)
+hand_discard_frees_slot_for_new_die :: proc(t: ^testing.T) {
+	hand: game.Hand
+	for _ in 0 ..< game.MAX_HAND_SIZE {
+		game.hand_add(&hand, .D4)
+	}
+	testing.expect(t, game.hand_is_full(&hand), "hand should be full")
+
+	game.hand_discard(&hand, 0)
+	testing.expect(t, !game.hand_is_full(&hand), "hand should no longer be full after discard")
+
+	ok := game.hand_add(&hand, .D12)
+	testing.expect(t, ok, "should be able to add die after discarding")
+	testing.expect_value(t, hand.count, game.MAX_HAND_SIZE)
+}
+
+@(test)
+hand_can_discard_valid :: proc(t: ^testing.T) {
+	hand: game.Hand
+	game.hand_add(&hand, .D8)
+
+	testing.expect(t, game.hand_can_discard(&hand, 0), "should be able to discard valid die")
+	testing.expect(t, !game.hand_can_discard(&hand, -1), "can't discard at negative index")
+	testing.expect(t, !game.hand_can_discard(&hand, 1), "can't discard at empty slot")
+}
