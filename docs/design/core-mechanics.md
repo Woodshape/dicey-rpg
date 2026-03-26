@@ -242,18 +242,18 @@ Note: [MATCHES]=4 includes two-pair (2+2) and four-of-a-kind shapes. [MATCHES]=5
 
 ---
 
-## Unmatched Dice: Super Ability Meter
+## Unmatched Dice: Resolve Ability Meter
 
-Dice that do not form any match are **not wasted**. Instead, each unmatched die contributes to a **Super Ability Meter**.
+Dice that do not form any match are **not wasted**. Instead, each unmatched die contributes to a **Resolve Ability Meter**.
 
 ### Meter Rules
 
 - Each unmatched die adds charge to the meter (exact amount TBD - could be flat, or scaled by die type/value).
 - The meter persists across rounds within a battle.
-- When the meter is full, the player can trigger a **Super Ability** specific to their race/class combination.
-- Using the Super Ability empties the meter.
+- When the meter is full, the player can trigger a **Resolve Ability** specific to their race/class combination.
+- Using the Resolve Ability empties the meter.
 
-### Super Meter Generation Rate
+### Resolve Meter Generation Rate
 
 | Die | Avg unmatched dice per roll | Notes |
 |-----|-----------------------------|-------|
@@ -261,18 +261,18 @@ Dice that do not form any match are **not wasted**. Instead, each unmatched die 
 | d6  | ~2.4                        | |
 | d8  | ~3.0                        | |
 | d10 | ~3.4                        | |
-| d12 | ~3.5                        | Nearly double d4 — fuels super meter fast |
+| d12 | ~3.5                        | Nearly double d4 — fuels resolve meter fast |
 
-d12 builds miss ~38% of rolls entirely and charge the meter roughly 2× faster than d4 builds. This is a built-in balancer: consistent drafters build super slowly, gamblers charge it fast but need the gamble to pay off.
+d12 builds miss ~38% of rolls entirely and charge resolve roughly 2× faster than d4 builds. This is a built-in balancer: consistent drafters build resolve slowly, gamblers charge it fast but need the gamble to pay off.
 
 ### Design Intent
 
 - Prevents "dead" turns where nothing rolls well - even a bad roll builds toward something.
-- Creates a strategic layer: do you draft risky d12s knowing misses fuel your Super?
+- Creates a strategic layer: do you draft risky d12s knowing misses fuel your Resolve?
 - High-match builds (lots of d4s) fill the meter slowly. High-risk builds (lots of d12s) fill it fast on bad rolls.
-- Super Abilities should feel impactful enough to be worth building toward, but not so dominant that players intentionally draft poorly to charge them.
+- Resolve Abilities should feel impactful enough to be worth building toward, but not so dominant that players intentionally draft poorly to charge them.
 
-### Super Ability Examples (Placeholder)
+### Resolve Ability Examples (Placeholder)
 
 - **Human Paladin:** "Divine Judgment" - Deal massive holy damage ignoring armor.
 - **Orc Berserker:** "Blood Frenzy" - Take an extra full turn immediately.
@@ -282,6 +282,14 @@ d12 builds miss ~38% of rolls entirely and charge the meter roughly 2× faster t
 ---
 
 ## Ability System
+
+Each character has exactly **3 ability slots**:
+
+1. **Ability** — the main active ability. Fires after rolling if the roll meets a minimum [MATCHES] threshold. Scales with [MATCHES], [VALUE], or both (hybrid).
+2. **Resolve Ability** — a powerful one-shot that fires when the resolve meter is full. The meter charges from unmatched dice each roll. Resets to zero after firing.
+3. **Passive Ability** — a persistent effect that modifies how the character interacts with the game systems (e.g., on-hit triggers, stat modifiers, draft bonuses). Always active, no roll trigger.
+
+This is the full ability kit for a character. Each slot has a distinct role — the main ability is the bread-and-butter, the resolve ability is the comeback/finisher, and the passive defines the character's identity and playstyle.
 
 Abilities use [MATCHES] and [VALUE] directly in their formulas. No pattern-to-tier mapping — the roll result plugs straight into the effect.
 
@@ -347,14 +355,14 @@ Roll: `[2, 3, 2, 4, 2]`
 - **[MATCHES]=3, [VALUE]=2** — three 2s matched, two unmatched
 - Flurry (match-scaling): 3 hits of 1 damage
 - Fireball (hybrid): 3 x 2 = 6 damage
-- 2 unmatched dice → super meter charge
+- 2 unmatched dice → resolve meter charge
 - This build almost always fires something; the low [VALUE] ceiling is the tradeoff.
 
 ### Hand B: 5×d12 — "The Gambler"
 Roll: `[7, 3, 11, 3, 9]`
 - **[MATCHES]=2, [VALUE]=3** — pair of 3s, three unmatched
 - Smite (value-scaling): 3 damage (underwhelming)
-- 3 unmatched dice → solid super meter charge
+- 3 unmatched dice → solid resolve meter charge
 
 Roll: `[9, 9, 9, 2, 7]`
 - **[MATCHES]=3, [VALUE]=9** — *(this is what you're chasing)*
@@ -377,7 +385,7 @@ Roll: `[3, 3]` *(only 2 d4s assigned)*
 ### Hand C roll — Paladin fires next turn:
 Roll: `[11, 11, 3]` *(3 d12s assigned)*
 - **[MATCHES]=2, [VALUE]=11** — Smite: 11 damage.
-- 1 unmatched die → charges Paladin's super meter
+- 1 unmatched die → charges Paladin's resolve meter
 
 ---
 
@@ -396,7 +404,7 @@ Skull dice appear on the board alongside normal dice. They are the universal dam
 - Skull dice are **not rolled for a value**. They are fixed (no face value matters).
 - When a character's roll contains **N skull dice**, that character attacks **N times** using their base **Attack stat**.
 - Skull dice do **not** participate in match pattern detection. Only normal dice form Pairs, Triples, etc.
-- Skull dice do **not** count as unmatched (they don't charge the super meter).
+- Skull dice do **not** count as unmatched (they don't charge the resolve meter).
 
 ### Roll Resolution With Mixed Dice
 
@@ -413,7 +421,7 @@ Skull damage is applied **per-hit, not pooled**. Each skull die is a discrete at
 
 **Design options this enables:**
 
-- **On-hit passives:** "Each time this character lands a hit, gain 1 super meter charge" or "Each hit has a 20% chance to apply Poison." These trigger once per skull die, not once per roll.
+- **On-hit passives:** "Each time this character lands a hit, gain 1 resolve meter charge" or "Each hit has a 20% chance to apply Poison." These trigger once per skull die, not once per roll.
 - **On-hit-taken reactions:** Defensive abilities like "Each time this character takes a hit, reflect 1 damage back" or "Reduce damage by 1 per hit (stacking armor)." Multiple small hits interact differently with per-hit reduction than one big pooled hit.
 - **Hit-count scaling:** Abilities like "Deal bonus damage on the 3rd hit this turn." Skull dice hits count toward the threshold.
 - **Damage shields:** A shield that absorbs N damage total breaks differently against 3 separate hits of 2 vs 1 hit of 6. Per-hit resolution makes shields more interesting.
@@ -467,7 +475,7 @@ Character abilities scale from dice rolls (match patterns and values), but skull
 - **Refill placement:** Do new dice always fill the outer ring, or can they appear anywhere?
 - **Partial exposure:** If only some tiles in a ring are cleared, does that expose only those inner neighbours, or does the whole next ring become accessible?
 - **Multiple match groups:** If you roll a pair of 3s and a pair of 5s, can you trigger two abilities or must you choose one?
-- **Super Meter charge rate:** Flat per unmatched die? Scaled by die type? Scaled by rolled value?
+- **Resolve Meter charge rate:** Flat per unmatched die? Scaled by die type? Scaled by rolled value?
 - **Enemy AI drafting:** How sophisticated should enemy drafting be? Should different enemy types have visible drafting preferences?
 - **Die distribution on board:** Purely random, or weighted/seeded per encounter for balance?
 - **Disruption abilities:** How do status effects like Paralyze interact with loaded dice — do they stay, return to hand, or discard?

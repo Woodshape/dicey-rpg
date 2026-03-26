@@ -101,7 +101,7 @@ Each milestone is independently testable. Later milestones build on earlier ones
 - [x] Display rolled values on dice
 - [x] Highlight matched dice vs unmatched dice
 - [x] Show match pattern name and potency value
-- [x] Unmatched dice flagged for super meter contribution
+- [x] Unmatched dice flagged for resolve meter contribution
 
 **Status:** Done
 
@@ -116,7 +116,7 @@ Each milestone is independently testable. Later milestones build on earlier ones
 - [x] Skull dice visually distinct (pale bone white colour)
 - [x] Skull dice can be assigned alongside any normal die type on a character
 - [x] Roll resolution: skull dice trigger per-hit attacks at character's Attack stat, normal dice resolve for match patterns
-- [x] Skull dice excluded from match detection and super meter
+- [x] Skull dice excluded from match detection and resolve meter
 - [x] Character stats: HP, Attack, Defense (Character_Stats struct — HP is a flat value, no maximum)
 - [x] Damage calculation: each skull die individually deals max(Attack - target Defense, 0)
 - [x] Stats rendered as plain text on character panel (HP, ATK, DEF); damage applied and visible
@@ -147,14 +147,14 @@ Each milestone is independently testable. Later milestones build on earlier ones
 
 **Goal:** Characters have abilities that fire from match results.
 
-- [ ] 2 placeholder characters (1 player, 1 enemy) with 2-3 abilities each
-- [ ] Ability struct with: required match pattern, scaling axis (match/value/hybrid), effect procedure
-- [ ] Abilities trigger based on match pattern + potency after rolling
-- [ ] Healing and damage abilities resolve alongside skull dice damage
-- [ ] Super meter fills from unmatched dice
-- [ ] Super ability triggers when meter is full (one per character, placeholder effect)
+- [x] 2 placeholder characters (1 player, 1 enemy) with 2-3 abilities each
+- [x] Ability struct with: required match pattern, scaling axis (match/value/hybrid), effect procedure
+- [x] Abilities trigger based on match pattern + potency after rolling
+- [x] Healing and damage abilities resolve alongside skull dice damage
+- [x] Resolve meter fills from unmatched dice
+- [x] Resolve ability triggers when meter is full (one per character, placeholder effect)
 
-**Status:** Not Started
+**Status:** Done
 
 ---
 
@@ -181,7 +181,7 @@ Each milestone is independently testable. Later milestones build on earlier ones
 - [ ] Ability names and effects shown on screen
 - [ ] Turn log / action history
 - [ ] At least one status effect (Paralyze as proof of concept)
-- [ ] Balance pass on HP, Attack, Defense, ability damage, super meter charge rate
+- [ ] Balance pass on HP, Attack, Defense, ability damage, resolve meter charge rate
 - [ ] Board size tuning based on playtesting
 
 **Status:** Not Started

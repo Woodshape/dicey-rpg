@@ -15,6 +15,7 @@ src/                    -- all game source (single package: "game")
   character.odin        -- character structs, assignment, roll state, UI
   combat.odin           -- turn state machine, action resolution, phase transitions
   ai.odin               -- enemy AI: die scoring, pick/roll decisions, assignment
+  ability.odin          -- ability effects, resolution, character templates
 tests/                  -- test package (separate from game)
   board_test.odin       -- board ring, perimeter, removal, gradient tests
   hand_test.odin        -- hand capacity, removal, vacated slot tests
@@ -22,6 +23,7 @@ tests/                  -- test package (separate from game)
   dice_test.odin        -- match detection for all patterns, edge cases, invariants
   combat_test.odin      -- turn state machine, action validation
   ai_test.odin          -- AI scoring, assignment, roll decisions
+  ability_test.odin     -- ability effects, resolution, resolve meter
 assets/                 -- placeholder assets
 docs/
   design/core-mechanics.md   -- game design document (source of truth for mechanics)
@@ -112,7 +114,7 @@ Validate core game logic with meaningful test cases. No test flooding — focus 
 - **Match detection** (`dice.odin`): the heart of the game. Test every pattern (Pair through Five of a Kind), edge cases (no match, all same, multiple groups), and "best pattern" selection from ambiguous rolls.
 - **Board logic** (`board.odin`): rarity gradient correctness, perimeter calculation, tile removal exposing inner tiles.
 - **Hand management** (`hand.odin`): capacity enforcement (max 5), pure die type constraint on character assignment.
-- **Ability resolution** (`character.odin`): correct scaling (match-based, value-based, hybrid), super meter charging from unmatched dice.
+- **Ability resolution** (`character.odin`): correct scaling (match-based, value-based, hybrid), resolve meter charging from unmatched dice.
 
 ### What NOT to Test
 
@@ -190,7 +192,7 @@ The game design document at `docs/design/core-mechanics.md` is the **source of t
 - **Character rarity:** Common=3 slots, Rare=4, Epic=5, Legendary=6
 - **Two axes:** [MATCHES] (count of matched dice, breadth) and [VALUE] (face value of best group, depth). No named pattern tiers — abilities use these numbers directly.
 - **No Two Pairs or Full House** as distinct patterns. Multiple match groups just add to [MATCHES]. [VALUE] takes the best group.
-- **Unmatched dice** charge the character's super meter
+- **Unmatched dice** charge the character's resolve meter
 - **Actions:** Pick (costs turn), Assign (free, drag-and-drop), Roll (costs turn)
 - **Dice movement:** Drag board→hand, board→character, hand→character, character→hand. All via drag-and-drop.
 - **Visibility:** Assigned die types visible to both sides (telegraphing)
