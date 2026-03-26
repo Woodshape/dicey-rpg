@@ -122,6 +122,7 @@ Board_Cell :: struct {
 
 // Board
 Board :: struct {
+	size:  int,
 	cells: [BOARD_SIZE][BOARD_SIZE]Board_Cell,
 }
 

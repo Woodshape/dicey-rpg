@@ -7,39 +7,44 @@ import game "../src"
 
 @(test)
 ring_corners_are_zero :: proc(t: ^testing.T) {
+	board := game.Board{size = 5}
 	// All four corners of any grid should be ring 0 (outermost)
-	testing.expect_value(t, game.cell_ring(0, 0, 5), 0)
-	testing.expect_value(t, game.cell_ring(0, 4, 5), 0)
-	testing.expect_value(t, game.cell_ring(4, 0, 5), 0)
-	testing.expect_value(t, game.cell_ring(4, 4, 5), 0)
+	testing.expect_value(t, game.cell_ring(&board, 0, 0), 0)
+	testing.expect_value(t, game.cell_ring(&board, 0, 4), 0)
+	testing.expect_value(t, game.cell_ring(&board, 4, 0), 0)
+	testing.expect_value(t, game.cell_ring(&board, 4, 4), 0)
 }
 
 @(test)
 ring_centre_is_max :: proc(t: ^testing.T) {
+	board5 := game.Board{size = 5}
+	board7 := game.Board{size = 7}
 	// Centre of 5x5 is ring 2
-	testing.expect_value(t, game.cell_ring(2, 2, 5), 2)
+	testing.expect_value(t, game.cell_ring(&board5, 2, 2), 2)
 	// Centre of 7x7 is ring 3
-	testing.expect_value(t, game.cell_ring(3, 3, 7), 3)
+	testing.expect_value(t, game.cell_ring(&board7, 3, 3), 3)
 }
 
 @(test)
 ring_edges_are_zero :: proc(t: ^testing.T) {
+	board := game.Board{size = 5}
 	// All cells on the edge of the grid should be ring 0
 	for i in 0 ..< 5 {
-		testing.expect_value(t, game.cell_ring(0, i, 5), 0) // top row
-		testing.expect_value(t, game.cell_ring(4, i, 5), 0) // bottom row
-		testing.expect_value(t, game.cell_ring(i, 0, 5), 0) // left col
-		testing.expect_value(t, game.cell_ring(i, 4, 5), 0) // right col
+		testing.expect_value(t, game.cell_ring(&board, 0, i), 0) // top row
+		testing.expect_value(t, game.cell_ring(&board, 4, i), 0) // bottom row
+		testing.expect_value(t, game.cell_ring(&board, i, 0), 0) // left col
+		testing.expect_value(t, game.cell_ring(&board, i, 4), 0) // right col
 	}
 }
 
 @(test)
 ring_middle_layer :: proc(t: ^testing.T) {
+	board := game.Board{size = 5}
 	// Inner ring of 5x5 should be ring 1
-	testing.expect_value(t, game.cell_ring(1, 1, 5), 1)
-	testing.expect_value(t, game.cell_ring(1, 3, 5), 1)
-	testing.expect_value(t, game.cell_ring(3, 1, 5), 1)
-	testing.expect_value(t, game.cell_ring(3, 3, 5), 1)
+	testing.expect_value(t, game.cell_ring(&board, 1, 1), 1)
+	testing.expect_value(t, game.cell_ring(&board, 1, 3), 1)
+	testing.expect_value(t, game.cell_ring(&board, 3, 1), 1)
+	testing.expect_value(t, game.cell_ring(&board, 3, 3), 1)
 }
 
 // --- Perimeter detection ---

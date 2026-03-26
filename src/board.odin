@@ -4,8 +4,8 @@ import "core:math/rand"
 import rl "vendor:raylib"
 
 // Calculate which ring a cell belongs to (0 = outermost)
-cell_ring :: proc(row, col, size: int) -> int {
-	return min(row, col, size - 1 - row, size - 1 - col)
+cell_ring :: proc(board: ^Board, row, col: int) -> int {
+	return min(row, col, board.size - 1 - row, board.size - 1 - col)
 }
 
 // Determine die type for a given ring based on rarity gradient.
@@ -37,12 +37,12 @@ ring_die_type :: proc(ring, max_ring: int) -> Die_Type {
 
 // Initialize board with dice placed by rarity gradient
 board_init :: proc() -> Board {
-	board: Board
-	max_ring := (BOARD_SIZE - 1) / 2
+	board:= Board{ size = BOARD_SIZE }
+	max_ring := (board.size - 1) / 2
 
-	for row in 0 ..< BOARD_SIZE {
-		for col in 0 ..< BOARD_SIZE {
-			ring := cell_ring(row, col, BOARD_SIZE)
+	for row in 0 ..< board.size {
+		for col in 0 ..< board.size {
+			ring := cell_ring(&board, row, col)
 			board.cells[row][col] = Board_Cell{
 				die_type = ring_die_type(ring, max_ring),
 				occupied = true,
@@ -66,7 +66,7 @@ cell_is_perimeter :: proc(board: ^Board, row, col: int) -> bool {
 	for offset in neighbours {
 		nr := row + offset[0]
 		nc := col + offset[1]
-		if nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE {
+		if nr < 0 || nr >= board.size || nc < 0 || nc >= board.size {
 			return true // edge of grid
 		}
 		if !board.cells[nr][nc].occupied {
@@ -94,8 +94,8 @@ board_remove :: proc(board: ^Board, row, col: int) -> (Die_Type, bool) {
 // Count remaining dice on the board
 board_count :: proc(board: ^Board) -> int {
 	count := 0
-	for row in 0 ..< BOARD_SIZE {
-		for col in 0 ..< BOARD_SIZE {
+	for row in 0 ..< board.size {
+		for col in 0 ..< board.size {
 			if board.cells[row][col].occupied {
 				count += 1
 			}
@@ -105,24 +105,24 @@ board_count :: proc(board: ^Board) -> int {
 }
 
 // Get the top-left pixel position of the board (centred on screen)
-board_origin :: proc() -> (i32, i32) {
-	board_px := i32(BOARD_SIZE * CELL_STRIDE - CELL_GAP)
+board_origin :: proc(board: ^Board) -> (i32, i32) {
+	board_px := i32(board.size * CELL_STRIDE - CELL_GAP)
 	x := (WINDOW_WIDTH - board_px) / 2
 	y := (WINDOW_HEIGHT - board_px) / 2
 	return x, y
 }
 
 // Convert a grid position to pixel position
-cell_position :: proc(row, col: int) -> (i32, i32) {
-	ox, oy := board_origin()
+cell_position :: proc(board: ^Board, row, col: int) -> (i32, i32) {
+	ox, oy := board_origin(board)
 	x := ox + i32(col * CELL_STRIDE)
 	y := oy + i32(row * CELL_STRIDE)
 	return x, y
 }
 
 // Convert mouse position to grid row/col. Returns (-1,-1) if outside the board.
-mouse_to_cell :: proc(mouse_x, mouse_y: i32) -> (int, int) {
-	ox, oy := board_origin()
+mouse_to_cell :: proc(board: ^Board, mouse_x, mouse_y: i32) -> (int, int) {
+	ox, oy := board_origin(board)
 	rel_x := mouse_x - ox
 	rel_y := mouse_y - oy
 
@@ -133,7 +133,7 @@ mouse_to_cell :: proc(mouse_x, mouse_y: i32) -> (int, int) {
 	col := int(rel_x) / CELL_STRIDE
 	row := int(rel_y) / CELL_STRIDE
 
-	if row >= BOARD_SIZE || col >= BOARD_SIZE {
+	if row >= board.size || col >= board.size {
 		return -1, -1
 	}
 
@@ -151,16 +151,16 @@ mouse_to_cell :: proc(mouse_x, mouse_y: i32) -> (int, int) {
 board_draw :: proc(board: ^Board, drag: ^Drag_State) {
 	mouse_x := rl.GetMouseX()
 	mouse_y := rl.GetMouseY()
-	hover_row, hover_col := mouse_to_cell(mouse_x, mouse_y)
+	hover_row, hover_col := mouse_to_cell(board, mouse_x, mouse_y)
 
-	for row in 0 ..< BOARD_SIZE {
-		for col in 0 ..< BOARD_SIZE {
+	for row in 0 ..< board.size {
+		for col in 0 ..< board.size {
 			cell := &board.cells[row][col]
 			if !cell.occupied {
 				continue
 			}
 
-			x, y := cell_position(row, col)
+			x, y := cell_position(board, row, col)
 			is_perimeter := cell_is_perimeter(board, row, col)
 			is_dragged := drag.active && drag.source == .Board && drag.board_row == row && drag.board_col == col
 

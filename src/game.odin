@@ -58,7 +58,7 @@ game_update :: proc(gs: ^Game_State) {
 
 try_start_drag :: proc(gs: ^Game_State, mouse_x, mouse_y: i32) {
 	// Board drag (can drop on hand or character)
-	row, col := mouse_to_cell(mouse_x, mouse_y)
+	row, col := mouse_to_cell(&gs.board, mouse_x, mouse_y)
 	if row >= 0 && col >= 0 {
 		if cell_is_perimeter(&gs.board, row, col) {
 			gs.drag = Drag_State{
