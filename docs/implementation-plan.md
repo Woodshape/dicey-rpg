@@ -176,15 +176,83 @@ Each milestone is independently testable. Later milestones build on earlier ones
 
 **Goal:** The game feels like a coherent experience.
 
-- [ ] Second player character (1v1 with 2 characters per side, or 2v1)
+- [x] Second player character (2v2)
 - [ ] Dice type icons or distinct shapes instead of plain colours
-- [ ] Ability names and effects shown on screen
-- [ ] Turn log / action history
+- [x] Ability names and effects shown on screen
+- [x] Turn log / action history (combat log with file output)
 - [ ] At least one status effect (Paralyze as proof of concept)
 - [ ] Balance pass on HP, Attack, Defense, ability damage, resolve meter charge rate
 - [ ] Board size tuning based on playtesting
+- [ ] **Player deadlock prevention:** The player can clog their hand and characters with incompatible dice, leaving no valid pick or roll. Needs a way out — options include: discard action (return a die from hand to the void), skip turn button, auto-discard hand on deadlock, or a "mulligan" that returns all hand dice to the board.
 
-**Status:** Not Started
+**Status:** In Progress
+
+---
+
+### Post-MVP: YAML Configuration System
+
+**Goal:** Move character definitions and encounter setups out of code into data files. New characters that reuse existing ability effects are pure data — no recompilation needed.
+
+**Structure:**
+```
+data/
+  characters/
+    warrior.yaml
+    goblin.yaml
+    healer.yaml
+    shaman.yaml
+  encounters/
+    tutorial.yaml     # player: [warrior, healer], enemy: [goblin, goblin]
+    boss.yaml         # player: [warrior, healer], enemy: [shaman, goblin, goblin]
+```
+
+**Character YAML example:**
+```yaml
+name: Goblin
+rarity: Common
+stats:
+  hp: 15
+  attack: 2
+  defense: 0
+ability:
+  name: Fireball
+  effect: fireball       # maps to ability_fireball proc via lookup table
+  scaling: hybrid
+  min_matches: 2
+resolve_ability:
+  name: Goblin Rally
+  effect: resolve_goblin
+  scaling: match
+resolve_max: 5
+```
+
+**Key decisions:**
+- Ability *effects* stay as Odin procs. YAML references them by name via a string-to-proc lookup table. New effect behaviors require code changes; new characters that reuse effects are data-only.
+- No scripting layer — Odin is fast enough for effect logic.
+- Hot reload on Play Again — re-reads YAML files so balance changes take effect without restarting the application.
+- Encounter files define team compositions for both sides.
+
+---
+
+### Post-MVP: Combat Simulator
+
+**Goal:** Run N headless battles with configurable team compositions and collect balance statistics. Answers questions like "does 2x Goblin beat Warrior + Healer?" and "how does Smite perform vs Fireball?"
+
+**Architecture:**
+- Separate binary: `sim/` package that imports game logic but runs its own headless loop (no Raylib).
+- Both sides use the existing AI (mirror match). Future: configurable strategy profiles (skull rush, match builder, balanced).
+- Reads the same YAML character/encounter files as the main game.
+- CLI interface: `odin run sim/ -- --encounter=tutorial --rounds=1000`
+
+**Output (CSV/stdout):**
+- Win rate per side
+- Average game length (turns)
+- Damage dealt per character per game
+- Ability fire rate (% of rolls that trigger the ability)
+- Resolve trigger count per game
+- Average HP remaining for winning side
+
+**Depends on:** YAML configuration system (characters and encounters must be data-driven for the simulator to be useful).
 
 ---
 

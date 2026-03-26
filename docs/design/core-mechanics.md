@@ -482,3 +482,45 @@ Character abilities scale from dice rolls (match patterns and values), but skull
 - **Die distribution on board:** Purely random, or weighted/seeded per encounter for balance?
 - **Disruption abilities:** How do status effects like Paralyze interact with loaded dice — do they stay, return to hand, or discard?
 - **Party death:** When a character dies, what happens to their assigned dice?
+- **Player deadlock:** The player can clog their hand and characters with incompatible dice, leaving no valid pick or roll. Needs a resolution mechanic — discard action, skip turn, mulligan (return hand to board), or forced hand clear.
+
+---
+
+## Data-Driven Characters (Planned)
+
+Characters and encounters will be defined in YAML files rather than hardcoded in Odin. This separates balance tuning from code changes.
+
+**What moves to data:**
+- Character templates: name, rarity, stats (HP, ATK, DEF), ability (name + effect reference + scaling + threshold), resolve ability, resolve max.
+- Encounter definitions: which characters on each side, how many of each.
+
+**What stays in code:**
+- Ability effect procedures (the actual game logic). YAML references effects by name; a lookup table in code maps `"fireball"` → `ability_fireball`. This means new ability *behaviors* require code, but new characters that *reuse* existing effects are pure data.
+- No scripting layer. Odin is fast enough for direct effect logic.
+
+**Why this matters:**
+- Balance iteration without recompilation — edit a YAML file, hit Play Again.
+- The combat simulator (see below) needs data-driven characters to be useful for automated balance testing.
+- Future: encounter design, difficulty scaling, character unlocks — all driven by data files.
+
+---
+
+## Combat Simulator (Planned)
+
+A headless tool that runs N automated battles and reports balance statistics. Answers: "does this team composition have an unfair advantage?" and "how does changing Goblin HP from 15 to 20 affect win rates?"
+
+**How it works:**
+- Separate binary (`sim/` package) that imports game logic but skips Raylib entirely.
+- Both sides use the AI. Future: configurable strategy profiles (skull rush, match builder) to test against different playstyles.
+- Reads the same YAML character/encounter files as the main game.
+- Runs 1000+ battles per configuration and reports aggregate statistics.
+
+**Key metrics:**
+- Win rate per side
+- Average game length (turns)
+- Damage dealt/taken per character per game
+- Ability fire rate (% of rolls that trigger)
+- Resolve trigger frequency
+- Average HP remaining for the winning side
+
+**Depends on:** data-driven characters (YAML config system). Without externalizing character data, each balance test requires recompilation.
