@@ -1,0 +1,149 @@
+package game
+
+import "core:fmt"
+
+// --- Ability effect procedures ---
+// Each takes (attacker, target, roll) and applies its effect.
+
+// Flurry: deal 1 damage [MATCHES] times. Favors consistent dice.
+ability_flurry :: proc(attacker: ^Character, target: ^Character, roll: ^Roll_Result) {
+	for _ in 0 ..< roll.matched_count {
+		dmg := max(1 - target.stats.defense, 0)
+		target.stats.hp = max(target.stats.hp - dmg, 0)
+	}
+}
+
+// Smite: deal [VALUE] damage. Favors big dice.
+ability_smite :: proc(attacker: ^Character, target: ^Character, roll: ^Roll_Result) {
+	dmg := max(roll.matched_value - target.stats.defense, 0)
+	target.stats.hp = max(target.stats.hp - dmg, 0)
+}
+
+// Fireball: deal [MATCHES] x [VALUE] damage. Rewards both axes.
+ability_fireball :: proc(attacker: ^Character, target: ^Character, roll: ^Roll_Result) {
+	dmg := max(roll.matched_count * roll.matched_value - target.stats.defense, 0)
+	target.stats.hp = max(target.stats.hp - dmg, 0)
+}
+
+// Heal: restore [VALUE] HP. Favors big dice.
+ability_heal :: proc(attacker: ^Character, target: ^Character, roll: ^Roll_Result) {
+	attacker.stats.hp += roll.matched_value
+}
+
+// --- Ability descriptions ---
+// Return formatted strings with resolved [MATCHES] and [VALUE] for UI display.
+
+describe_flurry :: proc(roll: ^Roll_Result) -> cstring {
+	return fmt.ctprintf("1 dmg x %d hits", roll.matched_count)
+}
+
+describe_smite :: proc(roll: ^Roll_Result) -> cstring {
+	return fmt.ctprintf("%d dmg", roll.matched_value)
+}
+
+describe_fireball :: proc(roll: ^Roll_Result) -> cstring {
+	return fmt.ctprintf("%d x %d = %d dmg", roll.matched_count, roll.matched_value, roll.matched_count * roll.matched_value)
+}
+
+describe_heal :: proc(roll: ^Roll_Result) -> cstring {
+	return fmt.ctprintf("+%d HP", roll.matched_value)
+}
+
+describe_resolve_warrior :: proc(roll: ^Roll_Result) -> cstring {
+	return "10 dmg (ignores DEF)"
+}
+
+describe_resolve_goblin :: proc(roll: ^Roll_Result) -> cstring {
+	return "+10 HP"
+}
+
+// --- Resolve ability effects ---
+
+// Warrior resolve: deal 10 flat damage ignoring defense.
+ability_resolve_warrior :: proc(attacker: ^Character, target: ^Character, roll: ^Roll_Result) {
+	target.stats.hp = max(target.stats.hp - 10, 0)
+}
+
+// Goblin resolve: heal 10 HP.
+ability_resolve_goblin :: proc(attacker: ^Character, target: ^Character, roll: ^Roll_Result) {
+	attacker.stats.hp += 10
+}
+
+// --- Ability resolution ---
+
+// Resolve abilities after a roll. Checks the main ability's min_matches threshold
+// and calls the effect if met. Charges resolve from unmatched dice.
+// Auto-triggers resolve ability when meter is full.
+resolve_abilities :: proc(attacker: ^Character, target: ^Character) {
+	roll := &attacker.roll
+
+	// Main ability
+	if roll.matched_count >= attacker.ability.min_matches && attacker.ability.effect != nil {
+		attacker.ability.effect(attacker, target, roll)
+		attacker.ability_fired = true
+	} else {
+		attacker.ability_fired = false
+	}
+
+	// Charge resolve from unmatched dice
+	attacker.resolve += roll.unmatched_count
+
+	// Auto-trigger resolve ability when meter is full
+	if attacker.resolve >= attacker.resolve_max && attacker.resolve_ability.effect != nil {
+		attacker.resolve_ability.effect(attacker, target, roll)
+		attacker.resolve_fired = true
+		attacker.resolve = 0
+	} else {
+		attacker.resolve_fired = false
+	}
+}
+
+// --- Character templates ---
+
+warrior_create :: proc() -> Character {
+	ch := character_create("Warrior", .Common, Character_Stats {
+		hp      = 20,
+		attack  = 3,
+		defense = 1,
+	})
+	ch.ability = Ability {
+		name        = "Flurry",
+		scaling     = .Match,
+		min_matches = 2,
+		effect      = ability_flurry,
+		describe    = describe_flurry,
+	}
+	ch.resolve_ability = Ability {
+		name        = "Heroic Strike",
+		scaling     = .Match,
+		min_matches = 0,
+		effect      = ability_resolve_warrior,
+		describe    = describe_resolve_warrior,
+	}
+	ch.resolve_max = 5
+	return ch
+}
+
+goblin_create :: proc() -> Character {
+	ch := character_create("Goblin", .Common, Character_Stats {
+		hp      = 15,
+		attack  = 2,
+		defense = 0,
+	})
+	ch.ability = Ability {
+		name        = "Fireball",
+		scaling     = .Hybrid,
+		min_matches = 2,
+		effect      = ability_fireball,
+		describe    = describe_fireball,
+	}
+	ch.resolve_ability = Ability {
+		name        = "Goblin Rally",
+		scaling     = .Match,
+		min_matches = 0,
+		effect      = ability_resolve_goblin,
+		describe    = describe_resolve_goblin,
+	}
+	ch.resolve_max = 5
+	return ch
+}
