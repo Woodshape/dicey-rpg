@@ -3,11 +3,16 @@ package game
 import "core:fmt"
 import rl "vendor:raylib"
 
+// Enemy panel position (right side)
+ENEMY_PANEL_X :: WINDOW_WIDTH - CHAR_PANEL_X - HP_BAR_WIDTH
+ENEMY_PANEL_Y :: CHAR_PANEL_Y
+
 Game_State :: struct {
 	running: bool,
 	board:   Board,
 	hand:    Hand,
 	player:  Character,
+	enemy:   Character,
 	drag:    Drag_State,
 }
 
@@ -15,7 +20,8 @@ game_init :: proc() -> Game_State {
 	return Game_State{
 		running = true,
 		board   = board_init(),
-		player  = character_create("Warrior", .Common),
+		player  = character_create("Warrior", .Common, Character_Stats{hp = 20, max_hp = 20, attack = 3, defense = 1}),
+		enemy   = character_create("Goblin",  .Common, Character_Stats{hp = 15, max_hp = 15, attack = 2, defense = 0}),
 	}
 }
 
@@ -35,6 +41,8 @@ game_update :: proc(gs: ^Game_State) {
 		// Check roll button first (not draggable)
 		if gs.player.assigned_count > 0 && mouse_on_roll_button(mouse_x, mouse_y) {
 			character_roll(&gs.player)
+			// Apply skull damage to enemy
+			apply_skull_damage(&gs.player, &gs.enemy)
 			return
 		}
 
@@ -136,6 +144,7 @@ game_draw :: proc(gs: ^Game_State) {
 	board_draw(&gs.board, &gs.drag)
 	hand_draw(&gs.hand, &gs.drag)
 	character_draw(&gs.player, &gs.drag)
+	draw_enemy_panel(&gs.enemy)
 
 	// Dragged die follows cursor
 	if gs.drag.active {
@@ -148,12 +157,30 @@ game_draw :: proc(gs: ^Game_State) {
 	rl.DrawText("Dicey RPG", 20, 20, 24, rl.RAYWHITE)
 
 	remaining := board_count(&gs.board)
-	count_str := fmt.ctprintf("Board: %d  |  Hand: %d/%d  |  %s: %d/%d",
+	count_str := fmt.ctprintf("Board: %d  |  Hand: %d/%d",
 		remaining,
 		gs.hand.count, MAX_HAND_SIZE,
-		gs.player.name, gs.player.assigned_count, gs.player.max_dice,
 	)
 	rl.DrawText(count_str, 20, 50, 16, rl.GRAY)
+}
+
+// Draw a simple enemy panel on the right side
+draw_enemy_panel :: proc(enemy: ^Character) {
+	if !character_is_active(enemy) {
+		return
+	}
+
+	x := i32(ENEMY_PANEL_X)
+	y := i32(ENEMY_PANEL_Y)
+
+	rl.DrawText(enemy.name, x, y, 20, rl.Color{220, 100, 100, 255})
+	rl.DrawText(RARITY_NAMES[enemy.rarity], x, y + 24, 14, rl.GRAY)
+
+	// Stats
+	stats_str := fmt.ctprintf("ATK %d  DEF %d", enemy.stats.attack, enemy.stats.defense)
+	rl.DrawText(stats_str, x, y + 42, 12, rl.Color{180, 180, 180, 255})
+
+	draw_hp_bar(enemy, x, y + 58)
 }
 
 // Draw the die being dragged at the cursor position

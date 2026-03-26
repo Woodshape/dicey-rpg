@@ -8,8 +8,14 @@ cell_ring :: proc(row, col, size: int) -> int {
 	return min(row, col, size - 1 - row, size - 1 - col)
 }
 
-// Determine die type for a given ring based on rarity gradient
+// Determine die type for a given ring based on rarity gradient.
+// Any cell has a SKULL_CHANCE% probability of being a skull die instead.
 ring_die_type :: proc(ring, max_ring: int) -> Die_Type {
+	// Skull dice can appear in any ring
+	if rand.int_max(100) < SKULL_CHANCE {
+		return .Skull
+	}
+
 	if max_ring <= 0 {
 		return .D12
 	}
