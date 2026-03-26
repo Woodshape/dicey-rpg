@@ -90,12 +90,19 @@ character_unassign_die :: proc(character: ^Character, index: int) -> (Die_Type, 
 	return die_type, true
 }
 
-// Get pixel position for a character's die slot
-char_slot_position :: proc(slot_index: int) -> (i32, i32) {
+// --- Position helpers (parameterized by panel origin) ---
+
+// Get pixel position for a die slot relative to a panel origin.
+panel_slot_position :: proc(panel_x, panel_y: i32, slot_index: int) -> (i32, i32) {
 	slot_stride := i32(CHAR_SLOT_SIZE + CHAR_SLOT_GAP)
-	x := i32(CHAR_PANEL_X) + i32(slot_index) * slot_stride
-	y := i32(CHAR_PANEL_Y) + 80  // below name/rarity/stats
+	x := panel_x + i32(slot_index) * slot_stride
+	y := panel_y + 80  // below name/rarity/stats
 	return x, y
+}
+
+// Player-side convenience wrappers (used for hit-testing player interaction)
+char_slot_position :: proc(slot_index: int) -> (i32, i32) {
+	return panel_slot_position(CHAR_PANEL_X, CHAR_PANEL_Y, slot_index)
 }
 
 // Check if mouse is over a character die slot. Returns slot index or -1.
@@ -131,47 +138,79 @@ mouse_on_roll_button :: proc(mouse_x, mouse_y: i32) -> bool {
 	       f32(mouse_y) >= r.y && f32(mouse_y) < r.y + r.height
 }
 
-// Draw a character panel
-character_draw :: proc(character: ^Character, drag: ^Drag_State) {
+// Clear button: positioned generously below roll results area.
+clear_button_rect :: proc() -> rl.Rectangle {
+	btn := roll_button_rect()
+	return rl.Rectangle{
+		x      = btn.x,
+		y      = btn.y + 90,
+		width  = ROLL_BTN_WIDTH,
+		height = ROLL_BTN_HEIGHT,
+	}
+}
+
+mouse_on_clear_button :: proc(mouse_x, mouse_y: i32) -> bool {
+	r := clear_button_rect()
+	return f32(mouse_x) >= r.x && f32(mouse_x) < r.x + r.width &&
+	       f32(mouse_y) >= r.y && f32(mouse_y) < r.y + r.height
+}
+
+// --- Drawing (parameterized by panel position) ---
+
+// Draw a character panel at the given position.
+// interactive: true for the player (shows drag interaction, roll/clear buttons).
+character_draw_at :: proc(character: ^Character, panel_x, panel_y: i32, drag: ^Drag_State, interactive: bool, name_color: rl.Color) {
 	if !character_is_active(character) {
 		return
 	}
 
-	mouse_x := rl.GetMouseX()
-	mouse_y := rl.GetMouseY()
-	hover_slot := mouse_to_char_slot(mouse_x, mouse_y, character.max_dice)
-
 	// Name and rarity
-	rl.DrawText(character.name, CHAR_PANEL_X, CHAR_PANEL_Y, 20, rl.RAYWHITE)
-	rl.DrawText(RARITY_NAMES[character.rarity], CHAR_PANEL_X, CHAR_PANEL_Y + 24, 14, rl.GRAY)
+	rl.DrawText(character.name, panel_x, panel_y, 20, name_color)
+	rl.DrawText(RARITY_NAMES[character.rarity], panel_x, panel_y + 24, 14, rl.GRAY)
 
 	// Stats
 	hp_str := fmt.ctprintf("HP  %d", character.stats.hp)
-	rl.DrawText(hp_str, CHAR_PANEL_X, CHAR_PANEL_Y + 44, 14, rl.Color{100, 220, 100, 255})
+	rl.DrawText(hp_str, panel_x, panel_y + 44, 14, rl.Color{100, 220, 100, 255})
 	atk_def_str := fmt.ctprintf("ATK %d   DEF %d", character.stats.attack, character.stats.defense)
-	rl.DrawText(atk_def_str, CHAR_PANEL_X, CHAR_PANEL_Y + 60, 14, rl.Color{180, 180, 180, 255})
+	rl.DrawText(atk_def_str, panel_x, panel_y + 60, 14, rl.Color{180, 180, 180, 255})
 
 	if character.has_rolled {
-		draw_rolled_dice(character)
+		draw_rolled_dice_at(character, panel_x, panel_y, interactive)
 	} else {
-		draw_assigned_dice(character, drag, hover_slot)
+		draw_assigned_dice_at(character, panel_x, panel_y, drag, interactive)
 
-		// Roll button (only when dice are assigned and not dragging)
-		if character.assigned_count > 0 && !drag.active {
+		// Roll button (only for interactive/player side)
+		if interactive && character.assigned_count > 0 && !drag.active {
+			mouse_x := rl.GetMouseX()
+			mouse_y := rl.GetMouseY()
 			draw_roll_button(mouse_x, mouse_y)
 		}
 	}
 }
 
-draw_assigned_dice :: proc(character: ^Character, drag: ^Drag_State, hover_slot: int) {
-	// Is the character a valid drop target for the current drag?
-	is_drop_target := drag.active && (drag.source == .Hand || drag.source == .Board) && character_can_assign_die(character, drag.die_type)
+// Player-side draw (convenience wrapper)
+character_draw :: proc(character: ^Character, drag: ^Drag_State) {
+	character_draw_at(character, CHAR_PANEL_X, CHAR_PANEL_Y, drag, true, rl.RAYWHITE)
+}
+
+draw_assigned_dice_at :: proc(character: ^Character, panel_x, panel_y: i32, drag: ^Drag_State, interactive: bool) {
+	mouse_x := rl.GetMouseX()
+	mouse_y := rl.GetMouseY()
+
+	// Hover slot only matters for interactive side
+	hover_slot := -1
+	if interactive {
+		hover_slot = mouse_to_char_slot(mouse_x, mouse_y, character.max_dice)
+	}
+
+	// Drop target highlight only for interactive side
+	is_drop_target := interactive && drag.active && (drag.source == .Hand || drag.source == .Board) && character_can_assign_die(character, drag.die_type)
 
 	for i in 0 ..< character.max_dice {
-		x, y := char_slot_position(i)
+		x, y := panel_slot_position(panel_x, panel_y, i)
 
 		if i < character.assigned_count {
-			is_dragged := drag.active && drag.source == .Character && drag.index == i
+			is_dragged := interactive && drag.active && drag.source == .Character && drag.index == i
 
 			if is_dragged {
 				// Ghost the slot being dragged
@@ -186,8 +225,8 @@ draw_assigned_dice :: proc(character: ^Character, drag: ^Drag_State, hover_slot:
 				text_w := rl.MeasureText(label, 12)
 				rl.DrawText(label, x + (CHAR_SLOT_SIZE - text_w) / 2, y + (CHAR_SLOT_SIZE - 12) / 2, 12, rl.WHITE)
 
-				// Hover highlight (only when not dragging)
-				if i == hover_slot && !drag.active {
+				// Hover highlight (only when not dragging, interactive side only)
+				if interactive && i == hover_slot && !drag.active {
 					rl.DrawRectangle(x, y, CHAR_SLOT_SIZE, CHAR_SLOT_SIZE, rl.Color{255, 255, 255, 40})
 					rl.DrawRectangleLines(x, y, CHAR_SLOT_SIZE, CHAR_SLOT_SIZE, rl.WHITE)
 				}
@@ -207,11 +246,11 @@ draw_assigned_dice :: proc(character: ^Character, drag: ^Drag_State, hover_slot:
 	}
 }
 
-draw_rolled_dice :: proc(character: ^Character) {
+draw_rolled_dice_at :: proc(character: ^Character, panel_x, panel_y: i32, interactive: bool) {
 	roll := &character.roll
 
 	for i in 0 ..< roll.count {
-		x, y := char_slot_position(i)
+		x, y := panel_slot_position(panel_x, panel_y, i)
 		die_type := character.assigned[i]
 
 		if roll.skulls[i] > 0 {
@@ -240,41 +279,42 @@ draw_rolled_dice :: proc(character: ^Character) {
 	}
 
 	// Show results below dice
-	btn_rect := roll_button_rect()
-	result_y := i32(btn_rect.y)
-	line := result_y
+	_, slot_y := panel_slot_position(panel_x, panel_y, 0)
+	line := slot_y + CHAR_SLOT_SIZE + 10
 
 	// Skull damage
 	if roll.skull_count > 0 {
 		dmg_str := fmt.ctprintf("Skull x%d -> ATK %d", roll.skull_count, character.stats.attack)
-		rl.DrawText(dmg_str, CHAR_PANEL_X, line, 14, rl.Color{200, 60, 60, 255})
+		rl.DrawText(dmg_str, panel_x, line, 14, rl.Color{200, 60, 60, 255})
 		line += 18
 	}
 
 	// Match result: [MATCHES] and [VALUE]
 	if roll.matched_count > 0 {
 		match_str := fmt.ctprintf("Matched: %d x %d", roll.matched_count, roll.matched_value)
-		rl.DrawText(match_str, CHAR_PANEL_X, line, 16, rl.YELLOW)
+		rl.DrawText(match_str, panel_x, line, 16, rl.YELLOW)
 		line += 18
 	} else if roll.skull_count == 0 {
-		rl.DrawText("No Match", CHAR_PANEL_X, line, 16, rl.Color{180, 80, 80, 255})
+		rl.DrawText("No Match", panel_x, line, 16, rl.Color{180, 80, 80, 255})
 		line += 18
 	}
 
 	if roll.unmatched_count > 0 {
 		meter_str := fmt.ctprintf("Super: +%d", roll.unmatched_count)
-		rl.DrawText(meter_str, CHAR_PANEL_X, line, 14, rl.Color{150, 120, 220, 255})
+		rl.DrawText(meter_str, panel_x, line, 14, rl.Color{150, 120, 220, 255})
 		line += 18
 	}
 
-	// Clear button — use the same rect as click detection
-	r := clear_button_rect()
-	clear_x := i32(r.x)
-	clear_y := i32(r.y)
-	rl.DrawRectangle(clear_x, clear_y, ROLL_BTN_WIDTH, ROLL_BTN_HEIGHT, rl.Color{80, 80, 80, 255})
-	rl.DrawRectangleLines(clear_x, clear_y, ROLL_BTN_WIDTH, ROLL_BTN_HEIGHT, rl.GRAY)
-	clear_w := rl.MeasureText("Clear", 14)
-	rl.DrawText("Clear", clear_x + (ROLL_BTN_WIDTH - clear_w) / 2, clear_y + 7, 14, rl.RAYWHITE)
+	// Clear button (player side only)
+	if interactive {
+		r := clear_button_rect()
+		clear_x := i32(r.x)
+		clear_y := i32(r.y)
+		rl.DrawRectangle(clear_x, clear_y, ROLL_BTN_WIDTH, ROLL_BTN_HEIGHT, rl.Color{80, 80, 80, 255})
+		rl.DrawRectangleLines(clear_x, clear_y, ROLL_BTN_WIDTH, ROLL_BTN_HEIGHT, rl.GRAY)
+		clear_w := rl.MeasureText("Clear", 14)
+		rl.DrawText("Clear", clear_x + (ROLL_BTN_WIDTH - clear_w) / 2, clear_y + 7, 14, rl.RAYWHITE)
+	}
 }
 
 draw_roll_button :: proc(mouse_x, mouse_y: i32) {
@@ -293,21 +333,4 @@ draw_roll_button :: proc(mouse_x, mouse_y: i32) {
 	rl.DrawText("Roll", i32(r.x) + (i32(r.width) - text_w) / 2, i32(r.y) + 7, 14, rl.WHITE)
 }
 
-// Clear button: positioned generously below roll results area.
-// Uses a fixed max offset since the exact line position varies with content.
-clear_button_rect :: proc() -> rl.Rectangle {
-	btn := roll_button_rect()
-	return rl.Rectangle{
-		x      = btn.x,
-		y      = btn.y + 90,
-		width  = ROLL_BTN_WIDTH,
-		height = ROLL_BTN_HEIGHT,
-	}
-}
-
-mouse_on_clear_button :: proc(mouse_x, mouse_y: i32) -> bool {
-	r := clear_button_rect()
-	return f32(mouse_x) >= r.x && f32(mouse_x) < r.x + r.width &&
-	       f32(mouse_y) >= r.y && f32(mouse_y) < r.y + r.height
-}
 

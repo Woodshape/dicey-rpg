@@ -3,20 +3,21 @@ package game
 import rl "vendor:raylib"
 
 // Window
-WINDOW_WIDTH  :: 1280
+WINDOW_WIDTH :: 1280
 WINDOW_HEIGHT :: 720
-WINDOW_TITLE  :: "Dicey RPG"
-TARGET_FPS    :: 60
+WINDOW_TITLE :: "Dicey RPG"
+TARGET_FPS :: 60
 
 // Board
-BOARD_SIZE    :: 5   // 5x5 grid
-CELL_SIZE     :: 64  // pixels per cell
-CELL_GAP      :: 6   // pixels between cells
-CELL_STRIDE   :: CELL_SIZE + CELL_GAP  // total step per cell
+BOARD_SIZE :: 5 // 5x5 grid
+// BOARD_SIZE :: 7 // 7x7 grid
+CELL_SIZE :: 64 // pixels per cell
+CELL_GAP :: 6 // pixels between cells
+CELL_STRIDE :: CELL_SIZE + CELL_GAP // total step per cell
 
 // Dice
 Die_Type :: enum u8 {
-	None,  // zero value — no die present, used to detect stale data
+	None, // zero value — no die present, used to detect stale data
 	D4,
 	D6,
 	D8,
@@ -33,7 +34,7 @@ die_type_is_normal :: proc(dt: Die_Type) -> bool {
 	return false
 }
 
-DIE_TYPE_NAMES := [Die_Type]cstring{
+DIE_TYPE_NAMES := [Die_Type]cstring {
 	.None  = "??",
 	.D4    = "d4",
 	.D6    = "d6",
@@ -43,17 +44,17 @@ DIE_TYPE_NAMES := [Die_Type]cstring{
 	.Skull = "Skl",
 }
 
-DIE_TYPE_COLORS := [Die_Type]rl.Color{
-	.None  = rl.MAGENTA,                      // should never render
-	.D4    = rl.Color{80, 140, 220, 255},     // blue
-	.D6    = rl.Color{60, 180, 100, 255},     // green
-	.D8    = rl.Color{230, 200, 50, 255},     // yellow
-	.D10   = rl.Color{230, 140, 40, 255},     // orange
-	.D12   = rl.Color{210, 50, 60, 255},      // red
-	.Skull = rl.Color{200, 200, 210, 255},    // pale bone white
+DIE_TYPE_COLORS := [Die_Type]rl.Color {
+	.None  = rl.MAGENTA, // should never render
+	.D4    = rl.Color{80, 140, 220, 255}, // blue
+	.D6    = rl.Color{60, 180, 100, 255}, // green
+	.D8    = rl.Color{230, 200, 50, 255}, // yellow
+	.D10   = rl.Color{230, 140, 40, 255}, // orange
+	.D12   = rl.Color{210, 50, 60, 255}, // red
+	.Skull = rl.Color{200, 200, 210, 255}, // pale bone white
 }
 
-DIE_TYPE_COLORS_DIM := [Die_Type]rl.Color{
+DIE_TYPE_COLORS_DIM := [Die_Type]rl.Color {
 	.None  = rl.MAGENTA,
 	.D4    = rl.Color{50, 80, 120, 255},
 	.D6    = rl.Color{35, 100, 55, 255},
@@ -63,14 +64,14 @@ DIE_TYPE_COLORS_DIM := [Die_Type]rl.Color{
 	.Skull = rl.Color{100, 100, 105, 255},
 }
 
-DIE_FACES := [Die_Type]int{
+DIE_FACES := [Die_Type]int {
 	.None  = 0,
 	.D4    = 4,
 	.D6    = 6,
 	.D8    = 8,
 	.D10   = 10,
 	.D12   = 12,
-	.Skull = 0,  // skull dice are not rolled for a value
+	.Skull = 0, // skull dice are not rolled for a value
 }
 
 // Probability (out of 100) that any board cell becomes a skull die
@@ -81,14 +82,14 @@ MAX_DIE_VALUE :: 12
 // Result of rolling and evaluating a character's dice.
 // Abilities read [MATCHES] (matched_count) and [VALUE] (matched_value) directly.
 Roll_Result :: struct {
-	values:          [MAX_CHARACTER_DICE]int,   // rolled face values (1-12), 0 for skull dice
-	count:           int,                       // total dice rolled (skull + normal)
-	skulls:          [MAX_CHARACTER_DICE]int,   // 1 if this die is a skull (for now, we can think of even bigger skull dice that have a different value)
-	skull_count:     int,                       // number of skull dice in this roll
-	matched_value:   int,                       // [VALUE]: face value of the best match group
-	matched:         [MAX_CHARACTER_DICE]bool,  // true = part of a match group (never true for skulls)
-	matched_count:   int,                       // [MATCHES]: normal dice in match groups
-	unmatched_count: int,                       // normal dice NOT in match groups
+	values:          [MAX_CHARACTER_DICE]int, // rolled face values (1-12), 0 for skull dice
+	count:           int, // total dice rolled (skull + normal)
+	skulls:          [MAX_CHARACTER_DICE]int, // 1 if this die is a skull (for now, we can think of even bigger skull dice that have a different value)
+	skull_count:     int, // number of skull dice in this roll
+	matched_value:   int, // [VALUE]: face value of the best match group
+	matched:         [MAX_CHARACTER_DICE]bool, // true = part of a match group (never true for skulls)
+	matched_count:   int, // [MATCHES]: normal dice in match groups
+	unmatched_count: int, // normal dice NOT in match groups
 	// Invariant: matched_count + unmatched_count + skull_count == count
 }
 
@@ -108,8 +109,8 @@ Board :: struct {
 // Hand
 MAX_HAND_SIZE :: 5
 HAND_SLOT_SIZE :: 56
-HAND_SLOT_GAP  :: 8
-HAND_Y_OFFSET  :: 80  // pixels from bottom
+HAND_SLOT_GAP :: 8
+HAND_Y_OFFSET :: 80 // pixels from bottom
 
 Hand :: struct {
 	dice:  [MAX_HAND_SIZE]Die_Type,
@@ -117,23 +118,23 @@ Hand :: struct {
 }
 
 // Character
-MAX_CHARACTER_DICE :: 6  // legendary max
+MAX_CHARACTER_DICE :: 6 // legendary max
 
 Character_Rarity :: enum u8 {
-	Common,     // 3 dice
-	Rare,       // 4 dice
-	Epic,       // 5 dice
-	Legendary,  // 6 dice
+	Common, // 3 dice
+	Rare, // 4 dice
+	Epic, // 5 dice
+	Legendary, // 6 dice
 }
 
-RARITY_MAX_DICE := [Character_Rarity]int{
+RARITY_MAX_DICE := [Character_Rarity]int {
 	.Common    = 3,
 	.Rare      = 4,
 	.Epic      = 5,
 	.Legendary = 6,
 }
 
-RARITY_NAMES := [Character_Rarity]cstring{
+RARITY_NAMES := [Character_Rarity]cstring {
 	.Common    = "Common",
 	.Rare      = "Rare",
 	.Epic      = "Epic",
@@ -143,7 +144,7 @@ RARITY_NAMES := [Character_Rarity]cstring{
 MAX_PARTY_SIZE :: 4
 
 Character_State :: enum u8 {
-	Empty,   // zero value — no character in this slot
+	Empty, // zero value — no character in this slot
 	Alive,
 	Dead,
 }
@@ -174,26 +175,34 @@ character_is_active :: proc(character: ^Character) -> bool {
 }
 
 // UI layout for character panel
-CHAR_PANEL_X      :: 30
-CHAR_PANEL_Y      :: 100
-CHAR_PANEL_WIDTH  :: 160
-CHAR_SLOT_SIZE    :: 44
-CHAR_SLOT_GAP     :: 6
+CHAR_PANEL_X :: 30
+CHAR_PANEL_Y :: 100
+CHAR_PANEL_WIDTH :: 160
+CHAR_SLOT_SIZE :: 44
+CHAR_SLOT_GAP :: 6
+
+// Turn state machine
+Turn_Phase :: enum u8 {
+	Player_Turn, // player can assign freely, pick or roll to end turn
+	Player_Roll_Result, // showing player's roll results, click Clear to advance
+	Enemy_Turn, // AI evaluates and executes one action
+	Enemy_Roll_Result, // brief pause showing enemy roll results, then auto-advances
+}
 
 // Drag-and-drop state
 Drag_Source :: enum {
-	None,    // zero value — not dragging
+	None, // zero value — not dragging
 	Board,
 	Hand,
 	Character,
 }
 
 Drag_State :: struct {
-	active:     bool,
-	source:     Drag_Source,
-	die_type:   Die_Type,
+	active:    bool,
+	source:    Drag_Source,
+	die_type:  Die_Type,
 	// Source identification (for ghosting the source slot)
-	board_row:  int,
-	board_col:  int,
-	index:      int,   // hand slot index or character die index
+	board_row: int,
+	board_col: int,
+	index:     int, // hand slot index or character die index
 }
