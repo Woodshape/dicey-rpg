@@ -183,6 +183,12 @@ The game design document at `docs/design/core-mechanics.md` is the **source of t
 
 Always consult the design doc before implementing a mechanic. If the code diverges from the doc, update the doc first.
 
+## Scope Discipline
+
+**Only implement what is explicitly requested or listed in the current milestone.** Do not add features, systems, or game objects beyond the scope of the task at hand — even if they seem like a natural next step. If a milestone says "skull dice and character stats", do not also add an enemy character, wire up damage to a target, or build UI for systems that aren't asked for yet.
+
+When in doubt, stop and ask. The cost of pausing is low; the cost of unwanted code is refactoring, confusion, and wasted time.
+
 ## Implementation Plan
 
 See `docs/implementation-plan.md` for the milestone breakdown. Work through milestones sequentially — each is independently testable. Current milestone status is tracked in that file.
