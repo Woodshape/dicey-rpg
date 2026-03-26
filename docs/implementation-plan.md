@@ -117,9 +117,9 @@ Each milestone is independently testable. Later milestones build on earlier ones
 - [x] Skull dice can be assigned alongside any normal die type on a character
 - [x] Roll resolution: skull dice trigger per-hit attacks at character's Attack stat, normal dice resolve for match patterns
 - [x] Skull dice excluded from match detection and super meter
-- [x] Character stats: HP, Attack, Defense (Character_Stats struct)
+- [x] Character stats: HP, Attack, Defense (Character_Stats struct — HP is a flat value, no maximum)
 - [x] Damage calculation: each skull die individually deals max(Attack - target Defense, 0)
-- [x] HP bars rendered, damage applied and visible
+- [x] Stats rendered as plain text on character panel (HP, ATK, DEF); damage applied and visible
 - [x] Tests: skull dice exempt from pure type, mixed roll resolution, damage calculation
 - [x] Per-hit skull damage loop (foundation for future on-hit triggers/passives)
 

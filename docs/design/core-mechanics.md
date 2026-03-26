@@ -156,6 +156,16 @@ Abilities use [MATCHES] and [VALUE] directly in their formulas:
 
 There is no single "best" drafting strategy. Small dice give high [MATCHES] (consistency); big dice give high [VALUE] (power ceiling). The optimal draft depends on the character's abilities and the current situation.
 
+### Open Design: Multiple Match Groups as Separate Activations
+
+Currently, all matched dice across all groups are pooled into a single [MATCHES]/[VALUE] pair per roll. A roll of `[4, 4, 2, 2, 5]` produces one result — [MATCHES]=4, [VALUE]=4 — and activates an ability once.
+
+An alternative: **each distinct match group activates the ability independently.** That same roll would produce two results — ([MATCHES]=2, [VALUE]=4) and ([MATCHES]=2, [VALUE]=2) — and the ability fires twice. This rewards spreading matches across groups rather than concentrating them, and gives multiple-group rolls a distinct identity from single large groups.
+
+This would require `Roll_Result` to hold a list of (matched_count, matched_value) pairs rather than a single pair, and the ability resolution loop to iterate over them. It is a meaningful structural change to both the data model and the resolution pipeline. Deferred until the ability system (Milestone 6) is implemented and the design can be tested in play.
+
+---
+
 ### Why not named patterns?
 
 Earlier designs used poker-style pattern names (Pair, Two Pairs, Full House, etc.) as trigger levels for abilities. This was dropped because:
@@ -419,7 +429,7 @@ Character abilities scale from dice rolls (match patterns and values), but skull
 
 | Stat    | Description |
 |---------|-------------|
-| HP      | Hit points. Character dies at 0. |
+| HP      | Hit points. A flat value — no maximum. Damage reduces it; healing increases it. Character dies at 0. |
 | Attack  | Damage dealt per skull die in a roll. |
 | Defense | Damage reduction from incoming attacks (flat reduction or percentage — TBD). |
 
@@ -430,6 +440,7 @@ Character abilities scale from dice rolls (match patterns and values), but skull
 - **Do we need Speed/Initiative?** Currently turn order is alternating actions. A speed stat could determine who picks first after a board refill.
 - **Should stats vary by rarity?** A Legendary character might have higher base Attack than a Common one, making skull dice more valuable on them.
 - **Stat modifiers from abilities?** E.g., a buff ability that temporarily increases Attack, making skull dice deal more damage for a few turns.
+- **Starting HP values?** Without a maximum, balance is determined by starting HP and how fast damage/healing flows. Needs playtesting.
 
 ---
 
