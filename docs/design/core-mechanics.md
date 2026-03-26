@@ -335,6 +335,43 @@ Split and Empower operate on the hand rather than on assigned dice, making them 
 
 ---
 
+## Ability Architecture: Full Game Context
+
+Ability effect procedures receive the full `Game_State`, not just the attacker and target. This means any ability can read or modify anything in the game — both parties, both hands, the board, the combat log. The attacker and target are passed as convenience pointers for the common case (single-target damage/heal), but the game state enables a much wider design space.
+
+### Design Space Enabled by Full Context
+
+**Party-wide effects (AoE):**
+- Deal damage to all enemies (iterate `enemy_party`)
+- Heal all allies (iterate own party — find which party the attacker belongs to)
+- Apply a buff/debuff to the entire opposing team
+
+**Hand interaction:**
+- Steal a die from the enemy hand (remove from `enemy_hand`, add to own hand)
+- Destroy a die in the enemy hand
+- Corrupt a die (change its type, e.g., normal → skull)
+- Freeze a die (mark it unassignable for N turns)
+
+**Board interaction:**
+- Place a die on the board (strategic blocking)
+- Remove specific dice from the board (deny opponent)
+- Reveal or lock inner ring tiles
+- Seed the board with skull dice
+
+**Cross-character effects:**
+- Transfer HP between allies
+- Move dice between allied characters
+- Trigger another ally's ability
+
+**Conditional effects using roll data:**
+- Abilities that scale with `skull_count` (e.g., bonus damage per skull in the roll)
+- Abilities that read `unmatched_count` (e.g., convert misses into shields)
+- Abilities that care about the specific values rolled, not just the match summary
+
+The key constraint: ability *effects* are Odin procedures (not data). New effect behaviors require code changes. But the YAML configuration system (planned) means new characters that reuse existing effects are pure data. The effect library grows over time; the character library grows freely.
+
+---
+
 ## Class Design Philosophy
 
 Classes are defined by their preferred axis, giving each class a distinct drafting personality.
