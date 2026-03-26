@@ -202,9 +202,9 @@ match_full_house_zero_unmatched :: proc(t: ^testing.T) {
 @(test)
 roll_result_cleared_properly :: proc(t: ^testing.T) {
 	ch := game.character_create("Test", .Common, {hp = 20, max_hp = 20, attack = 3, defense = 1})
-	game.character_assign(&ch, .D8)
-	game.character_assign(&ch, .D8)
-	game.character_assign(&ch, .D8)
+	game.character_assign_die(&ch, .D8)
+	game.character_assign_die(&ch, .D8)
+	game.character_assign_die(&ch, .D8)
 
 	game.character_roll(&ch)
 	testing.expect(t, ch.has_rolled, "should be rolled")
@@ -228,16 +228,16 @@ skull_exempt_from_pure_type :: proc(t: ^testing.T) {
 	ch := game.character_create("Test", .Common, {hp = 20, max_hp = 20, attack = 3, defense = 1})
 
 	// Assign a normal die first
-	game.character_assign(&ch, .D8)
+	game.character_assign_die(&ch, .D8)
 
 	// Skull should be accepted alongside D8
-	testing.expect(t, game.character_can_assign(&ch, .Skull), "skull should be compatible with any normal type")
-	ok := game.character_assign(&ch, .Skull)
+	testing.expect(t, game.character_can_assign_die(&ch, .Skull), "skull should be compatible with any normal type")
+	ok := game.character_assign_die(&ch, .Skull)
 	testing.expect(t, ok, "skull assignment should succeed")
 	testing.expect_value(t, ch.assigned_count, 2)
 
 	// Another D8 should still be accepted
-	testing.expect(t, game.character_can_assign(&ch, .D8), "D8 should still be accepted alongside skull")
+	testing.expect(t, game.character_can_assign_die(&ch, .D8), "D8 should still be accepted alongside skull")
 }
 
 @(test)
@@ -245,46 +245,46 @@ skull_only_hand_is_valid :: proc(t: ^testing.T) {
 	ch := game.character_create("Test", .Common, {hp = 20, max_hp = 20, attack = 3, defense = 1})
 
 	// All skulls should be fine
-	game.character_assign(&ch, .Skull)
-	game.character_assign(&ch, .Skull)
+	game.character_assign_die(&ch, .Skull)
+	game.character_assign_die(&ch, .Skull)
 	testing.expect_value(t, ch.assigned_count, 2)
 
 	// Normal die should be accepted after skulls
-	testing.expect(t, game.character_can_assign(&ch, .D12), "normal die should be accepted after only skulls")
+	testing.expect(t, game.character_can_assign_die(&ch, .D12), "normal die should be accepted after only skulls")
 }
 
 @(test)
 skull_does_not_set_normal_type :: proc(t: ^testing.T) {
 	ch := game.character_create("Test", .Common, {hp = 20, max_hp = 20, attack = 3, defense = 1})
 
-	game.character_assign(&ch, .Skull)
+	game.character_assign_die(&ch, .Skull)
 
 	// assigned_type should return None (no normal type set)
-	_, has_type := game.character_assigned_type(&ch)
+	_, has_type := game.character_assigned_die_type(&ch)
 	testing.expect(t, !has_type, "skull-only character should have no normal assigned type")
 
 	// Should accept any normal type
-	testing.expect(t, game.character_can_assign(&ch, .D4), "should accept D4")
-	testing.expect(t, game.character_can_assign(&ch, .D12), "should accept D12")
+	testing.expect(t, game.character_can_assign_die(&ch, .D4), "should accept D4")
+	testing.expect(t, game.character_can_assign_die(&ch, .D12), "should accept D12")
 }
 
 @(test)
 skull_mixed_type_rejected :: proc(t: ^testing.T) {
 	ch := game.character_create("Test", .Common, {hp = 20, max_hp = 20, attack = 3, defense = 1})
 
-	game.character_assign(&ch, .D6)
-	game.character_assign(&ch, .Skull)
+	game.character_assign_die(&ch, .D6)
+	game.character_assign_die(&ch, .Skull)
 
 	// Different normal type should still be rejected
-	testing.expect(t, !game.character_can_assign(&ch, .D10), "different normal type should be rejected even with skull present")
+	testing.expect(t, !game.character_can_assign_die(&ch, .D10), "different normal type should be rejected even with skull present")
 }
 
 @(test)
 skull_roll_mixed :: proc(t: ^testing.T) {
 	ch := game.character_create("Test", .Common, {hp = 20, max_hp = 20, attack = 3, defense = 1})
-	game.character_assign(&ch, .Skull)
-	game.character_assign(&ch, .D6)
-	game.character_assign(&ch, .D6)
+	game.character_assign_die(&ch, .Skull)
+	game.character_assign_die(&ch, .D6)
+	game.character_assign_die(&ch, .D6)
 
 	game.character_roll(&ch)
 
@@ -308,9 +308,9 @@ skull_roll_mixed :: proc(t: ^testing.T) {
 @(test)
 skull_roll_all_skulls :: proc(t: ^testing.T) {
 	ch := game.character_create("Test", .Common, {hp = 20, max_hp = 20, attack = 3, defense = 1})
-	game.character_assign(&ch, .Skull)
-	game.character_assign(&ch, .Skull)
-	game.character_assign(&ch, .Skull)
+	game.character_assign_die(&ch, .Skull)
+	game.character_assign_die(&ch, .Skull)
+	game.character_assign_die(&ch, .Skull)
 
 	game.character_roll(&ch)
 

@@ -14,34 +14,6 @@ character_create :: proc(name: cstring, rarity: Character_Rarity, stats: Charact
 	}
 }
 
-// Get the normal (non-skull) die type currently assigned to a character, if any.
-character_assigned_type :: proc(character: ^Character) -> (Die_Type, bool) {
-	for i in 0 ..< character.assigned_count {
-		if die_type_is_normal(character.assigned[i]) {
-			return character.assigned[i], true
-		}
-	}
-	return .None, false
-}
-
-// Check if a die type can be assigned to a character.
-// Skull dice are always compatible. Normal dice must all be the same type.
-character_can_assign :: proc(character: ^Character, die_type: Die_Type) -> bool {
-	if character.assigned_count >= character.max_dice {
-		return false
-	}
-	// Skull dice are always compatible
-	if die_type == .Skull {
-		return true
-	}
-	// First normal die — check if there's already a normal type assigned
-	assigned_type, has_type := character_assigned_type(character)
-	if !has_type {
-		return true
-	}
-	return assigned_type == die_type
-}
-
 // Calculate damage from skull dice: attacker attacks N times at Attack stat.
 // Returns total damage dealt (after defense).
 apply_skull_damage :: proc(attacker: ^Character, target: ^Character) -> int {
@@ -54,10 +26,38 @@ apply_skull_damage :: proc(attacker: ^Character, target: ^Character) -> int {
 	return total
 }
 
+// Get the normal (non-skull) die type currently assigned to a character, if any.
+character_assigned_die_type :: proc(character: ^Character) -> (Die_Type, bool) {
+	for i in 0 ..< character.assigned_count {
+		if die_type_is_normal(character.assigned[i]) {
+			return character.assigned[i], true
+		}
+	}
+	return .None, false
+}
+
+// Check if a die type can be assigned to a character.
+// Skull dice are always compatible. Normal dice must all be the same type.
+character_can_assign_die :: proc(character: ^Character, die_type: Die_Type) -> bool {
+	if character.assigned_count >= character.max_dice {
+		return false
+	}
+	// Skull dice are always compatible
+	if die_type == .Skull {
+		return true
+	}
+	// First normal die — check if there's already a normal type assigned
+	assigned_type, has_type := character_assigned_die_type(character)
+	if !has_type {
+		return true
+	}
+	return assigned_type == die_type
+}
+
 // Assign a die to a character. Returns false if invalid.
-character_assign :: proc(character: ^Character, die_type: Die_Type) -> bool {
+character_assign_die :: proc(character: ^Character, die_type: Die_Type) -> bool {
 	assert(die_type != .None, "cannot assign Die_Type.None to character")
-	if !character_can_assign(character, die_type) {
+	if !character_can_assign_die(character, die_type) {
 		return false
 	}
 	character.assigned[character.assigned_count] = die_type
@@ -66,7 +66,7 @@ character_assign :: proc(character: ^Character, die_type: Die_Type) -> bool {
 }
 
 // Remove a die from a character by index. Returns the die type.
-character_unassign :: proc(character: ^Character, index: int) -> (Die_Type, bool) {
+character_unassign_die :: proc(character: ^Character, index: int) -> (Die_Type, bool) {
 	if index < 0 || index >= character.assigned_count {
 		return .None, false
 	}
@@ -155,7 +155,7 @@ character_draw :: proc(character: ^Character, drag: ^Drag_State) {
 
 draw_assigned_dice :: proc(character: ^Character, drag: ^Drag_State, hover_slot: int) {
 	// Is the character a valid drop target for the current drag?
-	is_drop_target := drag.active && (drag.source == .Hand || drag.source == .Board) && character_can_assign(character, drag.die_type)
+	is_drop_target := drag.active && (drag.source == .Hand || drag.source == .Board) && character_can_assign_die(character, drag.die_type)
 
 	for i in 0 ..< character.max_dice {
 		x, y := char_slot_position(i)

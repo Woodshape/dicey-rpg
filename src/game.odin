@@ -111,17 +111,17 @@ try_drop :: proc(gs: ^Game_State, mouse_x, mouse_y: i32) {
 		}
 
 		char_slot := mouse_to_char_slot(mouse_x, mouse_y, gs.player.max_dice)
-		if char_slot >= 0 && character_can_assign(&gs.player, gs.drag.die_type) {
+		if char_slot >= 0 && character_can_assign_die(&gs.player, gs.drag.die_type) {
 			board_remove(&gs.board, gs.drag.board_row, gs.drag.board_col)
-			character_assign(&gs.player, gs.drag.die_type)
+			character_assign_die(&gs.player, gs.drag.die_type)
 		}
 
 	case .Hand:
 		// Hand can only drop on character
 		char_slot := mouse_to_char_slot(mouse_x, mouse_y, gs.player.max_dice)
-		if char_slot >= 0 && character_can_assign(&gs.player, gs.drag.die_type) {
+		if char_slot >= 0 && character_can_assign_die(&gs.player, gs.drag.die_type) {
 			hand_remove(&gs.hand, gs.drag.index)
-			character_assign(&gs.player, gs.drag.die_type)
+			character_assign_die(&gs.player, gs.drag.die_type)
 		}
 
 	case .Character:
@@ -129,7 +129,7 @@ try_drop :: proc(gs: ^Game_State, mouse_x, mouse_y: i32) {
 		hand_slot := mouse_to_hand_slot(mouse_x, mouse_y)
 		in_hand := hand_slot >= 0 || mouse_in_hand_region(mouse_x, mouse_y)
 		if in_hand && !hand_is_full(&gs.hand) {
-			character_unassign(&gs.player, gs.drag.index)
+			character_unassign_die(&gs.player, gs.drag.index)
 			hand_add(&gs.hand, gs.drag.die_type)
 		}
 	}
