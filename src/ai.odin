@@ -47,6 +47,31 @@ ai_take_turn :: proc(gs: ^Game_State) {
 		return
 	}
 
+	// No useful pick — but if hand isn't full and the board has dice, pick any die
+	// rather than skipping. A useless die can be discarded later; skipping wastes tempo.
+	if !hand_is_full(&gs.enemy_hand) {
+		row, col, any_found := ai_pick_any_die(gs)
+		if any_found {
+			die_type := gs.board.cells[row][col].die_type
+			board_remove_die(&gs.board, row, col)
+			hand_add(&gs.enemy_hand, die_type)
+			ai_assign_from_hand(gs)
+			combat_log_write(&gs.log, "Enemy picks %s -> hand", DIE_TYPE_NAMES[die_type])
+			gs.turn = .Player_Turn
+			return
+		}
+	}
+
+	// Hand is full and stuck — discard an unusable die to free a slot
+	if hand_is_full(&gs.enemy_hand) && !ai_hand_has_usable_die(&gs.enemy_party, &gs.enemy_hand) {
+		discard_idx := ai_pick_discard(&gs.enemy_party, &gs.enemy_hand)
+		if discard_idx >= 0 {
+			die_type := gs.enemy_hand.dice[discard_idx]
+			hand_discard(&gs.enemy_hand, discard_idx)
+			combat_log_write(&gs.log, "Enemy discards %s", DIE_TYPE_NAMES[die_type])
+		}
+	}
+
 	// No valid action — skip turn
 	combat_log_write(&gs.log, "Enemy skips turn")
 	gs.turn = .Player_Turn
@@ -270,4 +295,64 @@ ai_score_die :: proc(
 	}
 
 	return score
+}
+
+// Fallback: pick any pickable die from the board (no scoring).
+// Used when ai_pick_best_die finds nothing useful but the AI shouldn't skip.
+ai_pick_any_die :: proc(gs: ^Game_State) -> (int, int, bool) {
+	for row in 0 ..< gs.board.size {
+		for col in 0 ..< gs.board.size {
+			if cell_is_pickable(&gs.board, row, col) {
+				return row, col, true
+			}
+		}
+	}
+	return 0, 0, false
+}
+
+// Check if any die in the hand can be assigned to any alive character.
+ai_hand_has_usable_die :: proc(party: ^Party, hand: ^Hand) -> bool {
+	for i in 0 ..< hand.count {
+		for ci in 0 ..< party.count {
+			ch := &party.characters[ci]
+			if ch.stats.hp <= 0 {continue}
+			if character_can_assign_die(ch, hand.dice[i]) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// Pick the least useful die in the enemy hand to discard.
+// Returns the index to discard, or -1 if no die can be discarded.
+// Prefers dice that no alive character can accept.
+ai_pick_discard :: proc(party: ^Party, hand: ^Hand) -> int {
+	worst_idx := -1
+	worst_score := max(int) // lower = more discardable
+
+	for i in 0 ..< hand.count {
+		if !hand_can_discard(hand, i) {
+			continue
+		}
+
+		die_type := hand.dice[i]
+		score := 0
+
+		// Check if any alive character can use this die
+		for ci in 0 ..< party.count {
+			ch := &party.characters[ci]
+			if ch.stats.hp <= 0 {continue}
+			if character_can_assign_die(ch, die_type) {
+				score += 10 // useful die — less desirable to discard
+			}
+		}
+
+		if score < worst_score {
+			worst_score = score
+			worst_idx = i
+		}
+	}
+
+	return worst_idx
 }
