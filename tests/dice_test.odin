@@ -260,7 +260,7 @@ skull_does_not_set_normal_type :: proc(t: ^testing.T) {
 	game.character_assign_die(&ch, .Skull)
 
 	// assigned_type should return None (no normal type set)
-	_, has_type := game.character_assigned_die_type(&ch)
+	_, has_type := game.character_assigned_normal_die_type(&ch)
 	testing.expect(t, !has_type, "skull-only character should have no normal assigned type")
 
 	// Should accept any normal type
@@ -290,9 +290,9 @@ skull_roll_mixed :: proc(t: ^testing.T) {
 
 	testing.expect_value(t, ch.roll.count, 3)
 	testing.expect_value(t, ch.roll.skull_count, 1)
-	testing.expect(t, ch.roll.is_skull[0], "first die should be skull")
-	testing.expect(t, !ch.roll.is_skull[1], "second die should not be skull")
-	testing.expect(t, !ch.roll.is_skull[2], "third die should not be skull")
+	testing.expect(t, ch.roll.skulls[0] > 0, "first die should be skull")
+	testing.expect(t, ch.roll.skulls[1] == 0, "second die should not be skull")
+	testing.expect(t, ch.roll.skulls[2] == 0, "third die should not be skull")
 
 	// Invariant: matched + unmatched + skull == count
 	total := ch.roll.matched_count + ch.roll.unmatched_count + ch.roll.skull_count

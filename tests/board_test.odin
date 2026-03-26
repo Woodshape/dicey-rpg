@@ -55,14 +55,14 @@ full_board_perimeter_is_outer_ring :: proc(t: ^testing.T) {
 
 	// All outer ring cells should be perimeter
 	for i in 0 ..< game.BOARD_SIZE {
-		testing.expect(t, game.cell_is_perimeter(&board, 0, i), "top row should be perimeter")
-		testing.expect(t, game.cell_is_perimeter(&board, game.BOARD_SIZE - 1, i), "bottom row should be perimeter")
-		testing.expect(t, game.cell_is_perimeter(&board, i, 0), "left col should be perimeter")
-		testing.expect(t, game.cell_is_perimeter(&board, i, game.BOARD_SIZE - 1), "right col should be perimeter")
+		testing.expect(t, game.cell_is_pickable(&board, 0, i), "top row should be perimeter")
+		testing.expect(t, game.cell_is_pickable(&board, game.BOARD_SIZE - 1, i), "bottom row should be perimeter")
+		testing.expect(t, game.cell_is_pickable(&board, i, 0), "left col should be perimeter")
+		testing.expect(t, game.cell_is_pickable(&board, i, game.BOARD_SIZE - 1), "right col should be perimeter")
 	}
 
 	// Centre should NOT be perimeter on a full board
-	testing.expect(t, !game.cell_is_perimeter(&board, 2, 2), "centre should not be perimeter on full board")
+	testing.expect(t, !game.cell_is_pickable(&board, 2, 2), "centre should not be perimeter on full board")
 }
 
 @(test)
@@ -70,13 +70,13 @@ inner_cell_exposed_after_removal :: proc(t: ^testing.T) {
 	board := game.board_init()
 
 	// (1,1) is ring 1, not perimeter on full board
-	testing.expect(t, !game.cell_is_perimeter(&board, 1, 1), "(1,1) should not be perimeter initially")
+	testing.expect(t, !game.cell_is_pickable(&board, 1, 1), "(1,1) should not be perimeter initially")
 
 	// Remove its outer neighbour at (0,1)
-	game.board_remove(&board, 0, 1)
+	game.board_remove_die(&board, 0, 1)
 
 	// Now (1,1) should be perimeter because (0,1) is empty
-	testing.expect(t, game.cell_is_perimeter(&board, 1, 1), "(1,1) should be perimeter after removing (0,1)")
+	testing.expect(t, game.cell_is_pickable(&board, 1, 1), "(1,1) should be perimeter after removing (0,1)")
 }
 
 @(test)
@@ -84,7 +84,7 @@ cannot_remove_non_perimeter :: proc(t: ^testing.T) {
 	board := game.board_init()
 
 	// Centre cell is not perimeter, removal should fail
-	_, ok := game.board_remove(&board, 2, 2)
+	_, ok := game.board_remove_die(&board, 2, 2)
 	testing.expect(t, !ok, "should not be able to remove non-perimeter cell")
 	testing.expect(t, board.cells[2][2].occupied, "centre cell should still be occupied")
 }
@@ -94,7 +94,7 @@ remove_returns_die_type :: proc(t: ^testing.T) {
 	board := game.board_init()
 
 	expected_type := board.cells[0][0].die_type
-	got_type, ok := game.board_remove(&board, 0, 0)
+	got_type, ok := game.board_remove_die(&board, 0, 0)
 
 	testing.expect(t, ok, "corner removal should succeed")
 	testing.expect_value(t, got_type, expected_type)
@@ -105,11 +105,11 @@ remove_returns_die_type :: proc(t: ^testing.T) {
 board_count_decreases_on_removal :: proc(t: ^testing.T) {
 	board := game.board_init()
 
-	initial := game.board_count(&board)
+	initial := game.board_count_dice(&board)
 	testing.expect_value(t, initial, game.BOARD_SIZE * game.BOARD_SIZE)
 
-	game.board_remove(&board, 0, 0)
-	testing.expect_value(t, game.board_count(&board), initial - 1)
+	game.board_remove_die(&board, 0, 0)
+	testing.expect_value(t, game.board_count_dice(&board), initial - 1)
 }
 
 // --- Rarity gradient ---

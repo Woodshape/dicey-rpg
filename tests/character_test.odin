@@ -120,11 +120,11 @@ character_accepts_new_type_after_clearing :: proc(t: ^testing.T) {
 character_assigned_type_tracks_correctly :: proc(t: ^testing.T) {
 	ch := game.character_create("Test", .Common, {hp = 20, max_hp = 20, attack = 3, defense = 1})
 
-	_, has_type := game.character_assigned_die_type(&ch)
+	_, has_type := game.character_assigned_normal_die_type(&ch)
 	testing.expect(t, !has_type, "empty character should have no assigned type")
 
 	game.character_assign_die(&ch, .D8)
-	dt, ok := game.character_assigned_die_type(&ch)
+	dt, ok := game.character_assigned_normal_die_type(&ch)
 	testing.expect(t, ok, "should have assigned type after assignment")
 	testing.expect_value(t, dt, game.Die_Type.D8)
 }
