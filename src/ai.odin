@@ -88,8 +88,12 @@ ai_assign_from_hand :: proc(gs: ^Game_State) {
 
 // Decide whether the enemy should roll and which character.
 // Only rolls if the character has >= 2 normal (non-skull) dice assigned, OR is completely full.
+// Also rolls if there are no useful dice left to pick (prevents infinite skipping).
 // Returns (should_roll, char_index).
 ai_should_roll :: proc(gs: ^Game_State) -> (bool, int) {
+	// Check if any useful dice can be picked from the board
+	_, _, has_useful_pick := ai_pick_best_die(gs)
+
 	for ci in 0 ..< gs.enemy_party.count {
 		ch := &gs.enemy_party.characters[ci]
 		if ch.stats.hp <= 0 || ch.assigned_count <= 0 {continue}
@@ -107,8 +111,8 @@ ai_should_roll :: proc(gs: ^Game_State) -> (bool, int) {
 			}
 		}
 
-		// Roll if at least 2 normal dice and nothing left to pick
-		if normal_count >= 2 && !can_pick(gs, &gs.enemy_hand) {
+		// Roll if at least 2 normal dice and nothing useful to pick
+		if normal_count >= 2 && !has_useful_pick {
 			return true, ci
 		}
 	}
