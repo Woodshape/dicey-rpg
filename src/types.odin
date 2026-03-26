@@ -168,8 +168,8 @@ Character_Stats :: struct {
 // 3. passive          — always active, no roll trigger (placeholder for now)
 
 Ability_Scaling :: enum u8 {
-	Match,  // scales with [MATCHES]
-	Value,  // scales with [VALUE]
+	Match, // scales with [MATCHES]
+	Value, // scales with [VALUE]
 	Hybrid, // uses both [MATCHES] and [VALUE]
 }
 
@@ -184,32 +184,32 @@ Ability_Describe :: #type proc(roll: ^Roll_Result) -> cstring
 Ability :: struct {
 	name:        cstring,
 	scaling:     Ability_Scaling,
-	min_matches: int,            // minimum [MATCHES] required to trigger (0 = always fires)
+	min_matches: int, // minimum [MATCHES] required to trigger (0 = always fires)
 	effect:      Ability_Effect,
 	describe:    Ability_Describe,
 }
 
 Character :: struct {
-	state:          Character_State,
-	name:           cstring,
-	rarity:         Character_Rarity,
-	max_dice:       int,
-	stats:          Character_Stats,
+	state:           Character_State,
+	name:            cstring,
+	rarity:          Character_Rarity,
+	max_dice:        int,
+	stats:           Character_Stats,
 	// Dice
-	assigned:       [MAX_CHARACTER_DICE]Die_Type,
-	assigned_count: int,
+	assigned:        [MAX_CHARACTER_DICE]Die_Type,
+	assigned_count:  int,
 	// Roll state
-	has_rolled:     bool,
-	roll:           Roll_Result,
+	has_rolled:      bool,
+	roll:            Roll_Result,
 	// Abilities (1 main + 1 resolve + 1 passive)
-	ability:          Ability,
-	resolve_ability:  Ability,
+	ability:         Ability,
+	resolve_ability: Ability,
 	// passive: Ability,  // TODO: wire passive system
-	resolve:          int,
-	resolve_max:      int,
+	resolve:         int,
+	resolve_max:     int,
 	// Roll resolution results (for UI)
-	ability_fired:    bool,
-	resolve_fired:    bool,
+	ability_fired:   bool,
+	resolve_fired:   bool,
 }
 
 // Check if a character slot is active (alive and present)
@@ -236,8 +236,8 @@ Turn_Phase :: enum u8 {
 }
 
 // Combat log
-MAX_LOG_ENTRIES :: 12
-MAX_LOG_LENGTH  :: 128
+MAX_LOG_ENTRIES :: 10
+MAX_LOG_LENGTH :: 128
 
 Log_Entry :: struct {
 	text:  [MAX_LOG_LENGTH]u8,
@@ -248,8 +248,8 @@ Log_Entry :: struct {
 Combat_Log :: struct {
 	entries:      [MAX_LOG_ENTRIES]Log_Entry,
 	count:        int,
-	head:         int,  // ring buffer write position
-	game_number:  int,  // increments on each Play Again
+	head:         int, // ring buffer write position
+	game_number:  int, // increments on each Play Again
 	file_enabled: bool, // only true when running the actual game (not tests)
 }
 
