@@ -38,23 +38,24 @@ ai_assigns_compatible_from_hand :: proc(t: ^testing.T) {
 
 	game.ai_assign_from_hand(&gs)
 
-	testing.expect_value(t, gs.enemy.assigned_count, 1)
-	testing.expect_value(t, gs.enemy.assigned[0], game.Die_Type.D6)
+	testing.expect_value(t, gs.enemy_party.characters[0].assigned_count, 1)
+	testing.expect_value(t, gs.enemy_party.characters[0].assigned[0], game.Die_Type.D6)
 	testing.expect_value(t, gs.enemy_hand.count, 0)
 }
 
 @(test)
 ai_does_not_assign_incompatible :: proc(t: ^testing.T) {
 	gs := game.game_init()
-	// Commit enemy to D6
-	game.character_assign_die(&gs.enemy, .D6)
-	// Put a D8 in hand (incompatible)
+	// Commit all enemy characters to D6
+	for i in 0 ..< gs.enemy_party.count {
+		game.character_assign_die(&gs.enemy_party.characters[i], .D6)
+	}
+	// Put a D8 in hand (incompatible with all enemies)
 	game.hand_add(&gs.enemy_hand, .D8)
 
 	game.ai_assign_from_hand(&gs)
 
-	// D8 should stay in hand
-	testing.expect_value(t, gs.enemy.assigned_count, 1)
+	// D8 should stay in hand — no enemy can accept it
 	testing.expect_value(t, gs.enemy_hand.count, 1)
 }
 
@@ -65,16 +66,18 @@ ai_rolls_when_character_full :: proc(t: ^testing.T) {
 	gs := game.game_init()
 	// Fill all 3 slots (Common = 3 max)
 	for _ in 0 ..< 3 {
-		game.character_assign_die(&gs.enemy, .D6)
+		game.character_assign_die(&gs.enemy_party.characters[0], .D6)
 	}
 
-	testing.expect(t, game.ai_should_roll(&gs), "AI should roll when character is fully loaded")
+	should, _ := game.ai_should_roll(&gs)
+	testing.expect(t, should, "AI should roll when character is fully loaded")
 }
 
 @(test)
 ai_does_not_roll_empty_character :: proc(t: ^testing.T) {
 	gs := game.game_init()
-	testing.expect(t, !game.ai_should_roll(&gs), "AI should not roll with no assigned dice")
+	should, _ := game.ai_should_roll(&gs)
+	testing.expect(t, !should, "AI should not roll with no assigned dice")
 }
 
 // --- AI pick ---
