@@ -90,7 +90,7 @@ resolve_roll :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character) 
 
 	// Ability + resolve
 	if target != nil {
-		resolve_abilities(attacker, target)
+		resolve_abilities(gs, attacker, target)
 	}
 
 	// Log match info first
