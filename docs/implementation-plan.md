@@ -1,7 +1,7 @@
 # Dicey RPG - Implementation Plan
 
 **Status:** Draft
-**Last Updated:** 2026-03-25
+**Last Updated:** 2026-03-26
 **Language:** Odin
 **Renderer:** Raylib (vendor bundle)
 **Target Resolution:** 1280x720
@@ -111,18 +111,19 @@ Each milestone is independently testable. Later milestones build on earlier ones
 
 **Goal:** Skull dice appear on the board, can be assigned alongside normal dice, and deal damage using character stats.
 
-- [ ] Add Skull to Die_Type (exempt from pure type constraint)
-- [ ] Skull dice appear on the board (distributed across all rings)
-- [ ] Skull dice visually distinct (unique colour/icon)
-- [ ] Skull dice can be assigned alongside any normal die type on a character
-- [ ] Roll resolution: skull dice trigger N attacks at character's Attack stat, normal dice resolve for match patterns
-- [ ] Skull dice excluded from match detection and super meter
-- [ ] Character stats: HP, Attack, Defense (placeholder values)
-- [ ] Damage calculation: each skull die deals Attack - target Defense (min 0)
-- [ ] HP bars rendered, damage applied and visible
-- [ ] Tests: skull dice exempt from pure type, mixed roll resolution, damage calculation
+- [x] Add Skull to Die_Type (exempt from pure type constraint)
+- [x] Skull dice appear on the board (distributed across all rings, SKULL_CHANCE% per cell)
+- [x] Skull dice visually distinct (pale bone white colour)
+- [x] Skull dice can be assigned alongside any normal die type on a character
+- [x] Roll resolution: skull dice trigger per-hit attacks at character's Attack stat, normal dice resolve for match patterns
+- [x] Skull dice excluded from match detection and super meter
+- [x] Character stats: HP, Attack, Defense (Character_Stats struct)
+- [x] Damage calculation: each skull die individually deals max(Attack - target Defense, 0)
+- [x] HP bars rendered, damage applied and visible
+- [x] Tests: skull dice exempt from pure type, mixed roll resolution, damage calculation
+- [x] Per-hit skull damage loop (foundation for future on-hit triggers/passives)
 
-**Status:** Not Started
+**Status:** Done
 
 ---
 

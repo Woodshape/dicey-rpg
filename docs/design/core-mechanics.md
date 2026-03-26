@@ -1,7 +1,7 @@
 # Dicey RPG - Core Mechanics Design Document
 
 **Status:** Draft
-**Last Updated:** 2026-03-25
+**Last Updated:** 2026-03-26
 
 ---
 
@@ -368,10 +368,25 @@ Skull dice appear on the board alongside normal dice. They are the universal dam
 
 A character with 2 skull dice + 3 d8s rolls all 5 at once. Resolution:
 
-1. **Skull dice resolve first:** 2 skull dice = 2 attacks at the character's Attack stat.
+1. **Skull dice resolve first:** Each skull die triggers one separate attack at the character's Attack stat. 2 skulls = 2 individual hits, resolved one at a time.
 2. **Normal dice resolve second:** The 3 d8s are evaluated for match patterns and trigger abilities as normal.
 
 Both effects happen in the same roll — skull dice provide the damage floor, normal dice provide the ability ceiling.
+
+### Per-Hit Resolution (Important)
+
+Skull damage is applied **per-hit, not pooled**. Each skull die is a discrete attack that deals `max(Attack - target Defense, 0)` damage individually. This is mechanically identical to pooling for now, but the per-hit loop is the foundation for future trigger systems.
+
+**Design options this enables:**
+
+- **On-hit passives:** "Each time this character lands a hit, gain 1 super meter charge" or "Each hit has a 20% chance to apply Poison." These trigger once per skull die, not once per roll.
+- **On-hit-taken reactions:** Defensive abilities like "Each time this character takes a hit, reflect 1 damage back" or "Reduce damage by 1 per hit (stacking armor)." Multiple small hits interact differently with per-hit reduction than one big pooled hit.
+- **Hit-count scaling:** Abilities like "Deal bonus damage on the 3rd hit this turn." Skull dice hits count toward the threshold.
+- **Damage shields:** A shield that absorbs N damage total breaks differently against 3 separate hits of 2 vs 1 hit of 6. Per-hit resolution makes shields more interesting.
+- **Lifesteal per hit:** "Heal 1 HP per hit dealt" scales with skull count, not total damage.
+- **Status application:** "Each hit has a chance to Stun/Bleed/Burn." More skulls = more chances to proc, creating a reason to stack skulls beyond raw damage.
+
+The per-hit model means stacking many skull dice isn't just "more damage" — it's "more trigger opportunities." This gives skull-heavy builds a distinct identity from ability-focused builds even when total damage is similar.
 
 ### Board Placement
 
