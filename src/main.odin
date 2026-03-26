@@ -9,6 +9,7 @@ main :: proc() {
 	rl.SetTargetFPS(TARGET_FPS)
 
 	gs := game_init()
+	combat_log_init_file(&gs.log)
 
 	for !rl.WindowShouldClose() && gs.running {
 		game_update(&gs)
