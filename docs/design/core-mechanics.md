@@ -477,6 +477,8 @@ Character abilities scale from dice rolls (match patterns and values), but skull
 - **Multiple match groups:** If you roll a pair of 3s and a pair of 5s, can you trigger two abilities or must you choose one?
 - **Resolve Meter charge rate:** Flat per unmatched die? Scaled by die type? Scaled by rolled value?
 - **Enemy AI drafting:** How sophisticated should enemy drafting be? Should different enemy types have visible drafting preferences?
+- **AI type commitment:** The AI currently picks whatever scores highest this turn without planning ahead. It may give a character d4s one turn and d6s the next — only one type sticks due to the pure type rule, wasting picks. The AI should commit to a type per character early and stick with it, or at least prefer dice that match what's already assigned. This is especially important for ability synergy (e.g., a VALUE-scaling ability wants big dice, not d4s).
+- **AI ability awareness:** The AI doesn't consider which die types are good for which abilities. A Smite character (VALUE-scaling) should prefer d10/d12 for high [VALUE], while a Flurry character (MATCH-scaling) should prefer d4/d6 for reliable [MATCHES]. Scoring could factor in the character's ability scaling axis when evaluating die types.
 - **Die distribution on board:** Purely random, or weighted/seeded per encounter for balance?
 - **Disruption abilities:** How do status effects like Paralyze interact with loaded dice — do they stay, return to hand, or discard?
 - **Party death:** When a character dies, what happens to their assigned dice?
