@@ -171,7 +171,7 @@ match_value_higher_value_wins_tie :: proc(t: ^testing.T) {
 // --- Unmatched counting ---
 
 @(test)
-match_all_unmatched_feeds_super_meter :: proc(t: ^testing.T) {
+match_all_unmatched_feeds_resolve :: proc(t: ^testing.T) {
 	result := game.detect_match({1, 2, 3, 4, 5})
 	expect_counts_equal_total(t, result)
 	testing.expect_value(t, result.matched_count, 0)

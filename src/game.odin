@@ -20,11 +20,11 @@ Game_State :: struct {
 }
 
 game_init :: proc() -> Game_State {
-	return Game_State{
+	return Game_State {
 		running = true,
 		board   = board_init(),
-		player  = character_create("Warrior", .Common, Character_Stats{hp = 20, attack = 3, defense = 1}),
-		enemy   = character_create("Goblin",  .Common, Character_Stats{hp = 15, attack = 2, defense = 0}),
+		player  = warrior_create(),
+		enemy   = goblin_create(),
 	}
 }
 

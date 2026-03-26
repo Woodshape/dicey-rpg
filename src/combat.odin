@@ -27,6 +27,7 @@ player_turn_update :: proc(gs: ^Game_State) {
 		if gs.player.assigned_count > 0 && mouse_on_roll_button(mouse_x, mouse_y) {
 			character_roll(&gs.player)
 			apply_skull_damage(&gs.player, &gs.enemy)
+			resolve_abilities(&gs.player, &gs.enemy)
 			gs.turn = .Player_Roll_Result
 			return
 		}

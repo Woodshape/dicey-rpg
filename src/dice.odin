@@ -69,6 +69,9 @@ character_clear_roll :: proc(character: ^Character) {
 	for i in 0 ..< MAX_CHARACTER_DICE {
 		character.assigned[i] = {}
 	}
+	// Clear ability resolution state
+	character.ability_fired = false
+	character.resolve_fired = false
 }
 
 // Detect matches from rolled values. Returns [MATCHES], [VALUE], and per-die flags.

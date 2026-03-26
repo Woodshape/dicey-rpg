@@ -10,6 +10,7 @@ ai_take_turn :: proc(gs: ^Game_State) {
 	if ai_should_roll(gs) {
 		character_roll(&gs.enemy)
 		apply_skull_damage(&gs.enemy, &gs.player)
+		resolve_abilities(&gs.enemy, &gs.player)
 		gs.turn = .Enemy_Roll_Result
 		gs.turn_timer = 0
 		return

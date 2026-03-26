@@ -139,11 +139,12 @@ mouse_on_roll_button :: proc(mouse_x, mouse_y: i32) -> bool {
 }
 
 // Clear button: positioned generously below roll results area.
+// Extra space for ability result lines.
 clear_button_rect :: proc() -> rl.Rectangle {
 	btn := roll_button_rect()
 	return rl.Rectangle{
 		x      = btn.x,
-		y      = btn.y + 90,
+		y      = btn.y + 140,
 		width  = ROLL_BTN_WIDTH,
 		height = ROLL_BTN_HEIGHT,
 	}
@@ -171,8 +172,10 @@ character_draw_at :: proc(character: ^Character, panel_x, panel_y: i32, drag: ^D
 	// Stats
 	hp_str := fmt.ctprintf("HP  %d", character.stats.hp)
 	rl.DrawText(hp_str, panel_x, panel_y + 44, 14, rl.Color{100, 220, 100, 255})
-	atk_def_str := fmt.ctprintf("ATK %d   DEF %d", character.stats.attack, character.stats.defense)
-	rl.DrawText(atk_def_str, panel_x, panel_y + 60, 14, rl.Color{180, 180, 180, 255})
+	stats_str := fmt.ctprintf("ATK %d  DEF %d  RSV %d/%d",
+		character.stats.attack, character.stats.defense,
+		character.resolve, character.resolve_max)
+	rl.DrawText(stats_str, panel_x, panel_y + 60, 14, rl.Color{180, 180, 180, 255})
 
 	if character.has_rolled {
 		draw_rolled_dice_at(character, panel_x, panel_y, interactive)
@@ -300,9 +303,32 @@ draw_rolled_dice_at :: proc(character: ^Character, panel_x, panel_y: i32, intera
 	}
 
 	if roll.unmatched_count > 0 {
-		meter_str := fmt.ctprintf("Super: +%d", roll.unmatched_count)
+		meter_str := fmt.ctprintf("Resolve: +%d  (%d/%d)", roll.unmatched_count, character.resolve, character.resolve_max)
 		rl.DrawText(meter_str, panel_x, line, 14, rl.Color{150, 120, 220, 255})
 		line += 18
+	}
+
+	// Ability result
+	if character.ability_fired {
+		rl.DrawText(character.ability.name, panel_x, line, 14, rl.Color{100, 200, 255, 255})
+		line += 16
+		if character.ability.describe != nil {
+			desc := character.ability.describe(roll)
+			rl.DrawText(desc, panel_x + 8, line, 12, rl.Color{140, 180, 220, 255})
+			line += 14
+		}
+	}
+
+	// Resolve ability fired
+	if character.resolve_fired {
+		resolve_str := fmt.ctprintf("RESOLVE: %s!", character.resolve_ability.name)
+		rl.DrawText(resolve_str, panel_x, line, 14, rl.Color{255, 200, 50, 255})
+		line += 16
+		if character.resolve_ability.describe != nil {
+			desc := character.resolve_ability.describe(roll)
+			rl.DrawText(desc, panel_x + 8, line, 12, rl.Color{220, 180, 60, 255})
+			line += 14
+		}
 	}
 
 	// Clear button (player side only)

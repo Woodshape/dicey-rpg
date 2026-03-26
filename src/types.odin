@@ -155,6 +155,35 @@ Character_Stats :: struct {
 	defense: int,
 }
 
+// Abilities
+//
+// Each character has exactly 3 ability slots:
+// 1. ability          — main active, fires on roll if min_matches met
+// 2. resolve_ability  — fires when resolve meter is full, resets meter
+// 3. passive          — always active, no roll trigger (placeholder for now)
+
+Ability_Scaling :: enum u8 {
+	Match,  // scales with [MATCHES]
+	Value,  // scales with [VALUE]
+	Hybrid, // uses both [MATCHES] and [VALUE]
+}
+
+// Effect procedure: called when an ability fires.
+// Receives the full Roll_Result so effects can use any roll data.
+Ability_Effect :: #type proc(attacker: ^Character, target: ^Character, roll: ^Roll_Result)
+
+// Description procedure: returns a formatted string for UI display after firing.
+// Uses ctprintf internally — the returned cstring is temporary (valid for one frame).
+Ability_Describe :: #type proc(roll: ^Roll_Result) -> cstring
+
+Ability :: struct {
+	name:        cstring,
+	scaling:     Ability_Scaling,
+	min_matches: int,            // minimum [MATCHES] required to trigger (0 = always fires)
+	effect:      Ability_Effect,
+	describe:    Ability_Describe,
+}
+
 Character :: struct {
 	state:          Character_State,
 	name:           cstring,
@@ -167,6 +196,15 @@ Character :: struct {
 	// Roll state
 	has_rolled:     bool,
 	roll:           Roll_Result,
+	// Abilities (1 main + 1 resolve + 1 passive)
+	ability:          Ability,
+	resolve_ability:  Ability,
+	// passive: Ability,  // TODO: wire passive system
+	resolve:          int,
+	resolve_max:      int,
+	// Roll resolution results (for UI)
+	ability_fired:    bool,
+	resolve_fired:    bool,
 }
 
 // Check if a character slot is active (alive and present)
