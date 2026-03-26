@@ -29,18 +29,16 @@ The fewer faces a die has, the more likely it is to match other dice in a hand, 
 
 ## Character Rarity & Dice Slots
 
-Each character has a rarity that determines how many dice can be assigned to them at once. This directly gates which match patterns are achievable.
+Each character has a rarity that determines how many dice can be assigned to them at once. More dice = higher potential [MATCHES], which directly scales ability power.
 
-| Rarity    | Max Dice | Patterns Unlocked |
-|-----------|----------|-------------------|
-| Common    | 3        | Pair, Three of a Kind |
-| Rare      | 4        | + Two Pairs, Four of a Kind |
-| Epic      | 5        | + Full House, Five of a Kind |
-| Legendary | 6        | No new patterns — higher rarity just improves the probability of existing patterns |
+| Rarity    | Max Dice | Max [MATCHES] |
+|-----------|----------|---------------|
+| Common    | 3        | 3             |
+| Rare      | 4        | 4             |
+| Epic      | 5        | 5             |
+| Legendary | 6        | 6             |
 
-Match patterns are defined up to Five of a Kind. More dice do not unlock new patterns; they increase the odds of achieving stronger ones. A legendary character rolling 6 dice where all show the same value still resolves as Five of a Kind.
-
-Note: Three of a Kind requires only 3 dice, so Common characters can achieve it. Two Pairs requires a minimum of 4 dice (2+2), making it Rare+. Full House requires 5 (3+2), making it Epic+.
+Higher rarity doesn't unlock qualitatively new mechanics — it raises the ceiling on [MATCHES], making abilities hit harder or more often.
 
 Additional rarities can be slotted between or beyond these tiers as the design evolves.
 
@@ -111,102 +109,110 @@ Actions alternate between player and enemy. Building up a character telegraphs y
 
 ---
 
-## Core Resolution: The Two Axes
+## Core Resolution: [MATCHES] and [VALUE]
 
-After rolling, results are evaluated on two independent axes:
+After rolling, results are evaluated on two simple, independent axes that feed directly into ability formulas. No pattern lookup tables, no magic values — just two numbers read straight from the roll result.
 
-### Axis 1: Match Pattern (Breadth)
+### [MATCHES] — How many dice hit (Breadth)
 
-The match pattern formed by the rolled dice assigned to a character, using poker-style naming. The number of dice a character can hold (rarity) determines which patterns are reachable.
+**[MATCHES]** = the count of dice whose rolled value appears at least twice. Any die that shares its value with at least one other die is "matched."
 
-| Match Pattern    | Description              | Trigger Level | Min Rarity |
-|------------------|--------------------------|---------------|------------|
-| Pair             | 2-of-a-kind              | Basic         | Common     |
-| Three of a Kind  | 3-of-a-kind              | Strong        | Common     |
-| Two Pairs        | 2+2 (needs 4 dice)       | Moderate      | Rare       |
-| Four of a Kind   | 4-of-a-kind              | Powerful      | Rare       |
-| Full House       | 3+2 (needs 5 dice)       | Strong+       | Epic       |
-| Five of a Kind   | All 5 match              | Epic          | Epic       |
-Note: Three of a Kind is achievable by Common characters (3 dice). Two Pairs requires 4 dice minimum despite being a "lower" pattern — a common character can get a triple but never two pairs.
+- Roll `[3, 7, 3, 11, 5]` → [MATCHES] = 2 (the two 3s)
+- Roll `[4, 4, 4, 2, 1]` → [MATCHES] = 3 (three 4s)
+- Roll `[3, 3, 5, 5, 1]` → [MATCHES] = 4 (two 3s + two 5s, all four count)
+- Roll `[6, 6, 6, 6, 6]` → [MATCHES] = 5
+- Roll `[2, 5, 8, 11, 1]` → [MATCHES] = 0
 
-The highest pattern determines the trigger level. Secondary groups in the same roll may also contribute depending on the ability.
+Multiple match groups are additive — rolling two separate pairs gives [MATCHES] = 4, same as four of a kind. The system doesn't distinguish between group shapes. This is intentional: abilities scale on the raw count, not on an abstract pattern tier.
 
-**Any match probability — pure same-type hand by rarity:**
+**Rarity gates [MATCHES] directly:** A Common character (3 dice) caps at [MATCHES] = 3. A Legendary character (6 dice) can reach [MATCHES] = 6. More dice = more chances to match = higher [MATCHES].
 
-| Die | Common (3 dice) | Rare (4 dice) | Epic (5 dice) | Legendary (6 dice) |
-|-----|-----------------|---------------|---------------|---------------------|
-| d4  | 62.5%           | 90.6%         | **100%**      | **100%**            |
-| d6  | 44.4%           | 72.2%         | 90.7%         | 98.5%               |
-| d8  | 34.4%           | 59.0%         | 79.5%         | 92.3%               |
-| d10 | 28.0%           | 49.6%         | 69.8%         | 84.9%               |
-| d12 | 23.6%           | 42.7%         | 61.8%         | 77.7%               |
+### [VALUE] — How hard they hit (Depth)
 
-Higher rarity consistently improves match odds across all die types. The gain is most dramatic at lower rarities — going Common→Rare with d12s roughly doubles your match rate (23.6%→42.7%). Rare→Epic and Epic→Legendary still help but with diminishing returns.
+**[VALUE]** = the face value of the best match group (highest frequency, tie-broken by higher value).
 
-**Detailed breakdown — Common (3 dice):**
+- Roll `[3, 7, 3, 11, 5]` → [VALUE] = 3 (the pair of 3s)
+- Roll `[3, 3, 5, 5, 1]` → [VALUE] = 5 (both pairs have freq 2, higher value wins)
+- Roll `[4, 4, 4, 2, 1]` → [VALUE] = 4
 
-| Die | No Match | Pair  | Three of a Kind |
-|-----|----------|-------|-----------------|
-| d4  | 37.5%    | 56.3% | 6.3%            |
-| d6  | 55.6%    | 41.7% | 2.8%            |
-| d8  | 65.6%    | 32.8% | 1.6%            |
-| d10 | 72.0%    | 27.0% | 1.0%            |
-| d12 | 76.4%    | 22.9% | 0.7%            |
+Due to fair die symmetry, [VALUE] is uniformly distributed — but the ceiling scales with die size:
 
-**Detailed breakdown — Rare (4 dice):**
-
-| Die | No Match | Pair  | Two Pairs | Three of a Kind | Four of a Kind |
-|-----|----------|-------|-----------|-----------------|----------------|
-| d4  | 9.4%     | 56.3% | 14.1%     | 18.8%           | 1.6%           |
-| d6  | 27.8%    | 55.6% | 6.9%      | 9.3%            | 0.5%           |
-| d8  | 41.0%    | 49.2% | 4.1%      | 5.5%            | 0.2%           |
-| d10 | 50.4%    | 43.2% | 2.7%      | 3.6%            | 0.1%           |
-| d12 | 57.3%    | 38.2% | 1.9%      | 2.5%            | 0.06%          |
-
-**Detailed breakdown — Epic (5 dice):**
-
-| Die | No Match | Pair  | Two Pairs | Three of a Kind | Full House | Four of a Kind | Five of a Kind |
-|-----|----------|-------|-----------|-----------------|------------|----------------|----------------|
-| d4  | 0%       | 23.4% | 35.2%     | 23.4%           | 11.7%      | 5.9%           | 0.4%           |
-| d6  | 9.3%     | 46.3% | 23.1%     | 15.4%           | 3.9%       | 1.9%           | 0.1%           |
-| d8  | 20.5%    | 51.3% | 15.4%     | 10.3%           | 1.7%       | 0.85%          | 0.02%          |
-| d10 | 30.2%    | 50.4% | 10.8%     | 7.2%            | 0.9%       | 0.45%          | 0.01%          |
-| d12 | 38.2%    | 47.7% | 8.0%      | 5.3%            | 0.53%      | 0.27%          | 0.005%         |
-
-**Detailed breakdown — Legendary (6 dice):**
-
-Three Pairs rolls up into Two Pairs (best evaluable pattern). Double Triple rolls up into Full House.
-
-| Die | No Match | Pair  | Two Pairs | Three of a Kind | Full House | Four of a Kind | Five of a Kind |
-|-----|----------|-------|-----------|-----------------|------------|----------------|----------------|
-| d4  | 0%       | 0%    | 35.2%     | 11.7%           | 38.1%      | 13.2%          | 1.9%           |
-| d6  | 1.5%     | 23.1% | 38.6%     | 15.4%           | 16.1%      | 4.8%           | 0.4%           |
-| d8  | 7.7%     | 38.5% | 30.8%     | 12.8%           | 7.9%       | 2.2%           | 0.1%           |
-| d10 | 15.1%    | 45.4% | 23.8%     | 10.1%           | 4.4%       | 1.2%           | 0.06%          |
-| d12 | 22.3%    | 47.8% | 18.6%     | 8.0%            | 2.7%       | 0.7%           | 0.03%          |
-
-### Axis 2: Matched Value (Depth)
-
-The face value shown on the matching dice. Due to fair die symmetry, value is uniformly distributed — but the ceiling scales with die size.
-
-| Die | Avg matched value | Max matched value |
-|-----|-------------------|-------------------|
-| d4  | 2.5               | 4                 |
-| d6  | 3.5               | 6                 |
-| d8  | 4.5               | 8                 |
-| d10 | 5.5               | 10                |
-| d12 | 6.5               | 12                |
+| Die | Avg [VALUE] | Max [VALUE] |
+|-----|-------------|-------------|
+| d4  | 2.5         | 4           |
+| d6  | 3.5         | 6           |
+| d8  | 4.5         | 8           |
+| d10 | 5.5         | 10          |
+| d12 | 6.5         | 12          |
 
 ### Combined Effect
 
-An ability's total impact is a function of both axes:
+Abilities use [MATCHES] and [VALUE] directly in their formulas:
 
-- `Three of a Kind with d4s showing 3` = Strong trigger, potency 3 (reliable but capped)
-- `Pair with d12s showing 11` = Basic trigger, potency 11 (rare but devastating)
-- `Full House with d6s showing 5` = Powerful trigger, potency 5 (the sweet spot)
-- `Two Pairs with d4s showing 2 and 4` = Moderate trigger, two active potencies
+- `3 d4s, roll [3, 3, 3]` → [MATCHES]=3, [VALUE]=3 — reliable, capped low
+- `3 d12s, roll [11, 11, 5]` → [MATCHES]=2, [VALUE]=11 — risky, devastating when it hits
+- `5 d6s, roll [4, 4, 2, 2, 5]` → [MATCHES]=4, [VALUE]=4 — good breadth from two pairs
+- `5 d4s, roll [2, 2, 2, 4, 4]` → [MATCHES]=5, [VALUE]=2 — maximum breadth, low depth
 
-This means there is no single "best" drafting strategy. The optimal hand depends on your class, abilities, and the current situation.
+There is no single "best" drafting strategy. Small dice give high [MATCHES] (consistency); big dice give high [VALUE] (power ceiling). The optimal draft depends on the character's abilities and the current situation.
+
+### Why not named patterns?
+
+Earlier designs used poker-style pattern names (Pair, Two Pairs, Full House, etc.) as trigger levels for abilities. This was dropped because:
+
+- **No clean mapping to ability effects.** "Deal [MATCHES] damage to all enemies" makes immediate sense. "Deal Full-House-tier damage" requires a lookup table to understand.
+- **Two Pairs and Full House have no distinct design space.** Two Pairs (2+2) is just [MATCHES]=4 — mechanically identical to Four of a Kind for ability purposes. Full House (3+2) is just [MATCHES]=5. The pattern shape doesn't matter if abilities only read the count.
+- **Simpler for players.** "You matched 4 dice showing 5" is instantly readable. No need to learn which pattern names map to which power tiers.
+
+The system still detects the largest single group for [VALUE] resolution. If multiple groups exist, all matched dice count toward [MATCHES], and [VALUE] takes the best group.
+
+### Match probability — any match by rarity (pure same-type hand)
+
+| Die | Common (3) | Rare (4) | Epic (5) | Legendary (6) |
+|-----|------------|----------|----------|----------------|
+| d4  | 62.5%      | 90.6%    | **100%** | **100%**       |
+| d6  | 44.4%      | 72.2%    | 90.7%    | 98.5%          |
+| d8  | 34.4%      | 59.0%    | 79.5%    | 92.3%          |
+| d10 | 28.0%      | 49.6%    | 69.8%    | 84.9%          |
+| d12 | 23.6%      | 42.7%    | 61.8%    | 77.7%          |
+
+Higher rarity consistently improves match odds. The gain is most dramatic at lower rarities — Common→Rare with d12s roughly doubles the match rate (23.6%→42.7%).
+
+### [MATCHES] distribution by rarity
+
+**Common (3 dice):**
+
+| Die | [MATCHES]=0 | [MATCHES]=2 | [MATCHES]=3 |
+|-----|-------------|-------------|-------------|
+| d4  | 37.5%       | 56.3%       | 6.3%        |
+| d6  | 55.6%       | 41.7%       | 2.8%        |
+| d8  | 65.6%       | 32.8%       | 1.6%        |
+| d10 | 72.0%       | 27.0%       | 1.0%        |
+| d12 | 76.4%       | 22.9%       | 0.7%        |
+
+**Rare (4 dice):**
+
+| Die | [MATCHES]=0 | [MATCHES]=2 | [MATCHES]=3 | [MATCHES]=4 |
+|-----|-------------|-------------|-------------|-------------|
+| d4  | 9.4%        | 56.3%       | 18.8%       | 15.7%       |
+| d6  | 27.8%       | 55.6%       | 9.3%        | 7.4%        |
+| d8  | 41.0%       | 49.2%       | 5.5%        | 4.3%        |
+| d10 | 50.4%       | 43.2%       | 3.6%        | 2.8%        |
+| d12 | 57.3%       | 38.2%       | 2.5%        | 2.0%        |
+
+Note: [MATCHES]=4 includes both two-pair shapes (2+2) and four-of-a-kind shapes. The system doesn't distinguish — both give the same [MATCHES] value to abilities.
+
+**Epic (5 dice):**
+
+| Die | [MATCHES]=0 | [MATCHES]=2 | [MATCHES]=3 | [MATCHES]=4 | [MATCHES]=5 |
+|-----|-------------|-------------|-------------|-------------|-------------|
+| d4  | 0%          | 23.4%       | 23.4%       | 41.1%       | 12.1%       |
+| d6  | 9.3%        | 46.3%       | 15.4%       | 25.0%       | 4.0%        |
+| d8  | 20.5%       | 51.3%       | 10.3%       | 16.2%       | 1.7%        |
+| d10 | 30.2%       | 50.4%       | 7.2%        | 11.2%       | 0.9%        |
+| d12 | 38.2%       | 47.7%       | 5.3%        | 8.3%        | 0.5%        |
+
+Note: [MATCHES]=4 includes two-pair (2+2) and four-of-a-kind shapes. [MATCHES]=5 includes full-house (3+2) and five-of-a-kind shapes.
 
 ---
 
@@ -251,32 +257,32 @@ d12 builds miss ~38% of rolls entirely and charge the meter roughly 2× faster t
 
 ## Ability System
 
-Abilities are categorized by which axis they scale from.
+Abilities use [MATCHES] and [VALUE] directly in their formulas. No pattern-to-tier mapping — the roll result plugs straight into the effect.
 
-### Match-Scaling Abilities (Favor Consistent Dice)
+### [MATCHES]-Scaling Abilities (Favor Consistent Dice)
 
-| Ability        | Effect |
-|----------------|--------|
-| Flurry         | Each match tier adds another hit. Low damage per hit, stacks up. |
-| Shield Wall    | Block points = number of matching dice. More matches = thicker wall. |
-| Chain Lightning| Jumps to additional enemies per match tier. |
-| Poison         | Applies stacks equal to match count. Ticks over time. |
+| Ability        | Formula | Example (3 d4s, [MATCHES]=3, [VALUE]=2) |
+|----------------|---------|------------------------------------------|
+| Flurry         | Deal 1 damage [MATCHES] times | 3 hits of 1 damage |
+| Shield Wall    | Block [MATCHES] damage from next attack | Block 3 damage |
+| Chain Lightning| Hit [MATCHES] enemies for base damage | Hit 3 enemies |
+| Poison         | Apply [MATCHES] poison stacks | 3 stacks, ticking over time |
 
-### Value-Scaling Abilities (Favor Big Dice)
+### [VALUE]-Scaling Abilities (Favor Big Dice)
 
-| Ability     | Effect |
-|-------------|--------|
-| Smite       | Raw damage = highest matched value. One big hit. |
-| Heal        | Restore HP equal to matched value. |
-| Pierce      | Ignore armor up to the matched value. High value bypasses tanks. |
-| Intimidate  | Debuff enemy if value exceeds a threshold. |
+| Ability     | Formula | Example (3 d12s, [MATCHES]=2, [VALUE]=11) |
+|-------------|---------|---------------------------------------------|
+| Smite       | Deal [VALUE] damage | 11 damage |
+| Heal        | Restore [VALUE] HP | Heal 11 HP |
+| Pierce      | Ignore [VALUE] armor on next attack | Ignore 11 armor |
+| Intimidate  | Debuff enemy if [VALUE] >= threshold | 11 vs threshold |
 
 ### Hybrid Abilities (Reward Both Axes)
 
-| Ability         | Effect |
-|-----------------|--------|
-| Fireball        | Damage = matches x value. Dream ability, costly to unlock. |
-| Vampiric Strike | Deal damage = value, heal = match count. Split scaling. |
+| Ability         | Formula | Example (5 d6s, [MATCHES]=4, [VALUE]=5) |
+|-----------------|---------|-------------------------------------------|
+| Fireball        | Deal [MATCHES] x [VALUE] damage | 4 x 5 = 20 damage |
+| Vampiric Strike | Deal [VALUE] damage, heal [MATCHES] HP | 5 damage, heal 4 HP |
 
 ---
 
@@ -301,9 +307,9 @@ Classes are defined by their preferred axis, giving each class a distinct drafti
 
 | Class   | Preferred Axis | Drafting Style | Fantasy |
 |---------|---------------|----------------|---------|
-| Rogue   | Matches       | Commits to d4s for reliable pairs and triples. | Death by a thousand cuts |
-| Paladin | Value         | Commits to d12s. Waits for the one devastating hit. | Single righteous blow |
-| Wizard  | Hybrid        | Reads the board and commits to whatever die type maximises their specific abilities. High skill ceiling. | Calculated devastation |
+| Rogue   | [MATCHES]     | Commits to d4s for reliable high [MATCHES]. | Death by a thousand cuts |
+| Paladin | [VALUE]       | Commits to d12s. Waits for the one devastating [VALUE]. | Single righteous blow |
+| Wizard  | Hybrid        | Reads the board and commits to whatever die type maximises [MATCHES] x [VALUE]. High skill ceiling. | Calculated devastation |
 | Bard    | Manipulation  | Uses Split/Empower to reshape hand routing mid-turn. Forces matches on bigger dice. | Bends luck itself |
 
 ---
@@ -312,38 +318,40 @@ Classes are defined by their preferred axis, giving each class a distinct drafti
 
 ### Hand A: 5×d4 — "The Grinder"
 Roll: `[2, 3, 2, 4, 2]`
-- **Three of a Kind (2s)** → Strong trigger, potency 2
-- **Two unmatched dice** (3 and 4) → feed super meter
-- Probability of this pattern: 23.4%
-- This build almost always fires something; the low ceiling is the tradeoff.
+- **[MATCHES]=3, [VALUE]=2** — three 2s matched, two unmatched
+- Flurry (match-scaling): 3 hits of 1 damage
+- Fireball (hybrid): 3 x 2 = 6 damage
+- 2 unmatched dice → super meter charge
+- This build almost always fires something; the low [VALUE] ceiling is the tradeoff.
 
 ### Hand B: 5×d12 — "The Gambler"
 Roll: `[7, 3, 11, 3, 9]`
-- **Pair (3s)** → Basic trigger, potency 3 (underwhelming)
-- **Three unmatched dice** (7, 11, 9) → solid super meter charge
-- Probability of this pattern: 47.7%
+- **[MATCHES]=2, [VALUE]=3** — pair of 3s, three unmatched
+- Smite (value-scaling): 3 damage (underwhelming)
+- 3 unmatched dice → solid super meter charge
 
 Roll: `[9, 9, 9, 2, 7]`
-- **Three of a Kind (9s)** → Strong trigger, potency 9 *(this is what you're chasing)*
-- **Two unmatched dice** (2 and 7) → still some meter charge
-- Probability of three of a kind or better: ~6.1%
+- **[MATCHES]=3, [VALUE]=9** — *(this is what you're chasing)*
+- Smite: 9 damage. Fireball: 3 x 9 = 27 damage.
+- 2 unmatched dice → still some meter charge
+- Probability of [MATCHES]>=3: ~6.1%
 
 ### Hand C: Party Split — "Divide and Conquer"
 Hand contains: `[d4, d4, d12, d12, d12]`
 - 2×d4 assigned to Rogue (Common, 2/3 slots filled — waiting for one more d4)
-- 3×d12 assigned to Paladin (Rare, 3/4 slots filled — one more d12 would unlock Two Pairs or Four of a Kind)
+- 3×d12 assigned to Paladin (Rare, 3/4 slots filled — one more d12 would push [MATCHES] higher)
 - Hand is empty: next pick must choose between grabbing a d4 for the Rogue or a d12 for the Paladin
 - Opponent sees the assignment on both characters and knows what types to deny
 
 ### Hand C roll — Rogue fires first:
 Roll: `[3, 3]` *(only 2 d4s assigned)*
-- **Pair (3s)** → Basic trigger, potency 3
+- **[MATCHES]=2, [VALUE]=3** — Flurry: 2 hits. Heal: 3 HP.
 - No unmatched dice
 
 ### Hand C roll — Paladin fires next turn:
 Roll: `[11, 11, 3]` *(3 d12s assigned)*
-- **Pair (11s)** → Basic trigger, potency 11 (high-value hit)
-- **One unmatched die** (3) → charges Paladin's super meter
+- **[MATCHES]=2, [VALUE]=11** — Smite: 11 damage.
+- 1 unmatched die → charges Paladin's super meter
 
 ---
 

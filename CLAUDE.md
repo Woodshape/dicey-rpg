@@ -61,9 +61,9 @@ Follow these strictly across all source files:
 ### Naming
 
 - **snake_case** for variables, procedure names, and parameters: `roll_dice`, `match_result`, `board_size`
-- **Pascal_Case** for types and structs: `Game_State`, `Die_Type`, `Match_Pattern`, `Board_Cell`
+- **Pascal_Case** for types and structs: `Game_State`, `Die_Type`, `Board_Cell`
 - **SCREAMING_CASE** for constants: `MAX_HAND_SIZE`, `BOARD_WIDTH`
-- Enum values use Pascal_Case: `Die_Type.D4`, `Match_Pattern.Full_House`
+- Enum values use Pascal_Case: `Die_Type.D4`, `Character_Rarity.Epic`
 - Keep names descriptive but concise. Avoid abbreviations except widely understood ones (HP, AI, UI).
 
 ### Procedures
@@ -128,8 +128,8 @@ import "core:testing"
 @(test)
 match_pair :: proc(t: ^testing.T) {
     result := detect_match({3, 7, 3, 11, 5})
-    testing.expect_value(t, result.pattern, Match_Pattern.Pair)
     testing.expect_value(t, result.matched_value, 3)
+    testing.expect_value(t, result.matched_count, 2)
     testing.expect_value(t, result.unmatched_count, 3)
 }
 ```
@@ -174,8 +174,8 @@ The game design document at `docs/design/core-mechanics.md` is the **source of t
 - **Board:** Square grid, perimeter-only picks, rarity gradient (outer=d4/d6, middle=d8/d10, centre=d12)
 - **Hand:** Max 5 dice. Free assignment to characters. Pure die type per character.
 - **Character rarity:** Common=3 slots, Rare=4, Epic=5, Legendary=6
-- **Match patterns:** Pair, Three of a Kind, Two Pairs, Four of a Kind, Full House, Five of a Kind
-- **Two axes:** Match pattern (breadth) and matched value (depth)
+- **Two axes:** [MATCHES] (count of matched dice, breadth) and [VALUE] (face value of best group, depth). No named pattern tiers — abilities use these numbers directly.
+- **No Two Pairs or Full House** as distinct patterns. Multiple match groups just add to [MATCHES]. [VALUE] takes the best group.
 - **Unmatched dice** charge the character's super meter
 - **Actions:** Pick (costs turn), Assign (free, drag-and-drop), Roll (costs turn)
 - **Dice movement:** Drag board→hand, board→character, hand→character, character→hand. All via drag-and-drop.
