@@ -162,13 +162,13 @@ Each milestone is independently testable. Later milestones build on earlier ones
 
 **Goal:** A complete game can be played from start to finish.
 
-- [ ] Full combat loop: board fills -> draft/roll alternation -> abilities resolve -> HP changes -> win/lose check
-- [ ] Board refill (placeholder timing: refill when empty or below threshold)
-- [ ] Victory screen
-- [ ] Defeat screen
-- [ ] "Play again" restart option
+- [x] Full combat loop: board fills -> draft/roll alternation -> abilities resolve -> HP changes -> win/lose check
+- [x] Board refill (placeholder timing: refill when empty or below threshold)
+- [x] Victory screen
+- [x] Defeat screen
+- [x] "Play again" restart option
 
-**Status:** Not Started
+**Status:** Done
 
 ---
 
