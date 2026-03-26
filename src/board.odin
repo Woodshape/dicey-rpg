@@ -8,31 +8,41 @@ cell_ring :: proc(board: ^Board, row, col: int) -> int {
 	return min(row, col, board.size - 1 - row, board.size - 1 - col)
 }
 
-// Determine die type for a given ring based on rarity gradient.
+// Determine die type for a non-centre ring based on rarity gradient.
 // Any cell has a SKULL_CHANCE% probability of being a skull die instead.
+// Centre ring is forced d12 in board_init; this proc handles rings 0 to max_ring-1.
+//
+// The gradient uses a weighted random roll per tile. Each ring gets a
+// probability weight per die type based on how deep it is (0.0 = outer,
+// 1.0 = just before centre). Deeper rings shift weight toward bigger dice.
 ring_die_type :: proc(ring, max_ring: int) -> Die_Type {
 	// Skull dice can appear in any ring
 	if rand.int_max(100) < SKULL_CHANCE {
 		return .Skull
 	}
 
-	if max_ring <= 0 {
-		return .D12
-	}
+	// Depth ratio: 0.0 at outer ring, approaches 1.0 at the ring before centre.
+	last_ring := max(max_ring - 1, 1)
+	depth := f32(ring) / f32(last_ring)
 
-	// Map ring depth to die type:
-	// outer (ring 0)   = d4/d6
-	// middle           = d8/d10
-	// centre (max_ring) = d12
-	ratio := f32(ring) / f32(max_ring)
+	// Weighted distribution that shifts smoothly from small to big dice.
+	// At depth 0.0: mostly d4/d6
+	// At depth 0.5: mostly d8, some d6/d10
+	// At depth 1.0: mostly d10/d12, some d8
+	w_d4  := max(1.0 - depth * 2.5, 0.0)             // 1.0 → 0.0 by depth 0.4
+	w_d6  := max(1.0 - depth * 1.5, 0.0)              // 1.0 → 0.0 by depth 0.67
+	w_d8  := max(1.0 - abs(depth - 0.5) * 1.5, 0.0)  // peaks at 0.5, nonzero across full range
+	w_d10 := max(depth * 1.5 - 0.5, 0.0)              // 0.0 → 1.0 from depth 0.33
+	w_d12 := max(depth * 2.0 - 1.0, 0.0)              // 0.0 → 1.0 from depth 0.5
 
-	if ratio < 0.4 {
-		return rand.choice([]Die_Type{.D4, .D6})
-	} else if ratio < 0.8 {
-		return rand.choice([]Die_Type{.D8, .D10})
-	} else {
-		return .D12
-	}
+	total := w_d4 + w_d6 + w_d8 + w_d10 + w_d12
+	roll := rand.float32() * total
+
+	roll -= w_d4;  if roll < 0 { return .D4 }
+	roll -= w_d6;  if roll < 0 { return .D6 }
+	roll -= w_d8;  if roll < 0 { return .D8 }
+	roll -= w_d10; if roll < 0 { return .D10 }
+	return .D12
 }
 
 // Initialize board with dice placed by rarity gradient
@@ -43,8 +53,14 @@ board_init :: proc() -> Board {
 	for row in 0 ..< board.size {
 		for col in 0 ..< board.size {
 			ring := cell_ring(&board, row, col)
+			die_type: Die_Type
+			if ring == max_ring {
+				die_type = .D12  // centre tile is always d12
+			} else {
+				die_type = ring_die_type(ring, max_ring)
+			}
 			board.cells[row][col] = Board_Cell{
-				die_type = ring_die_type(ring, max_ring),
+				die_type = die_type,
 				occupied = true,
 				ring     = ring,
 			}
@@ -102,6 +118,18 @@ board_count_dice :: proc(board: ^Board) -> int {
 		}
 	}
 	return count
+}
+
+// Check if any pickable dice remain on the board
+board_has_pickable :: proc(board: ^Board) -> bool {
+	for row in 0 ..< board.size {
+		for col in 0 ..< board.size {
+			if cell_is_pickable(board, row, col) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // Get the top-left pixel position of the board (centred on screen)
