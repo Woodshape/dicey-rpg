@@ -38,7 +38,6 @@ character_roll :: proc(character: ^Character) {
 	if normal_count > 0 {
 		match_result := detect_match(normal_values[:normal_count])
 
-		result.pattern = match_result.pattern
 		result.matched_value = match_result.matched_value
 
 		// Map matched flags back to full array (skipping skull slots)
@@ -72,7 +71,7 @@ character_clear_roll :: proc(character: ^Character) {
 	}
 }
 
-// Detect the best match pattern from rolled values.
+// Detect matches from rolled values. Returns [MATCHES], [VALUE], and per-die flags.
 // Pure function — no side effects, no randomness.
 // Only receives normal dice values (no skull dice).
 detect_match :: proc(values: []int) -> Roll_Result {
@@ -88,9 +87,8 @@ detect_match :: proc(values: []int) -> Roll_Result {
 		freq[values[i]] += 1
 	}
 
-	// Find the two highest frequencies (tie-break by higher value)
+	// Find the highest frequency (tie-break by higher value) for [VALUE]
 	best_freq, best_val := 0, 0
-	second_freq, second_val := 0, 0
 
 	for val in 1 ..= MAX_DIE_VALUE {
 		f := freq[val]
@@ -98,38 +96,16 @@ detect_match :: proc(values: []int) -> Roll_Result {
 			continue
 		}
 		if f > best_freq || (f == best_freq && val > best_val) {
-			second_freq = best_freq
-			second_val = best_val
 			best_freq = f
 			best_val = val
-		} else if f > second_freq || (f == second_freq && val > second_val) {
-			second_freq = f
-			second_val = val
 		}
 	}
 
-	// Determine pattern from top two frequencies
-	if best_freq >= 5 {
-		result.pattern = .Five_Of_A_Kind
-	} else if best_freq == 4 {
-		result.pattern = .Four_Of_A_Kind
-	} else if best_freq == 3 && second_freq >= 2 {
-		result.pattern = .Full_House
-	} else if best_freq == 3 {
-		result.pattern = .Three_Of_A_Kind
-	} else if best_freq == 2 && second_freq == 2 {
-		result.pattern = .Two_Pairs
-	} else if best_freq == 2 {
-		result.pattern = .Pair
-	} else {
-		result.pattern = .None
-	}
-
-	// Matched value is the value of the best (largest) match group
+	// [VALUE] = face value of the best match group
 	result.matched_value = best_val
 
-	// Mark matched/unmatched dice.
-	// A die is "matched" if its value appears at least twice.
+	// [MATCHES] = count of all dice in any match group (freq >= 2).
+	// Multiple groups are additive: two pairs gives [MATCHES]=4.
 	for i in 0 ..< result.count {
 		if freq[values[i]] >= 2 {
 			result.matched[i] = true
@@ -139,7 +115,7 @@ detect_match :: proc(values: []int) -> Roll_Result {
 		}
 	}
 
-	assert(result.matched_count + result.unmatched_count == result.count, "normal matched and unmatched dice must add up the the total roll")
+	assert(result.matched_count + result.unmatched_count == result.count, "normal matched and unmatched dice must add up to the total roll")
 
 	return result
 }

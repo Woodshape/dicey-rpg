@@ -78,37 +78,16 @@ SKULL_CHANCE :: 20
 
 MAX_DIE_VALUE :: 12
 
-// Match patterns (ordered by strength)
-Match_Pattern :: enum u8 {
-	None,             // zero value — no matches found
-	Pair,             // 2 of a kind
-	Two_Pairs,        // 2+2
-	Three_Of_A_Kind,  // 3 of a kind
-	Full_House,       // 3+2
-	Four_Of_A_Kind,   // 4 of a kind
-	Five_Of_A_Kind,   // 5+ of a kind (capped here even with 6 dice)
-}
-
-MATCH_PATTERN_NAMES := [Match_Pattern]cstring{
-	.None            = "No Match",
-	.Pair            = "Pair",
-	.Two_Pairs       = "Two Pairs",
-	.Three_Of_A_Kind = "Three of a Kind",
-	.Full_House      = "Full House",
-	.Four_Of_A_Kind  = "Four of a Kind",
-	.Five_Of_A_Kind  = "Five of a Kind",
-}
-
-// Result of rolling and evaluating a character's dice
+// Result of rolling and evaluating a character's dice.
+// Abilities read [MATCHES] (matched_count) and [VALUE] (matched_value) directly.
 Roll_Result :: struct {
 	values:          [MAX_CHARACTER_DICE]int,   // rolled face values (1-12), 0 for skull dice
 	count:           int,                       // total dice rolled (skull + normal)
 	skulls:          [MAX_CHARACTER_DICE]int,   // 1 if this die is a skull (for now, we can think of even bigger skull dice that have a different value)
 	skull_count:     int,                       // number of skull dice in this roll
-	pattern:         Match_Pattern,             // best pattern from normal dice only
-	matched_value:   int,                       // value of the best match group
+	matched_value:   int,                       // [VALUE]: face value of the best match group
 	matched:         [MAX_CHARACTER_DICE]bool,  // true = part of a match group (never true for skulls)
-	matched_count:   int,                       // normal dice in match groups
+	matched_count:   int,                       // [MATCHES]: normal dice in match groups
 	unmatched_count: int,                       // normal dice NOT in match groups
 	// Invariant: matched_count + unmatched_count + skull_count == count
 }

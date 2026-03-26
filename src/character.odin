@@ -248,14 +248,10 @@ draw_rolled_dice :: proc(character: ^Character) {
 		line += 18
 	}
 
-	// Match result
-	if roll.pattern != .None {
-		pattern_str := MATCH_PATTERN_NAMES[roll.pattern]
-		rl.DrawText(pattern_str, CHAR_PANEL_X, line, 16, rl.YELLOW)
-		line += 18
-
-		potency_str := fmt.ctprintf("Potency: %d", roll.matched_value)
-		rl.DrawText(potency_str, CHAR_PANEL_X, line, 14, rl.RAYWHITE)
+	// Match result: [MATCHES] and [VALUE]
+	if roll.matched_count > 0 {
+		match_str := fmt.ctprintf("Matched: %d x %d", roll.matched_count, roll.matched_value)
+		rl.DrawText(match_str, CHAR_PANEL_X, line, 16, rl.YELLOW)
 		line += 18
 	} else if roll.skull_count == 0 {
 		rl.DrawText("No Match", CHAR_PANEL_X, line, 16, rl.Color{180, 80, 80, 255})

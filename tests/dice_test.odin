@@ -11,17 +11,15 @@ expect_counts_equal_total :: proc(t: ^testing.T, result: game.Roll_Result) {
 		result.matched_count, result.unmatched_count, result.skull_count, total, result.count)
 }
 
-// --- Match detection: each pattern ---
+// --- Match detection: [MATCHES] and [VALUE] ---
 
 @(test)
 match_no_match :: proc(t: ^testing.T) {
 	result := game.detect_match({1, 3, 5, 7, 9})
 	expect_counts_equal_total(t, result)
-	testing.expect_value(t, result.pattern, game.Match_Pattern.None)
 	testing.expect_value(t, result.matched_count, 0)
 	testing.expect_value(t, result.unmatched_count, 5)
 
-	// All dice should be unmatched
 	for i in 0 ..< result.count {
 		testing.expectf(t, !result.matched[i], "die %d should be unmatched", i)
 	}
@@ -31,7 +29,6 @@ match_no_match :: proc(t: ^testing.T) {
 match_pair :: proc(t: ^testing.T) {
 	result := game.detect_match({3, 7, 3, 11, 5})
 	expect_counts_equal_total(t, result)
-	testing.expect_value(t, result.pattern, game.Match_Pattern.Pair)
 	testing.expect_value(t, result.matched_value, 3)
 	testing.expect_value(t, result.matched_count, 2)
 	testing.expect_value(t, result.unmatched_count, 3)
@@ -39,23 +36,21 @@ match_pair :: proc(t: ^testing.T) {
 
 @(test)
 match_pair_highest_value_wins :: proc(t: ^testing.T) {
-	// Two possible pairs (2s and 9s) — but this is Two Pairs, not Pair
-	// Single pair where value matters
 	result := game.detect_match({9, 1, 9, 3, 5})
 	expect_counts_equal_total(t, result)
-	testing.expect_value(t, result.pattern, game.Match_Pattern.Pair)
 	testing.expect_value(t, result.matched_value, 9)
+	testing.expect_value(t, result.matched_count, 2)
 }
 
 @(test)
-match_two_pairs :: proc(t: ^testing.T) {
+match_two_pairs_gives_four_matches :: proc(t: ^testing.T) {
+	// Two pairs: [MATCHES]=4 (all four paired dice), [VALUE]=7 (higher pair)
 	result := game.detect_match({3, 7, 3, 7, 5})
 	expect_counts_equal_total(t, result)
-	testing.expect_value(t, result.pattern, game.Match_Pattern.Two_Pairs)
+	testing.expect_value(t, result.matched_value, 7)
 	testing.expect_value(t, result.matched_count, 4)
-	testing.expect_value(t, result.unmatched_count, 1)  // the 5 is unmatched
+	testing.expect_value(t, result.unmatched_count, 1)
 
-	// Both pairs' dice should be marked as matched
 	testing.expect(t, result.matched[0], "first 3 should be matched")
 	testing.expect(t, result.matched[1], "first 7 should be matched")
 	testing.expect(t, result.matched[2], "second 3 should be matched")
@@ -64,27 +59,25 @@ match_two_pairs :: proc(t: ^testing.T) {
 }
 
 @(test)
-match_three_of_a_kind :: proc(t: ^testing.T) {
+match_triple :: proc(t: ^testing.T) {
 	result := game.detect_match({4, 4, 4, 8, 2})
 	expect_counts_equal_total(t, result)
-	testing.expect_value(t, result.pattern, game.Match_Pattern.Three_Of_A_Kind)
 	testing.expect_value(t, result.matched_value, 4)
 	testing.expect_value(t, result.matched_count, 3)
 	testing.expect_value(t, result.unmatched_count, 2)
 }
 
 @(test)
-match_full_house :: proc(t: ^testing.T) {
+match_triple_plus_pair_gives_five_matches :: proc(t: ^testing.T) {
+	// 3+2 shape: [MATCHES]=5, [VALUE]=3 (triple is best group)
 	result := game.detect_match({3, 3, 3, 7, 7})
 	expect_counts_equal_total(t, result)
-	testing.expect_value(t, result.pattern, game.Match_Pattern.Full_House)
-	testing.expect_value(t, result.matched_value, 3)  // triple's value
+	testing.expect_value(t, result.matched_value, 3)
 	testing.expect_value(t, result.matched_count, 5)
 	testing.expect_value(t, result.unmatched_count, 0)
 
-	// All dice matched
 	for i in 0 ..< result.count {
-		testing.expectf(t, result.matched[i], "die %d should be matched in full house", i)
+		testing.expectf(t, result.matched[i], "die %d should be matched", i)
 	}
 }
 
@@ -92,7 +85,6 @@ match_full_house :: proc(t: ^testing.T) {
 match_four_of_a_kind :: proc(t: ^testing.T) {
 	result := game.detect_match({6, 6, 6, 6, 2})
 	expect_counts_equal_total(t, result)
-	testing.expect_value(t, result.pattern, game.Match_Pattern.Four_Of_A_Kind)
 	testing.expect_value(t, result.matched_value, 6)
 	testing.expect_value(t, result.matched_count, 4)
 	testing.expect_value(t, result.unmatched_count, 1)
@@ -102,7 +94,6 @@ match_four_of_a_kind :: proc(t: ^testing.T) {
 match_five_of_a_kind :: proc(t: ^testing.T) {
 	result := game.detect_match({5, 5, 5, 5, 5})
 	expect_counts_equal_total(t, result)
-	testing.expect_value(t, result.pattern, game.Match_Pattern.Five_Of_A_Kind)
 	testing.expect_value(t, result.matched_value, 5)
 	testing.expect_value(t, result.matched_count, 5)
 	testing.expect_value(t, result.unmatched_count, 0)
@@ -112,11 +103,10 @@ match_five_of_a_kind :: proc(t: ^testing.T) {
 
 @(test)
 match_minimum_hand_pair :: proc(t: ^testing.T) {
-	// Common character: only 3 dice
 	result := game.detect_match({2, 2, 5})
 	expect_counts_equal_total(t, result)
-	testing.expect_value(t, result.pattern, game.Match_Pattern.Pair)
 	testing.expect_value(t, result.matched_value, 2)
+	testing.expect_value(t, result.matched_count, 2)
 	testing.expect_value(t, result.unmatched_count, 1)
 }
 
@@ -124,8 +114,8 @@ match_minimum_hand_pair :: proc(t: ^testing.T) {
 match_minimum_hand_triple :: proc(t: ^testing.T) {
 	result := game.detect_match({3, 3, 3})
 	expect_counts_equal_total(t, result)
-	testing.expect_value(t, result.pattern, game.Match_Pattern.Three_Of_A_Kind)
 	testing.expect_value(t, result.matched_value, 3)
+	testing.expect_value(t, result.matched_count, 3)
 	testing.expect_value(t, result.unmatched_count, 0)
 }
 
@@ -133,50 +123,49 @@ match_minimum_hand_triple :: proc(t: ^testing.T) {
 match_minimum_hand_no_match :: proc(t: ^testing.T) {
 	result := game.detect_match({1, 2, 3})
 	expect_counts_equal_total(t, result)
-	testing.expect_value(t, result.pattern, game.Match_Pattern.None)
+	testing.expect_value(t, result.matched_count, 0)
 	testing.expect_value(t, result.unmatched_count, 3)
 }
 
 @(test)
-match_six_dice_five_of_a_kind :: proc(t: ^testing.T) {
-	// Legendary: 6 dice, 5+ of same value caps at Five_Of_A_Kind
+match_six_dice_all_same :: proc(t: ^testing.T) {
+	// Legendary: 6 dice all same value → [MATCHES]=6
 	result := game.detect_match({7, 7, 7, 7, 7, 7})
 	expect_counts_equal_total(t, result)
-	testing.expect_value(t, result.pattern, game.Match_Pattern.Five_Of_A_Kind)
 	testing.expect_value(t, result.matched_value, 7)
 	testing.expect_value(t, result.matched_count, 6)
 	testing.expect_value(t, result.unmatched_count, 0)
 }
 
 @(test)
-match_six_dice_full_house :: proc(t: ^testing.T) {
-	// Double triple (3+3) evaluates as Full House
+match_six_dice_double_triple :: proc(t: ^testing.T) {
+	// Double triple (3+3): [MATCHES]=6, [VALUE]=8 (higher triple)
 	result := game.detect_match({2, 2, 2, 8, 8, 8})
 	expect_counts_equal_total(t, result)
-	testing.expect_value(t, result.pattern, game.Match_Pattern.Full_House)
-	testing.expect_value(t, result.unmatched_count, 0)
-}
-
-@(test)
-match_six_dice_three_pairs_is_two_pairs :: proc(t: ^testing.T) {
-	// Three pairs (2+2+2) — best pattern is Two Pairs
-	result := game.detect_match({1, 1, 4, 4, 9, 9})
-	expect_counts_equal_total(t, result)
-	testing.expect_value(t, result.pattern, game.Match_Pattern.Two_Pairs)
-	// All dice are in pairs, so all matched
+	testing.expect_value(t, result.matched_value, 8)
 	testing.expect_value(t, result.matched_count, 6)
 	testing.expect_value(t, result.unmatched_count, 0)
 }
 
-// --- Matched value tie-breaking ---
+@(test)
+match_six_dice_three_pairs :: proc(t: ^testing.T) {
+	// Three pairs (2+2+2): [MATCHES]=6, [VALUE]=9 (highest pair)
+	result := game.detect_match({1, 1, 4, 4, 9, 9})
+	expect_counts_equal_total(t, result)
+	testing.expect_value(t, result.matched_value, 9)
+	testing.expect_value(t, result.matched_count, 6)
+	testing.expect_value(t, result.unmatched_count, 0)
+}
+
+// --- [VALUE] tie-breaking ---
 
 @(test)
 match_value_higher_value_wins_tie :: proc(t: ^testing.T) {
-	// Two triples: 3s and 8s — 8 has higher value
+	// Two triples: 3s and 8s — both freq=3, higher value wins [VALUE]
 	result := game.detect_match({3, 8, 3, 8, 3, 8})
 	expect_counts_equal_total(t, result)
-	testing.expect_value(t, result.pattern, game.Match_Pattern.Full_House)
-	testing.expect_value(t, result.matched_value, 8)  // higher value triple wins
+	testing.expect_value(t, result.matched_value, 8)
+	testing.expect_value(t, result.matched_count, 6)
 }
 
 // --- Unmatched counting ---
@@ -190,7 +179,8 @@ match_all_unmatched_feeds_super_meter :: proc(t: ^testing.T) {
 }
 
 @(test)
-match_full_house_zero_unmatched :: proc(t: ^testing.T) {
+match_all_matched_zero_unmatched :: proc(t: ^testing.T) {
+	// 3+2 shape: all 5 dice are in match groups, zero unmatched
 	result := game.detect_match({10, 10, 10, 4, 4})
 	expect_counts_equal_total(t, result)
 	testing.expect_value(t, result.matched_count, 5)
@@ -317,7 +307,6 @@ skull_roll_all_skulls :: proc(t: ^testing.T) {
 	testing.expect_value(t, ch.roll.skull_count, 3)
 	testing.expect_value(t, ch.roll.matched_count, 0)
 	testing.expect_value(t, ch.roll.unmatched_count, 0)
-	testing.expect_value(t, ch.roll.pattern, game.Match_Pattern.None)
 }
 
 // --- Skull damage ---
