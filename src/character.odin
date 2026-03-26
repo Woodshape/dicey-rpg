@@ -14,20 +14,27 @@ character_create :: proc(name: cstring, rarity: Character_Rarity, stats: Charact
 	}
 }
 
-// Calculate damage from skull dice: attacker attacks N times at Attack stat.
+// Apply skull dice damage: each skull die is a separate attack.
+// Looped per-hit so future per-hit triggers (passives, abilities) can hook in.
 // Returns total damage dealt (after defense).
 apply_skull_damage :: proc(attacker: ^Character, target: ^Character) -> int {
 	if attacker.roll.skull_count <= 0 {
 		return 0
 	}
+
 	damage_per_hit := max(attacker.stats.attack - target.stats.defense, 0)
-	total := attacker.roll.skull_count * damage_per_hit
-	target.stats.hp = max(target.stats.hp - total, 0)
+	total := 0
+
+	for _ in 0 ..< attacker.roll.skull_count {
+		target.stats.hp = max(target.stats.hp - damage_per_hit, 0)
+		total += damage_per_hit
+	}
+
 	return total
 }
 
 // Get the normal (non-skull) die type currently assigned to a character, if any.
-character_assigned_die_type :: proc(character: ^Character) -> (Die_Type, bool) {
+character_assigned_normal_die_type :: proc(character: ^Character) -> (Die_Type, bool) {
 	for i in 0 ..< character.assigned_count {
 		if die_type_is_normal(character.assigned[i]) {
 			return character.assigned[i], true
@@ -47,7 +54,7 @@ character_can_assign_die :: proc(character: ^Character, die_type: Die_Type) -> b
 		return true
 	}
 	// First normal die — check if there's already a normal type assigned
-	assigned_type, has_type := character_assigned_die_type(character)
+	assigned_type, has_type := character_assigned_normal_die_type(character)
 	if !has_type {
 		return true
 	}
@@ -204,7 +211,7 @@ draw_rolled_dice :: proc(character: ^Character) {
 		x, y := char_slot_position(i)
 		die_type := character.assigned[i]
 
-		if roll.is_skull[i] {
+		if roll.skulls[i] > 0 {
 			// Skull die — distinct look, dark red border
 			rl.DrawRectangle(x, y, CHAR_SLOT_SIZE, CHAR_SLOT_SIZE, DIE_TYPE_COLORS[.Skull])
 			rl.DrawRectangleLines(x, y, CHAR_SLOT_SIZE, CHAR_SLOT_SIZE, rl.Color{200, 60, 60, 255})

@@ -60,7 +60,7 @@ try_start_drag :: proc(gs: ^Game_State, mouse_x, mouse_y: i32) {
 	// Board drag (can drop on hand or character)
 	row, col := mouse_to_cell(&gs.board, mouse_x, mouse_y)
 	if row >= 0 && col >= 0 {
-		if cell_is_perimeter(&gs.board, row, col) {
+		if cell_is_pickable(&gs.board, row, col) {
 			gs.drag = Drag_State{
 				active    = true,
 				source    = .Board,
@@ -105,14 +105,14 @@ try_drop :: proc(gs: ^Game_State, mouse_x, mouse_y: i32) {
 		hand_slot := mouse_to_hand_slot(mouse_x, mouse_y)
 		in_hand := hand_slot >= 0 || mouse_in_hand_region(mouse_x, mouse_y)
 		if in_hand && !hand_is_full(&gs.hand) {
-			board_remove(&gs.board, gs.drag.board_row, gs.drag.board_col)
+			board_remove_die(&gs.board, gs.drag.board_row, gs.drag.board_col)
 			hand_add(&gs.hand, gs.drag.die_type)
 			return
 		}
 
 		char_slot := mouse_to_char_slot(mouse_x, mouse_y, gs.player.max_dice)
 		if char_slot >= 0 && character_can_assign_die(&gs.player, gs.drag.die_type) {
-			board_remove(&gs.board, gs.drag.board_row, gs.drag.board_col)
+			board_remove_die(&gs.board, gs.drag.board_row, gs.drag.board_col)
 			character_assign_die(&gs.player, gs.drag.die_type)
 		}
 
@@ -156,7 +156,7 @@ game_draw :: proc(gs: ^Game_State) {
 	// HUD
 	rl.DrawText("Dicey RPG", 20, 20, 24, rl.RAYWHITE)
 
-	remaining := board_count(&gs.board)
+	remaining := board_count_dice(&gs.board)
 	count_str := fmt.ctprintf("Board: %d  |  Hand: %d/%d",
 		remaining,
 		gs.hand.count, MAX_HAND_SIZE,

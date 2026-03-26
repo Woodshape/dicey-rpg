@@ -103,7 +103,7 @@ MATCH_PATTERN_NAMES := [Match_Pattern]cstring{
 Roll_Result :: struct {
 	values:          [MAX_CHARACTER_DICE]int,   // rolled face values (1-12), 0 for skull dice
 	count:           int,                       // total dice rolled (skull + normal)
-	is_skull:        [MAX_CHARACTER_DICE]bool,  // true if this die is a skull
+	skulls:          [MAX_CHARACTER_DICE]int,   // 1 if this die is a skull (for now, we can think of even bigger skull dice that have a different value)
 	skull_count:     int,                       // number of skull dice in this roll
 	pattern:         Match_Pattern,             // best pattern from normal dice only
 	matched_value:   int,                       // value of the best match group

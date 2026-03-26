@@ -24,7 +24,7 @@ character_roll :: proc(character: ^Character) {
 
 	for i in 0 ..< character.assigned_count {
 		if character.assigned[i] == .Skull {
-			result.is_skull[i] = true
+			result.skulls[i] = 1	// 1 if this die is a skull (for now, we can think of even bigger skull dice that have a different value)
 			result.skull_count += 1
 		} else {
 			val := roll_die(character.assigned[i])
@@ -44,7 +44,7 @@ character_roll :: proc(character: ^Character) {
 		// Map matched flags back to full array (skipping skull slots)
 		normal_idx := 0
 		for i in 0 ..< result.count {
-			if !result.is_skull[i] {
+			if result.skulls[i] == 0 {
 				result.matched[i] = match_result.matched[normal_idx]
 				if result.matched[i] {
 					result.matched_count += 1
@@ -56,7 +56,7 @@ character_roll :: proc(character: ^Character) {
 		}
 	}
 
-	assert(result.matched_count + result.unmatched_count + result.skull_count == result.count)
+	assert(result.matched_count + result.unmatched_count + result.skull_count == result.count, "matched, unmatched, and skull dice must add up to the total roll")
 
 	character.roll = result
 	character.has_rolled = true
@@ -139,7 +139,7 @@ detect_match :: proc(values: []int) -> Roll_Result {
 		}
 	}
 
-	assert(result.matched_count + result.unmatched_count == result.count)
+	assert(result.matched_count + result.unmatched_count == result.count, "normal matched and unmatched dice must add up the the total roll")
 
 	return result
 }

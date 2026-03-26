@@ -57,7 +57,7 @@ board_init :: proc() -> Board {
 // Check if a cell is on the current perimeter (pickable).
 // A cell is pickable if it's occupied and has at least one
 // neighbour that is empty or out of bounds.
-cell_is_perimeter :: proc(board: ^Board, row, col: int) -> bool {
+cell_is_pickable :: proc(board: ^Board, row, col: int) -> bool {
 	if !board.cells[row][col].occupied {
 		return false
 	}
@@ -78,11 +78,11 @@ cell_is_perimeter :: proc(board: ^Board, row, col: int) -> bool {
 }
 
 // Remove a die from the board. Returns the die type that was there.
-board_remove :: proc(board: ^Board, row, col: int) -> (Die_Type, bool) {
+board_remove_die :: proc(board: ^Board, row, col: int) -> (Die_Type, bool) {
 	if !board.cells[row][col].occupied {
 		return .None, false
 	}
-	if !cell_is_perimeter(board, row, col) {
+	if !cell_is_pickable(board, row, col) {
 		return .None, false
 	}
 
@@ -92,7 +92,7 @@ board_remove :: proc(board: ^Board, row, col: int) -> (Die_Type, bool) {
 }
 
 // Count remaining dice on the board
-board_count :: proc(board: ^Board) -> int {
+board_count_dice :: proc(board: ^Board) -> int {
 	count := 0
 	for row in 0 ..< board.size {
 		for col in 0 ..< board.size {
@@ -161,7 +161,7 @@ board_draw :: proc(board: ^Board, drag: ^Drag_State) {
 			}
 
 			x, y := cell_position(board, row, col)
-			is_perimeter := cell_is_perimeter(board, row, col)
+			is_perimeter := cell_is_pickable(board, row, col)
 			is_dragged := drag.active && drag.source == .Board && drag.board_row == row && drag.board_col == col
 
 			// Ghost the cell being dragged
