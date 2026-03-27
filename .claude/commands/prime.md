@@ -1,0 +1,45 @@
+# Prime — Dicey RPG
+
+> Load the project context, understand the design, and report current status.
+
+## Step 1: Read project instructions
+
+Read `CLAUDE.md` for build commands, conventions, and workflow rules.
+
+## Step 2: Read the design docs
+
+Read ALL design documents to understand the architecture and design decisions:
+
+- `docs/design/core-mechanics.md` — source of truth for game mechanics
+- `docs/design/types.md` — shared types, enums, constants
+- `docs/design/board.md` — grid, gradient, perimeter
+- `docs/design/dice.md` — rolling, match detection
+- `docs/design/hand.md` — hand management
+- `docs/design/character.md` — assignment, pure type constraint
+- `docs/design/combat.md` — turn state machine, resolution
+- `docs/design/ai.md` — enemy decision-making
+- `docs/design/ability.md` — effects, resolution, templates
+- `docs/design/game.md` — Game_State, drag-and-drop, draw
+- `docs/design/combat-log.md` — ring buffer, file output
+
+## Step 3: Read open issues and ideas
+
+- Read all files in `docs/issues/` — these are concrete problems with negative consequences that need fixing.
+- Read all files in `docs/ideas/` — these are design spaces and decisions to explore.
+
+## Step 4: Check implementation status
+
+Read `docs/implementation-plan.md` and identify:
+- Which milestones are done
+- Which milestone is currently in progress
+- Which tasks within the current milestone are done vs remaining
+
+## Step 5: Summary
+
+Deliver:
+
+1. **Project status** — current milestone, what's done, what's remaining
+2. **Open issues** — list each issue from `docs/issues/` with a one-line summary
+3. **Design ideas** — list the major ideas from `docs/ideas/` worth noting
+4. **Architecture notes** — any observations about the codebase state (e.g., divergences between docs and code, patterns to be aware of)
+5. **Ready** — confirm readiness to work on the project

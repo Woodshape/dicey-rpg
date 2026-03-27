@@ -26,8 +26,21 @@ tests/                  -- test package (separate from game)
   ability_test.odin     -- ability effects, resolution, resolve meter
 assets/                 -- placeholder assets
 docs/
-  design/core-mechanics.md   -- game design document (source of truth for mechanics)
-  implementation-plan.md     -- milestone-based implementation plan
+  design/
+    core-mechanics.md        -- game design document (source of truth for mechanics)
+    types.md                 -- shared types, enums, constants, sentinel values
+    board.md                 -- grid, rarity gradient, perimeter logic
+    dice.md                  -- rolling, match detection, Roll_Result invariant
+    hand.md                  -- hand management, add/remove/discard
+    character.md             -- creation, pure type constraint, skull damage
+    combat.md                -- turn state machine, resolution pipeline, win/lose
+    ai.md                    -- die scoring, roll decisions, discard logic
+    ability.md               -- effects, resolution, templates, how to extend
+    game.md                  -- Game_State, drag-and-drop, draw pipeline
+    combat-log.md            -- ring buffer, file output
+  implementation-plan.md     -- milestone-based implementation plan (history)
+  ideas/                     -- design spaces and decisions to explore (ever-growing)
+  issues/                    -- concrete problems to fix (removed when resolved)
 ```
 
 All `src/` files share `package game`. Tests live in `tests/` as a separate package.
@@ -222,3 +235,11 @@ See `docs/implementation-plan.md` for the milestone breakdown. Work through mile
 - Run `odin test tests/` after any logic change to match detection, board, hand, or ability systems.
 - **Before changing core constants or system behavior**, read all related test files to identify tests that will break, and update them as part of the same change.
 - When adding a new mechanic, write the test first, then implement.
+
+## Design Docs Discipline
+
+**Before modifying any source file, ALWAYS read the corresponding design doc in `docs/design/`.** The mapping is direct: `board.odin` → `docs/design/board.md`, `ai.odin` → `docs/design/ai.md`, etc. For shared types in `types.odin`, read `docs/design/types.md`. For drag-and-drop or `Game_State` changes, read `docs/design/game.md`.
+
+**After making changes**, update the design doc IF the change is significant — new architecture, new procedures that alter the module's contract, changed invariants, or new patterns others need to know about. Do NOT update the design doc for bugfixes, small method tweaks, or implementation details that don't affect how the module is used or extended.
+
+The design docs exist to capture **what the module does, how it works, and how to use it** — not to be a line-by-line mirror of the code.
