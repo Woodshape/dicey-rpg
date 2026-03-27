@@ -16,10 +16,26 @@ Char_Stats :: struct {
 	ability_attempts:     int,
 	resolve_fires:        int,
 	skull_damage_dealt:   int,
-	ability_damage_dealt: int,
+	ability_damage_dealt: int, // main ability + resolve damage combined
 	hp_remaining:         int,
 	alive:                bool,
 	die_type_used:        game.Die_Type,
+	// Match distribution
+	match_histogram:      [game.MAX_CHARACTER_DICE + 1]int, // [i] = rolls with exactly i matched dice
+	total_matched_count:  int, // sum of matched_count across rolls
+	total_matched_value:  int, // sum of matched_value across rolls
+	// Miss tracking
+	ability_misses:       int, // rolls where matched_count < min_matches
+	total_miss_dice:      int, // sum of normal dice count on misses (for avg dice on miss)
+	// Resolve meter
+	total_unmatched:      int, // sum of unmatched dice across rolls
+	rolls_since_resolve:  int, // running counter within a game (reset on resolve fire)
+	total_rolls_to_resolve: int, // sum of rolls_since_resolve at each resolve fire
+	// Ability metadata (copied once from character)
+	ability_name:         cstring,
+	ability_scaling:      game.Ability_Scaling,
+	ability_min_matches:  int,
+	resolve_name:         cstring,
 }
 
 // Which side won a game
@@ -44,41 +60,59 @@ Game_Stats :: struct {
 // --- Per-roll stats for dice mechanics analysis ---
 
 Roll_Stats :: struct {
-	die_type:       game.Die_Type,
-	die_count:      int,
-	matched_count:  int,
-	matched_value:  int,
+	die_type:        game.Die_Type,
+	die_count:       int,
+	matched_count:   int,
+	matched_value:   int,
 	unmatched_count: int,
-	ability_damage: int,
-	ability_fired:  bool,
-	scaling:        game.Ability_Scaling,
+	ability_damage:  int,
+	ability_fired:   bool,
+	scaling:         game.Ability_Scaling,
 }
 
 // --- Aggregated stats across all rounds ---
 
 Aggregate_Stats :: struct {
-	rounds:             int,
-	player_wins:        int,
-	enemy_wins:         int,
-	draws:              int,
-	total_turns:        int,
-	// Per-character totals (indexed by party position)
-	player_totals:      [game.MAX_PARTY_SIZE]Char_Totals,
-	enemy_totals:       [game.MAX_PARTY_SIZE]Char_Totals,
-	player_count:       int,
-	enemy_count:        int,
+	rounds:        int,
+	player_wins:   int,
+	enemy_wins:    int,
+	draws:         int,
+	total_turns:   int,
+	player_totals: [game.MAX_PARTY_SIZE]Char_Totals,
+	enemy_totals:  [game.MAX_PARTY_SIZE]Char_Totals,
+	player_count:  int,
+	enemy_count:   int,
 }
 
 Char_Totals :: struct {
-	name:                 cstring,
-	total_damage_dealt:   int,
-	total_damage_taken:   int,
-	total_healing_done:   int,
-	total_ability_fires:  int,
+	name:                   cstring,
+	total_damage_dealt:     int,
+	total_damage_taken:     int,
+	total_healing_done:     int,
+	total_ability_fires:    int,
 	total_ability_attempts: int,
-	total_resolve_fires:  int,
-	total_hp_remaining:   int, // sum of HP when alive at game end
-	games_survived:       int,
+	total_resolve_fires:    int,
+	total_hp_remaining:     int,
+	games_survived:         int,
+	// Damage breakdown
+	total_skull_damage:     int,
+	total_ability_damage:   int, // main ability + resolve combined
+	// Match distribution (summed histograms)
+	match_histogram:        [game.MAX_CHARACTER_DICE + 1]int,
+	total_matched_count:    int,
+	total_matched_value:    int,
+	// Miss tracking
+	total_ability_misses:   int,
+	total_miss_dice:        int,
+	// Resolve meter
+	total_unmatched:        int,
+	total_rolls_to_resolve: int, // sum of rolls between resolve fires
+	total_resolve_events:   int, // number of resolve fire events (for averaging)
+	// Ability metadata
+	ability_name:           cstring,
+	ability_scaling:        game.Ability_Scaling,
+	ability_min_matches:    int,
+	resolve_name:           cstring,
 }
 
 // --- Dice mechanics aggregation ---
@@ -90,13 +124,51 @@ Dice_Aggregate :: struct {
 	total_value:        int,
 	rolls_with_match:   int,
 	total_unmatched:    int,
-	// Damage by scaling type
 	total_dmg_match:    int,
 	rolls_match_scale:  int,
 	total_dmg_value:    int,
 	rolls_value_scale:  int,
 	total_dmg_hybrid:   int,
 	rolls_hybrid_scale: int,
+}
+
+// --- Dice count × die type matrix ---
+
+// Bucket key: (die_type, normal_dice_count). die_count 0 is unused.
+Dice_Count_Bucket :: struct {
+	total_rolls:      int,
+	total_matches:    int, // sum of matched_count
+	total_value:      int, // sum of matched_value
+	rolls_with_match: int, // rolls where matched_count >= 2
+	total_unmatched:  int,
+	ability_fires:    int,
+	total_ability_dmg: int, // sum of ability damage when ability fired
+}
+
+// Indexed by [Die_Type][dice_count]. dice_count 1..MAX_CHARACTER_DICE.
+Dice_Count_Matrix :: [game.Die_Type][game.MAX_CHARACTER_DICE + 1]Dice_Count_Bucket
+
+aggregate_dice_count :: proc(rolls: ^Roll_Collector) -> Dice_Count_Matrix {
+	m: Dice_Count_Matrix
+	for i in 0 ..< rolls.count {
+		r := &rolls.rolls[i]
+		if r.die_count <= 0 || r.die_count > game.MAX_CHARACTER_DICE {
+			continue
+		}
+		b := &m[r.die_type][r.die_count]
+		b.total_rolls += 1
+		b.total_matches += r.matched_count
+		b.total_value += r.matched_value
+		b.total_unmatched += r.unmatched_count
+		if r.matched_count >= 2 {
+			b.rolls_with_match += 1
+		}
+		if r.ability_fired {
+			b.ability_fires += 1
+			b.total_ability_dmg += r.ability_damage
+		}
+	}
+	return m
 }
 
 MAX_ROLL_STATS :: 100_000
@@ -108,7 +180,6 @@ Roll_Collector :: struct {
 
 // --- Snapshot helpers ---
 
-// Snapshot a character's HP before resolve_roll so we can compute deltas.
 Hp_Snapshot :: struct {
 	attacker_hp: int,
 	target_hp:   int,
@@ -122,7 +193,21 @@ snapshot_hp :: proc(attacker, target: ^game.Character) -> Hp_Snapshot {
 	return snap
 }
 
-// Collect stats from a single resolve_roll by comparing snapshots.
+// --- Init per-game character metadata ---
+
+// Copy ability metadata from the game character into Char_Stats.
+// Called once per game at init time so we have ability names/scaling for output.
+init_char_stats_meta :: proc(cs: ^Char_Stats, ch: ^game.Character) {
+	cs.name = ch.name
+	cs.ability_name = ch.ability.name
+	cs.ability_scaling = ch.ability.scaling
+	cs.ability_min_matches = ch.ability.min_matches
+	cs.resolve_name = ch.resolve_ability.name
+}
+
+// --- Stat collection ---
+
+// Collect stats from a single resolve_roll by comparing HP snapshots.
 collect_roll_stats :: proc(
 	gs: ^Game_Stats,
 	is_player: bool,
@@ -133,19 +218,19 @@ collect_roll_stats :: proc(
 ) {
 	chars := is_player ? &gs.player_chars : &gs.enemy_chars
 	cs := &chars[char_idx]
+	roll := &attacker.roll
 
 	cs.ability_attempts += 1
 
 	// Damage dealt = how much target HP dropped
+	skull_dmg := 0
 	if target != nil {
 		dmg := snap.target_hp - target.stats.hp
 		cs.damage_dealt += dmg
 
-		// Skull damage: count from roll
-		skull_dmg := 0
-		if attacker.roll.skull_count > 0 {
+		if roll.skull_count > 0 {
 			skull_per_hit := max(attacker.stats.attack - target.stats.defense, 0)
-			skull_dmg = skull_per_hit * attacker.roll.skull_count
+			skull_dmg = skull_per_hit * roll.skull_count
 		}
 		cs.skull_damage_dealt += skull_dmg
 		cs.ability_damage_dealt += max(dmg - skull_dmg, 0)
@@ -157,25 +242,40 @@ collect_roll_stats :: proc(
 		cs.healing_done += heal
 	}
 
+	// Ability fire/miss tracking
 	if attacker.ability_fired {
 		cs.ability_fires += 1
-	}
-	if attacker.resolve_fired {
-		cs.resolve_fires += 1
+	} else {
+		// Ability didn't fire — was there a match threshold miss?
+		if attacker.ability.min_matches > 0 {
+			cs.ability_misses += 1
+			cs.total_miss_dice += roll.count - roll.skull_count
+		}
 	}
 
-	// Collect per-roll dice mechanics data
+	// Resolve tracking
+	cs.rolls_since_resolve += 1
+	if attacker.resolve_fired {
+		cs.resolve_fires += 1
+		cs.total_rolls_to_resolve += cs.rolls_since_resolve
+		cs.rolls_since_resolve = 0
+	}
+
+	// Match distribution
+	matched := min(roll.matched_count, game.MAX_CHARACTER_DICE)
+	cs.match_histogram[matched] += 1
+	cs.total_matched_count += roll.matched_count
+	cs.total_matched_value += roll.matched_value
+
+	// Unmatched (for resolve charge rate)
+	cs.total_unmatched += roll.unmatched_count
+
+	// Per-roll dice mechanics data
 	if rolls != nil && rolls.count < MAX_ROLL_STATS {
-		roll := &attacker.roll
 		dt, has_type := game.character_assigned_normal_die_type(attacker)
 		if has_type {
 			ability_dmg := 0
 			if target != nil {
-				skull_dmg := 0
-				if roll.skull_count > 0 {
-					skull_per_hit := max(attacker.stats.attack - target.stats.defense, 0)
-					skull_dmg = skull_per_hit * roll.skull_count
-				}
 				total_dmg := snap.target_hp - target.stats.hp
 				ability_dmg = max(total_dmg - skull_dmg, 0)
 			}
@@ -210,7 +310,6 @@ collect_target_damage :: proc(
 	if dmg <= 0 {
 		return
 	}
-	// Find which index this character is in their party
 	for i in 0 ..< target_party.count {
 		if &target_party.characters[i] == target {
 			chars := is_target_player ? &gs.player_chars : &gs.enemy_chars
@@ -278,6 +377,27 @@ add_char_totals :: proc(t: ^Char_Totals, cs: ^Char_Stats) {
 		t.total_hp_remaining += cs.hp_remaining
 		t.games_survived += 1
 	}
+	// Damage breakdown
+	t.total_skull_damage += cs.skull_damage_dealt
+	t.total_ability_damage += cs.ability_damage_dealt
+	// Match distribution
+	for j in 0 ..< len(cs.match_histogram) {
+		t.match_histogram[j] += cs.match_histogram[j]
+	}
+	t.total_matched_count += cs.total_matched_count
+	t.total_matched_value += cs.total_matched_value
+	// Miss tracking
+	t.total_ability_misses += cs.ability_misses
+	t.total_miss_dice += cs.total_miss_dice
+	// Resolve meter
+	t.total_unmatched += cs.total_unmatched
+	t.total_rolls_to_resolve += cs.total_rolls_to_resolve
+	t.total_resolve_events += cs.resolve_fires
+	// Metadata (overwrite each game — they're constant)
+	t.ability_name = cs.ability_name
+	t.ability_scaling = cs.ability_scaling
+	t.ability_min_matches = cs.ability_min_matches
+	t.resolve_name = cs.resolve_name
 }
 
 // --- Dice mechanics aggregation ---
@@ -321,7 +441,14 @@ aggregate_dice :: proc(rolls: ^Roll_Collector) -> [game.Die_Type]Dice_Aggregate 
 
 // --- Output ---
 
-print_summary :: proc(encounter: string, seed: u64, agg: ^Aggregate_Stats, dice_aggs: ^[game.Die_Type]Dice_Aggregate) {
+SCALING_NAMES := [game.Ability_Scaling]string {
+	.None   = "flat",
+	.Match  = "match",
+	.Value  = "value",
+	.Hybrid = "hybrid",
+}
+
+print_summary :: proc(encounter: string, seed: u64, agg: ^Aggregate_Stats, dice_aggs: ^[game.Die_Type]Dice_Aggregate, dcm: ^Dice_Count_Matrix) {
 	rounds := agg.rounds
 	if rounds == 0 {
 		return
@@ -346,7 +473,7 @@ print_summary :: proc(encounter: string, seed: u64, agg: ^Aggregate_Stats, dice_
 	// Dice mechanics table
 	fmt.println()
 	fmt.println("Dice Mechanics:")
-	fmt.println("  Die Type | Rolls | Avg [M] | Avg [V] | Match% | DMG(match) | DMG(value) | DMG(hybrid) | Resolve/roll")
+	fmt.println("  Type | Rolls | Avg[M] | Avg[V] | Match% | DMG(match) | DMG(value) | DMG(hybrid) | Resolve/roll")
 	for dt in game.Die_Type.D4 ..= game.Die_Type.D12 {
 		a := &dice_aggs[dt]
 		if a.total_rolls == 0 {
@@ -366,6 +493,44 @@ print_summary :: proc(encounter: string, seed: u64, agg: ^Aggregate_Stats, dice_
 			f64(a.total_unmatched) / r,
 		)
 	}
+
+	// Dice count × die type matrix
+	print_dice_count_matrix(dcm)
+}
+
+@(private = "file")
+print_dice_count_matrix :: proc(dcm: ^Dice_Count_Matrix) {
+	fmt.println()
+	fmt.println("Dice Count Breakdown:")
+	for dt in game.Die_Type.D4 ..= game.Die_Type.D12 {
+		printed_header := false
+		for dc in 1 ..= game.MAX_CHARACTER_DICE {
+			b := &dcm[dt][dc]
+			if b.total_rolls == 0 {
+				continue
+			}
+			if !printed_header {
+				fmt.printfln("  %s:", game.DIE_TYPE_NAMES[dt])
+				printed_header = true
+			}
+			r := f64(b.total_rolls)
+			avg_dmg: f64 = 0
+			if b.ability_fires > 0 {
+				avg_dmg = f64(b.total_ability_dmg) / f64(b.ability_fires)
+			}
+			fmt.printfln(
+				"    %d dice: %d rolls, %.1f%% match, avg[M] %.1f, avg[V] %.1f, fire %.1f%%, avg dmg %.1f, %.1f unmatched/roll",
+				dc,
+				b.total_rolls,
+				pct(b.rolls_with_match, b.total_rolls),
+				f64(b.total_matches) / r,
+				f64(b.total_value) / r,
+				pct(b.ability_fires, b.total_rolls),
+				avg_dmg,
+				f64(b.total_unmatched) / r,
+			)
+		}
+	}
 }
 
 @(private = "file")
@@ -381,6 +546,8 @@ print_party_stats :: proc(totals: ^[game.MAX_PARTY_SIZE]Char_Totals, count, roun
 		if t.games_survived > 0 {
 			avg_hp = f64(t.total_hp_remaining) / f64(t.games_survived)
 		}
+
+		// Summary line
 		fmt.printfln(
 			"  %-10s | DMG: %.1f | HEAL: %.1f | Ability: %.1f%% | Resolve: %.1f/game | Survival: %.1f%% | Avg HP: %.1f",
 			t.name,
@@ -390,6 +557,82 @@ print_party_stats :: proc(totals: ^[game.MAX_PARTY_SIZE]Char_Totals, count, roun
 			f64(t.total_resolve_fires) / r,
 			pct(t.games_survived, rounds),
 			avg_hp,
+		)
+
+		// Detail block
+		print_character_detail(t, rounds)
+		fmt.println()
+	}
+}
+
+@(private = "file")
+print_character_detail :: proc(t: ^Char_Totals, rounds: int) {
+	r := f64(rounds)
+	attempts := t.total_ability_attempts
+
+	// Damage breakdown
+	fmt.printfln(
+		"    Damage: skull %.1f + ability %.1f",
+		f64(t.total_skull_damage) / r,
+		f64(t.total_ability_damage) / r,
+	)
+
+	// Healing line (only if there was any)
+	if t.total_healing_done > 0 {
+		fmt.printfln("    Healing: %.1f/game", f64(t.total_healing_done) / r)
+	}
+
+	// Ability info with miss rate
+	if attempts > 0 {
+		miss_rate := pct(t.total_ability_misses, attempts)
+		avg_miss_dice: f64 = 0
+		if t.total_ability_misses > 0 {
+			avg_miss_dice = f64(t.total_miss_dice) / f64(t.total_ability_misses)
+		}
+		fmt.printfln(
+			"    Ability \"%s\" (%s, min %d): fired %.1f%%, missed %.1f%% (avg %.1f dice on miss)",
+			t.ability_name,
+			SCALING_NAMES[t.ability_scaling],
+			t.ability_min_matches,
+			pct(t.total_ability_fires, attempts),
+			miss_rate,
+			avg_miss_dice,
+		)
+	}
+
+	// Match distribution histogram
+	if attempts > 0 {
+		fmt.printf("    Matches:")
+		for j in 0 ..< len(t.match_histogram) {
+			if t.match_histogram[j] > 0 {
+				fmt.printf(" %dx=%.0f%%", j, pct(t.match_histogram[j], attempts))
+			}
+		}
+		avg_m: f64 = 0
+		avg_v: f64 = 0
+		if attempts > 0 {
+			avg_m = f64(t.total_matched_count) / f64(attempts)
+			avg_v = f64(t.total_matched_value) / f64(attempts)
+		}
+		fmt.printfln(" | Avg[M]: %.1f | Avg[V]: %.1f", avg_m, avg_v)
+	}
+
+	// Resolve meter stats
+	if t.total_resolve_fires > 0 || t.total_unmatched > 0 {
+		avg_rolls_to_resolve: f64 = 0
+		if t.total_resolve_events > 0 {
+			avg_rolls_to_resolve = f64(t.total_rolls_to_resolve) / f64(t.total_resolve_events)
+		}
+		avg_unmatched_per_roll: f64 = 0
+		if attempts > 0 {
+			avg_unmatched_per_roll = f64(t.total_unmatched) / f64(attempts)
+		}
+		fmt.printfln(
+			"    Resolve \"%s\": %.1f fires/game, avg %.1f rolls to fill, %.1f unmatched/roll",
+			t.resolve_name,
+			f64(t.total_resolve_fires) / r,
+			avg_rolls_to_resolve,
+			avg_unmatched_per_roll,
 		)
 	}
 }

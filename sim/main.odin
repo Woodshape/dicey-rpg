@@ -64,10 +64,10 @@ main :: proc() {
 		game_stats.player_count = gs.player_party.count
 		game_stats.enemy_count = gs.enemy_party.count
 		for i in 0 ..< gs.player_party.count {
-			game_stats.player_chars[i].name = gs.player_party.characters[i].name
+			init_char_stats_meta(&game_stats.player_chars[i], &gs.player_party.characters[i])
 		}
 		for i in 0 ..< gs.enemy_party.count {
-			game_stats.enemy_chars[i].name = gs.enemy_party.characters[i].name
+			init_char_stats_meta(&game_stats.enemy_chars[i], &gs.enemy_party.characters[i])
 		}
 
 		run_game(&gs, &game_stats, rolls)
@@ -81,7 +81,8 @@ main :: proc() {
 
 	fmt.println()
 	dice_aggs := aggregate_dice(rolls)
-	print_summary(config.encounter, config.seed, &agg, &dice_aggs)
+	dcm := aggregate_dice_count(rolls)
+	print_summary(config.encounter, config.seed, &agg, &dice_aggs, &dcm)
 
 	fmt.println()
 	fmt.printfln("Completed in %.0f ms (%.1f games/sec)", ms, f64(config.rounds) / (ms / 1000.0))
