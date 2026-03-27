@@ -53,21 +53,6 @@ Additional rarities can be slotted between or beyond these tiers as the design e
 - With 4 characters potentially wanting different die types, you can rarely build up more than 1–2 characters at once. This forces turn-by-turn prioritisation.
 - **Both sides have a hand.** The enemy also picks dice into a hand before assigning. This matters because the hand is a targetable surface — abilities and status effects can interact with it.
 
-### Open Design: Hand as Interaction Surface
-
-The hand is not just a routing buffer — it's a vulnerable staging area. Dice sitting in a hand (yours or the enemy's) are exposed to disruption abilities. Design space includes:
-
-- **Steal:** Take a die from the enemy's hand and add it to yours. Denies their build and advances yours.
-- **Destroy:** Remove a die from the enemy's hand entirely. Pure denial — costs them a pick action for nothing.
-- **Downgrade:** Replace a die in the enemy's hand with a smaller type (e.g., d12 → d8). Weakens their [VALUE] ceiling.
-- **Upgrade:** Replace a die in your own hand with a larger type (e.g., d6 → d10). Costs an action but boosts [VALUE].
-- **Corrupt:** Turn a normal die into a skull die in the enemy's hand. Forces base damage when they wanted ability dice.
-- **Freeze:** Lock a die in the enemy's hand so it can't be assigned for N turns. Clogs their hand slots.
-
-These all create counterplay around the hand's role as a staging area. A hand that's full of stolen/frozen/corrupted dice is a real problem — it blocks new picks and disrupts assignment plans. This makes hand management a tactical consideration, not just logistics.
-
-Whether these are character abilities, status effects, or board events is TBD. The key insight is that the hand must exist as a distinct zone (not just an implicit pass-through) for this interaction space to work.
-
 ---
 
 ## Board Layout
@@ -171,14 +156,6 @@ Abilities use [MATCHES] and [VALUE] directly in their formulas:
 - `5 d4s, roll [2, 2, 2, 4, 4]` → [MATCHES]=5, [VALUE]=2 — maximum breadth, low depth
 
 There is no single "best" drafting strategy. Small dice give high [MATCHES] (consistency); big dice give high [VALUE] (power ceiling). The optimal draft depends on the character's abilities and the current situation.
-
-### Open Design: Multiple Match Groups as Separate Activations
-
-Currently, all matched dice across all groups are pooled into a single [MATCHES]/[VALUE] pair per roll. A roll of `[4, 4, 2, 2, 5]` produces one result — [MATCHES]=4, [VALUE]=4 — and activates an ability once.
-
-An alternative: **each distinct match group activates the ability independently.** That same roll would produce two results — ([MATCHES]=2, [VALUE]=4) and ([MATCHES]=2, [VALUE]=2) — and the ability fires twice. This rewards spreading matches across groups rather than concentrating them, and gives multiple-group rolls a distinct identity from single large groups.
-
-This would require `Roll_Result` to hold a list of (matched_count, matched_value) pairs rather than a single pair, and the ability resolution loop to iterate over them. It is a meaningful structural change to both the data model and the resolution pipeline. Deferred until the ability system (Milestone 6) is implemented and the design can be tested in play.
 
 ---
 
@@ -494,15 +471,6 @@ Character abilities scale from dice rolls (match patterns and values), but skull
 | Attack  | Damage dealt per skull die in a roll. |
 | Defense | Damage reduction from incoming attacks (flat reduction or percentage — TBD). |
 
-### Open Questions: Stats
-
-- **Should Attack scale with level/gear, or is it fixed per character?**
-- **Is Defense flat reduction (Attack - Defense = damage) or percentage-based?**
-- **Do we need Speed/Initiative?** Currently turn order is alternating actions. A speed stat could determine who picks first after a board refill.
-- **Should stats vary by rarity?** A Legendary character might have higher base Attack than a Common one, making skull dice more valuable on them.
-- **Stat modifiers from abilities?** E.g., a buff ability that temporarily increases Attack, making skull dice deal more damage for a few turns.
-- **Starting HP values?** Without a maximum, balance is determined by starting HP and how fast damage/healing flows. Needs playtesting.
-
 ---
 
 ## Discard
@@ -521,60 +489,3 @@ Players and enemies can **discard** a die from their hand at any time during the
 - **Has a real cost.** The discarded die is gone — it cost a pick action to acquire and now yields nothing. Discard is an escape valve, not a free respec.
 - **Interacts with hand disruption.** Freezing a die in the enemy hand is more punishing because they can't even discard it. Corrupt (turning a die into a skull) is softer — the player can discard the skull, but that wastes their pick tempo.
 - **Player input:** Right-click a hand die to discard it.
-
----
-
-## Open Questions
-
-- **Board size:** What square grid size feels right? 5×5 (25 tiles), 7×7 (49), or something else? Should it scale with number of combatants?
-- **Board refill timing:** After each pick? At the start of a round? When depleted below a threshold?
-- **Refill placement:** Do new dice always fill the outer ring, or can they appear anywhere?
-- **Partial exposure:** If only some tiles in a ring are cleared, does that expose only those inner neighbours, or does the whole next ring become accessible?
-- **Multiple match groups:** If you roll a pair of 3s and a pair of 5s, can you trigger two abilities or must you choose one?
-- **Resolve Meter charge rate:** Flat per unmatched die? Scaled by die type? Scaled by rolled value?
-- **Enemy AI drafting:** How sophisticated should enemy drafting be? Should different enemy types have visible drafting preferences?
-- **AI type commitment:** The AI currently picks whatever scores highest this turn without planning ahead. It may give a character d4s one turn and d6s the next — only one type sticks due to the pure type rule, wasting picks. The AI should commit to a type per character early and stick with it, or at least prefer dice that match what's already assigned. This is especially important for ability synergy (e.g., a VALUE-scaling ability wants big dice, not d4s).
-- **AI ability awareness:** The AI doesn't consider which die types are good for which abilities. A Smite character (VALUE-scaling) should prefer d10/d12 for high [VALUE], while a Flurry character (MATCH-scaling) should prefer d4/d6 for reliable [MATCHES]. Scoring could factor in the character's ability scaling axis when evaluating die types.
-- **Die distribution on board:** Purely random, or weighted/seeded per encounter for balance?
-- **Disruption abilities:** How do status effects like Paralyze interact with loaded dice — do they stay, return to hand, or discard?
-- **Party death:** When a character dies, what happens to their assigned dice?
----
-
-## Data-Driven Characters (Planned)
-
-Characters and encounters will be defined in YAML files rather than hardcoded in Odin. This separates balance tuning from code changes.
-
-**What moves to data:**
-- Character templates: name, rarity, stats (HP, ATK, DEF), ability (name + effect reference + scaling + threshold), resolve ability, resolve max.
-- Encounter definitions: which characters on each side, how many of each.
-
-**What stays in code:**
-- Ability effect procedures (the actual game logic). YAML references effects by name; a lookup table in code maps `"fireball"` → `ability_fireball`. This means new ability *behaviors* require code, but new characters that *reuse* existing effects are pure data.
-- No scripting layer. Odin is fast enough for direct effect logic.
-
-**Why this matters:**
-- Balance iteration without recompilation — edit a YAML file, hit Play Again.
-- The combat simulator (see below) needs data-driven characters to be useful for automated balance testing.
-- Future: encounter design, difficulty scaling, character unlocks — all driven by data files.
-
----
-
-## Combat Simulator (Planned)
-
-A headless tool that runs N automated battles and reports balance statistics. Answers: "does this team composition have an unfair advantage?" and "how does changing Goblin HP from 15 to 20 affect win rates?"
-
-**How it works:**
-- Separate binary (`sim/` package) that imports game logic but skips Raylib entirely.
-- Both sides use the AI. Future: configurable strategy profiles (skull rush, match builder) to test against different playstyles.
-- Reads the same YAML character/encounter files as the main game.
-- Runs 1000+ battles per configuration and reports aggregate statistics.
-
-**Key metrics:**
-- Win rate per side
-- Average game length (turns)
-- Damage dealt/taken per character per game
-- Ability fire rate (% of rolls that trigger)
-- Resolve trigger frequency
-- Average HP remaining for the winning side
-
-**Depends on:** data-driven characters (YAML config system). Without externalizing character data, each balance test requires recompilation.
