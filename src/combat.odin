@@ -57,7 +57,7 @@ combat_update :: proc(gs: ^Game_State) {
 // Check if all characters in a party are dead.
 party_all_dead :: proc(party: ^Party) -> bool {
 	for i in 0 ..< party.count {
-		if party.characters[i].stats.hp > 0 {
+		if character_is_alive(&party.characters[i]) {
 			return false
 		}
 	}
@@ -69,12 +69,12 @@ party_all_dead :: proc(party: ^Party) -> bool {
 // Returns nil if all enemies are dead.
 get_target :: proc(enemy_party: ^Party, attacker_index: int) -> ^Character {
 	// Try facing opponent first
-	if attacker_index < enemy_party.count && enemy_party.characters[attacker_index].stats.hp > 0 {
+	if attacker_index < enemy_party.count && character_is_alive(&enemy_party.characters[attacker_index]) {
 		return &enemy_party.characters[attacker_index]
 	}
 	// Fallback to first alive
 	for i in 0 ..< enemy_party.count {
-		if enemy_party.characters[i].stats.hp > 0 {
+		if character_is_alive(&enemy_party.characters[i]) {
 			return &enemy_party.characters[i]
 		}
 	}
@@ -196,8 +196,9 @@ resolve_roll :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character) 
 		)
 	}
 
-	// Log death
-	if target != nil && target.stats.hp <= 0 {
+	// Mark dead and log
+	if target != nil && target.stats.hp <= 0 && target.state == .Alive {
+		target.state = .Dead
 		combat_log_add(&gs.log, rl.Color{255, 60, 60, 255}, "%s is defeated!", target.name)
 	}
 }

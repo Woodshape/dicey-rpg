@@ -60,6 +60,7 @@ enemy_death_triggers_victory :: proc(t: ^testing.T) {
 	// Kill all enemies
 	for i in 0 ..< gs.enemy_party.count {
 		gs.enemy_party.characters[i].stats.hp = 0
+		gs.enemy_party.characters[i].state = .Dead
 	}
 
 	result := game.check_win_lose(&gs, .Player_Turn)
@@ -72,6 +73,7 @@ player_death_triggers_defeat :: proc(t: ^testing.T) {
 	// Kill all players
 	for i in 0 ..< gs.player_party.count {
 		gs.player_party.characters[i].stats.hp = 0
+		gs.player_party.characters[i].state = .Dead
 	}
 
 	result := game.check_win_lose(&gs, .Enemy_Turn)
@@ -102,9 +104,11 @@ all_dead_enemy_takes_priority :: proc(t: ^testing.T) {
 	gs := game.game_init()
 	for i in 0 ..< gs.player_party.count {
 		gs.player_party.characters[i].stats.hp = 0
+		gs.player_party.characters[i].state = .Dead
 	}
 	for i in 0 ..< gs.enemy_party.count {
 		gs.enemy_party.characters[i].stats.hp = 0
+		gs.enemy_party.characters[i].state = .Dead
 	}
 
 	result := game.check_win_lose(&gs, .Player_Turn)

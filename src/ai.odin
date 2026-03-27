@@ -32,7 +32,7 @@ ai_take_turn :: proc(gs: ^Game_State) {
 			assigned_to: cstring = "hand"
 			for ci in 0 ..< gs.enemy_party.count {
 				ch := &gs.enemy_party.characters[ci]
-				if ch.stats.hp <= 0 { continue }
+				if !character_is_alive(ch) { continue }
 				// Check if this character's last assigned die matches
 				if ch.assigned_count > 0 && ch.assigned[ch.assigned_count - 1] == die_type {
 					assigned_to = ch.name
@@ -89,7 +89,7 @@ ai_assign_from_hand :: proc(gs: ^Game_State) {
 
 		for ci in 0 ..< gs.enemy_party.count {
 			ch := &gs.enemy_party.characters[ci]
-			if ch.stats.hp <= 0 {continue}
+			if !character_is_alive(ch) {continue}
 			if !character_can_assign_die(ch, die_type) {continue}
 
 			// Score: prefer fewer assigned dice (more room), prefer type match
@@ -121,7 +121,7 @@ ai_should_roll :: proc(gs: ^Game_State) -> (bool, int) {
 
 	for ci in 0 ..< gs.enemy_party.count {
 		ch := &gs.enemy_party.characters[ci]
-		if ch.stats.hp <= 0 || ch.assigned_count <= 0 {continue}
+		if !character_is_alive(ch) || ch.assigned_count <= 0 {continue}
 
 		// Roll if character is full
 		if ch.assigned_count >= ch.max_dice {
@@ -160,7 +160,7 @@ ai_pick_best_die :: proc(gs: ^Game_State) -> (int, int, bool) {
 	player_type_count := 0
 	for ci in 0 ..< gs.player_party.count {
 		ch := &gs.player_party.characters[ci]
-		if ch.stats.hp <= 0 {continue}
+		if !character_is_alive(ch) {continue}
 		t, has := character_assigned_normal_die_type(ch)
 		if has {
 			player_types[player_type_count] = t
@@ -214,7 +214,7 @@ ai_score_die_for_party :: proc(
 	any_can_accept := false
 	for ci in 0 ..< enemy_party.count {
 		ch := &enemy_party.characters[ci]
-		if ch.stats.hp <= 0 { continue }
+		if !character_is_alive(ch) { continue }
 		if character_can_assign_die(ch, die_type) {
 			any_can_accept = true
 			break
@@ -235,7 +235,7 @@ ai_score_die_for_party :: proc(
 	best := 0
 	for ci in 0 ..< enemy_party.count {
 		ch := &enemy_party.characters[ci]
-		if ch.stats.hp <= 0 { continue }
+		if !character_is_alive(ch) { continue }
 		if !character_can_assign_die(ch, die_type) { continue }
 
 		score := 1 + denial
@@ -315,7 +315,7 @@ ai_hand_has_usable_die :: proc(party: ^Party, hand: ^Hand) -> bool {
 	for i in 0 ..< hand.count {
 		for ci in 0 ..< party.count {
 			ch := &party.characters[ci]
-			if ch.stats.hp <= 0 {continue}
+			if !character_is_alive(ch) {continue}
 			if character_can_assign_die(ch, hand.dice[i]) {
 				return true
 			}
@@ -342,7 +342,7 @@ ai_pick_discard :: proc(party: ^Party, hand: ^Hand) -> int {
 		// Check if any alive character can use this die
 		for ci in 0 ..< party.count {
 			ch := &party.characters[ci]
-			if ch.stats.hp <= 0 {continue}
+			if !character_is_alive(ch) {continue}
 			if character_can_assign_die(ch, die_type) {
 				score += 10 // useful die — less desirable to discard
 			}

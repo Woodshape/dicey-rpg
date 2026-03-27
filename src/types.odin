@@ -219,8 +219,9 @@ Character :: struct {
 	resolve_fired:   bool,
 }
 
-// Check if a character slot is active (alive and present)
-character_is_active :: proc(character: ^Character) -> bool {
+// Returns true if the character is alive and can act or be targeted.
+// Use ch.state != .Empty to check whether a party slot is occupied at all.
+character_is_alive :: proc(character: ^Character) -> bool {
 	return character.state == .Alive
 }
 

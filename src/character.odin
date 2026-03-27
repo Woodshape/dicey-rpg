@@ -111,7 +111,7 @@ panel_slot_position :: proc(panel_x, panel_y: i32, slot_index: int) -> (i32, i32
 mouse_on_party_header :: proc(party: ^Party, panel_x: i32, mouse_x, mouse_y: i32) -> int {
 	for ci in 0 ..< party.count {
 		ch := &party.characters[ci]
-		if !character_is_active(ch) { continue }
+		if ch.state == .Empty { continue } // allow dead characters — inspect is still useful
 		py := char_panel_y(ci)
 		if mouse_x >= panel_x && mouse_x < panel_x + CHAR_PANEL_WIDTH &&
 		   mouse_y >= py && mouse_y < py + 76 {
@@ -138,7 +138,7 @@ mouse_to_char_slot_at :: proc(mouse_x, mouse_y: i32, panel_x, panel_y: i32, max_
 mouse_to_party_char_slot :: proc(party: ^Party, panel_x: i32, mouse_x, mouse_y: i32) -> (int, int) {
 	for ci in 0 ..< party.count {
 		ch := &party.characters[ci]
-		if !character_is_active(ch) { continue }
+		if !character_is_alive(ch) { continue }
 		py := char_panel_y(ci)
 		slot := mouse_to_char_slot_at(mouse_x, mouse_y, panel_x, py, ch.max_dice)
 		if slot >= 0 {
@@ -166,7 +166,7 @@ roll_button_rect_at :: proc(panel_x, panel_y: i32) -> rl.Rectangle {
 mouse_on_party_roll_button :: proc(party: ^Party, panel_x: i32, mouse_x, mouse_y: i32) -> int {
 	for ci in 0 ..< party.count {
 		ch := &party.characters[ci]
-		if !character_is_active(ch) || ch.assigned_count <= 0 || ch.has_rolled { continue }
+		if !character_is_alive(ch) || ch.assigned_count <= 0 || ch.has_rolled { continue }
 		py := char_panel_y(ci)
 		r := roll_button_rect_at(panel_x, py)
 		if f32(mouse_x) >= r.x && f32(mouse_x) < r.x + r.width &&
@@ -183,15 +183,21 @@ mouse_on_party_roll_button :: proc(party: ^Party, panel_x: i32, mouse_x, mouse_y
 // Draw a character panel at the given position.
 // interactive: true for the player (shows drag interaction, roll/clear buttons).
 character_draw_at :: proc(character: ^Character, panel_x, panel_y: i32, drag: ^Drag_State, interactive: bool, name_color: rl.Color) {
-	if !character_is_active(character) {
+	if character.state == .Empty {
 		return
 	}
 
-	// Name and rarity
+	// Dead characters: show name and defeated status only
+	if character.state == .Dead {
+		rl.DrawText(character.name, panel_x, panel_y, 20, rl.Color{120, 60, 60, 255})
+		rl.DrawText("Defeated", panel_x, panel_y + 24, 14, rl.Color{100, 50, 50, 255})
+		return
+	}
+
+	// Alive: full panel
 	rl.DrawText(character.name, panel_x, panel_y, 20, name_color)
 	rl.DrawText(RARITY_NAMES[character.rarity], panel_x, panel_y + 24, 14, rl.GRAY)
 
-	// Stats
 	hp_str := fmt.ctprintf("HP  %d", character.stats.hp)
 	rl.DrawText(hp_str, panel_x, panel_y + 44, 14, rl.Color{100, 220, 100, 255})
 	stats_str := fmt.ctprintf("ATK %d  DEF %d  RSV %d/%d",
@@ -204,7 +210,6 @@ character_draw_at :: proc(character: ^Character, panel_x, panel_y: i32, drag: ^D
 	} else {
 		draw_assigned_dice_at(character, panel_x, panel_y, drag, interactive)
 
-		// Roll button (only for interactive/player side)
 		if interactive && character.assigned_count > 0 && !drag.active {
 			mouse_x := rl.GetMouseX()
 			mouse_y := rl.GetMouseY()

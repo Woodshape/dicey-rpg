@@ -9,14 +9,14 @@ import game "../src"
 empty_character_slot_is_inactive :: proc(t: ^testing.T) {
 	ch: game.Character  // zero-initialized
 	testing.expect_value(t, ch.state, game.Character_State.Empty)
-	testing.expect(t, !game.character_is_active(&ch), "zero-initialized character should be inactive")
+	testing.expect(t, !game.character_is_alive(&ch), "zero-initialized character should be inactive")
 }
 
 @(test)
 created_character_is_active :: proc(t: ^testing.T) {
 	ch := game.character_create("Test", .Common, {hp = 20, attack = 3, defense = 1})
 	testing.expect_value(t, ch.state, game.Character_State.Alive)
-	testing.expect(t, game.character_is_active(&ch), "created character should be active")
+	testing.expect(t, game.character_is_alive(&ch), "created character should be active")
 }
 
 // --- Pure die type constraint ---

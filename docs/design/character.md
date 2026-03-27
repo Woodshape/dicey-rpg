@@ -49,7 +49,7 @@ Character panels are stacked vertically. Player panels start at `CHAR_PANEL_X` (
 | Procedure | Purpose |
 |-----------|---------|
 | `character_create(name, rarity, stats)` | Create a character in `.Alive` state |
-| `character_is_active(character)` | True if state is `.Alive` |
+| `character_is_alive(character)` | True if state is `.Alive` |
 | `character_can_assign_die(character, die_type)` | Validates pure type constraint + capacity |
 | `character_assign_die(character, die_type)` | Assign a die. Asserts not `.None`. |
 | `character_unassign_die(character, index)` | Remove by index, shift left, clear vacated |
@@ -89,7 +89,7 @@ if ok { hand_add(&hand, die_type) }
 ## What NOT to Do
 
 - Do not check `character.assigned_count` against `MAX_CHARACTER_DICE` — check against `character.max_dice` which respects rarity.
-- Do not check character death with `character.state == .Dead` — use `character.stats.hp <= 0`. The `.Dead` state is not currently set by combat logic; HP is the source of truth.
+- Do not check character liveness with `character.stats.hp > 0` — use `character_is_alive(character)` which checks `state == .Alive`. The `.Dead` state is set by `resolve_roll` in `combat.odin` when HP hits 0; it is the source of truth.
 - Do not modify `assigned` or `assigned_count` directly. Use `character_assign_die` / `character_unassign_die` which maintain array invariants.
 - Do not assume `character_unassign_die` returns `.None` on failure — check the `bool`.
 

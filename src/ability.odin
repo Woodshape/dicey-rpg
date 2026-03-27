@@ -74,7 +74,7 @@ ability_resolve_warrior :: proc(gs: ^Game_State, attacker: ^Character, target: ^
 ability_resolve_mass_heal :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character, roll: ^Roll_Result) {
 	for i in 0 ..< gs.player_party.count {
 		ch := &gs.player_party.characters[i]
-		if ch.stats.hp > 0 {
+		if character_is_alive(ch) {
 			ch.stats.hp += 8
 		}
 	}
