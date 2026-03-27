@@ -16,8 +16,8 @@ flurry_deals_one_per_match :: proc(t: ^testing.T) {
 
 	game.ability_flurry(nil, &attacker, &target, &roll)
 
-	// 3 hits of max(1 - 0, 0) = 1 each = 3 damage
-	testing.expect_value(t, target.stats.hp, 17)
+	// warrior ATK=3, target DEF=0: 3 hits of max(3 - 0, 0) = 3 each = 9 damage
+	testing.expect_value(t, target.stats.hp, 11)
 }
 
 @(test)
@@ -94,8 +94,8 @@ resolve_fires_ability_when_threshold_met :: proc(t: ^testing.T) {
 	game.resolve_abilities(nil, &attacker, &target)
 
 	testing.expect(t, attacker.ability_fired, "Flurry should fire with 3 matches")
-	// Flurry: 3 hits of 1 dmg = 3
-	testing.expect_value(t, target.stats.hp, 47)
+	// warrior ATK=3, target DEF=0: 3 hits of max(3 - 0, 0) = 3 each = 9 damage
+	testing.expect_value(t, target.stats.hp, 41)
 }
 
 @(test)
