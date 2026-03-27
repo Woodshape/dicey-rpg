@@ -17,6 +17,14 @@
   - Scaled by rolled value (higher rolls that still miss charge more)
 - The design intent is that d12 builds charge resolve faster on misses (~3.5 avg unmatched vs ~1.6 for d4). A flat rate partially captures this naturally. Scaling by type would make it more deliberate.
 
+## Ability Trigger Conditions — min_value
+
+- Currently: abilities trigger when `matched_count >= min_matches`. The `min_value` field is reserved in the config schema but not yet wired into the trigger check in `handle_abilities`.
+- When activated, the trigger condition becomes: `matched_count >= min_matches AND matched_value >= min_value`.
+- This enables abilities that only fire on high-face-value rolls (e.g. a d10/d12 build that requires [VALUE] >= 8), creating more specialised characters.
+- Both conditions default to 0 in config (always trigger), so existing characters need no changes.
+- Implementation: add `min_value` to the `Ability` struct, update `handle_abilities` trigger check, update `Ability_Scaling` descriptions.
+
 ## Party Death — Assigned Dice
 
 - When a character dies, what happens to their assigned dice?

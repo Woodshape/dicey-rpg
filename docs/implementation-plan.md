@@ -192,70 +192,64 @@ Each milestone is independently testable. Later milestones build on earlier ones
 
 ---
 
-### Post-MVP: YAML Configuration System
+### Milestone 9: Configuration System
 
-**Goal:** Move character definitions and encounter setups out of code into data files. New characters that reuse existing ability effects are pure data — no recompilation needed.
+**Goal:** Move character and encounter definitions from code into `.cfg` data files. New characters that reuse existing ability effects are pure data — no recompilation needed. Balance changes take effect on Play Again.
 
-**Structure:**
-```
-data/
-  characters/
-    warrior.yaml
-    goblin.yaml
-    healer.yaml
-    shaman.yaml
-  encounters/
-    tutorial.yaml     # player: [warrior, healer], enemy: [goblin, goblin]
-    boss.yaml         # player: [warrior, healer], enemy: [shaman, goblin, goblin]
-```
+**Design doc:** `docs/design/config.md`
 
-**Character YAML example:**
-```yaml
-name: Goblin
-rarity: Common
-stats:
-  hp: 15
-  attack: 2
-  defense: 0
-ability:
-  name: Fireball
-  effect: fireball       # maps to ability_fireball proc via lookup table
-  scaling: hybrid
-  min_matches: 2
-resolve_ability:
-  name: Goblin Rally
-  effect: resolve_goblin
-  scaling: match
-resolve_max: 5
-```
+- [ ] Custom `.cfg` parser (`src/config.odin`): sections, key-value pairs, section-level lists, inline comma-separated lists
+- [ ] Character loading: read `data/characters/{name}.cfg`, resolve effect/describe procs via lookup tables
+- [ ] Encounter loading: read `data/encounters/{name}.cfg`, load referenced characters
+- [ ] Three separate lookup tables: `ABILITY_EFFECTS/DESCRIBES`, `RESOLVE_EFFECTS/DESCRIBES`, `PASSIVE_EFFECTS` (reserved)
+- [ ] Convention-based describe resolution (effect key auto-maps to describe key)
+- [ ] Validation: fail hard with `log.errorf` on missing files, unknown keys/sections/effects, missing required fields
+- [ ] Migrate all 4 character templates (warrior, healer, goblin, shaman) to `.cfg` files
+- [ ] Remove `*_create` template procs from `ability.odin`
+- [ ] `game_init` takes encounter name parameter (default: `"tutorial"`), loads via config system
+- [ ] Hot reload on Play Again (re-read all data files)
+- [ ] Rename `static_describe` to `description` in `Ability` struct and all read sites
+- [ ] Update all description placeholder syntax from `[MATCHES]` to `{MATCHES}`
+- [ ] Tests: config parsing, character loading, encounter loading, validation error cases
 
-**Key decisions:**
-- Ability *effects* stay as Odin procs. YAML references them by name via a string-to-proc lookup table. New effect behaviors require code changes; new characters that reuse effects are data-only.
-- No scripting layer — Odin is fast enough for effect logic.
-- Hot reload on Play Again — re-reads YAML files so balance changes take effect without restarting the application.
-- Encounter files define team compositions for both sides.
+**Status:** Not Started
 
 ---
 
-### Post-MVP: Combat Simulator
+### Milestone 10: Headless Refactor
 
-**Goal:** Run N headless battles with configurable team compositions and collect balance statistics. Answers questions like "does 2x Goblin beat Warrior + Healer?" and "how does Smite perform vs Fireball?"
+**Goal:** Decouple game update logic from Raylib input calls so the combat loop can run headless.
 
-**Architecture:**
-- Separate binary: `sim/` package that imports game logic but runs its own headless loop (no Raylib).
-- Both sides use the existing AI (mirror match). Future: configurable strategy profiles (skull rush, match builder, balanced).
-- Reads the same YAML character/encounter files as the main game.
-- CLI interface: `odin run sim/ -- --encounter=tutorial --rounds=1000`
+**Design doc:** `docs/design/headless-refactor.md`
 
-**Output (CSV/stdout):**
-- Win rate per side
-- Average game length (turns)
-- Damage dealt per character per game
-- Ability fire rate (% of rolls that trigger the ability)
-- Resolve trigger count per game
-- Average HP remaining for winning side
+- [ ] Add `Input_State` struct to `types.odin` (mouse position, button state, delta time)
+- [ ] Collect Raylib input once per frame in `game_update`, pass `Input_State` down
+- [ ] Thread `Input_State` through `combat_update`, `player_turn_update`, `player_roll_result_update`, `enemy_roll_result_update`, `game_over_update`
+- [ ] Remove all direct `rl.` input calls from `combat.odin`
+- [ ] Remove unused `rl` import from `ai.odin`
+- [ ] Verify all existing tests still pass
+- [ ] Verify game behaviour is identical
 
-**Depends on:** YAML configuration system (characters and encounters must be data-driven for the simulator to be useful).
+**Status:** Not Started
+
+---
+
+### Milestone 11: Combat Simulator
+
+**Goal:** Run N headless battles with configurable encounters and collect balance statistics. AI vs AI mirror match.
+
+**Design doc:** `docs/design/simulator.md`
+
+- [ ] `sim/main.odin`: CLI argument parsing (`--encounter`, `--rounds`, `--seed`, `--csv`)
+- [ ] Headless game loop: AI drives both sides, roll results resolve instantly (no display timer), turn limit (`MAX_SIM_TURNS`) catches infinite loops
+- [ ] Seeding: base seed via CLI (random if omitted, always printed), per-game seed = `base_seed + round_number`
+- [ ] `sim/stats.odin`: `Game_Stats` and `Char_Stats` structs, per-game collection via HP snapshots before/after `resolve_roll`
+- [ ] `Aggregate_Stats`: win rate, avg turns, per-character damage/healing/ability fire rate/resolve fire rate/survival rate/avg HP remaining
+- [ ] Stdout: human-readable summary table
+- [ ] CSV: per-game detail, one row per round, includes per-game seed for replay
+- [ ] Future-proof: `Sim_Config` with strategy proc pointers (both default to `ai_take_turn`)
+
+**Status:** Not Started
 
 ---
 
