@@ -1,4 +1,4 @@
-# Board Issues
+# Board Ideas
 
 ## Board Size
 
