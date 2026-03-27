@@ -1,5 +1,17 @@
 # Combat Ideas
 
+## Resolve Ability Scaling
+
+- Currently: all resolve abilities use `scaling = none` (flat effects). This is correct because resolve fires from *unmatched* dice — the roll that fills the meter almost never has strong [MATCHES] or [VALUE] numbers.
+- The only scenario where a roll has both a match AND fills resolve: e.g., 3 dice, 2 match, 1 unmatched pushes meter to max. The resolve ability would see `matched_count=2` — possible but the numbers are always small.
+- If resolve abilities should ever scale, they'd want a different axis than [MATCHES]/[VALUE]:
+  - **Overflow amount** — how far over `resolve_max` the meter went (rewards banking unmatched dice)
+  - **Total resolve earned this game** — rewards characters that consistently miss matches
+  - **Current HP deficit** — desperate comeback mechanic
+  - **Number of alive allies/enemies** — situational power
+- Any of these would require adding a new scaling axis to the ability system, not reusing the existing two.
+- For now, flat resolve abilities are the right default. Revisit if playtesting reveals resolve feels too static.
+
 ## Multiple Match Groups as Separate Activations
 
 - Currently: all matched dice across groups are pooled into a single [MATCHES]/[VALUE] pair. A roll of `[4, 4, 2, 2, 5]` fires one ability with [MATCHES]=4, [VALUE]=4.

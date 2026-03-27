@@ -156,7 +156,7 @@ effect = iron_skin
 | `[stats]` | `defense` | int | Base defense stat |
 | `[ability]` | `name` | string | Display name |
 | `[ability]` | `effect` | string | Key into `ABILITY_EFFECTS` table |
-| `[ability]` | `scaling` | string | `match`, `value`, `hybrid` |
+| `[ability]` | `scaling` | string | `none`, `match`, `value`, `hybrid` |
 | `[ability]` | `min_matches` | int | Minimum [MATCHES] to trigger (0 = always) |
 | `[ability]` | `min_value` | int | Minimum [VALUE] to trigger (0 = always) |
 | `[ability]` | `description` | string | Static description for inspect overlay |
