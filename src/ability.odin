@@ -7,7 +7,12 @@ import "core:fmt"
 // gs provides full game context for abilities that need it (AoE, board, hands, etc.).
 
 // Flurry: deal [attack] damage [MATCHES] times. Favors consistent dice.
-ability_flurry :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character, roll: ^Roll_Result) {
+ability_flurry :: proc(
+	gs: ^Game_State,
+	attacker: ^Character,
+	target: ^Character,
+	roll: ^Roll_Result,
+) {
 	for _ in 0 ..< roll.matched_count {
 		dmg := max(attacker.stats.attack - target.stats.defense, 0)
 		target.stats.hp = max(target.stats.hp - dmg, 0)
@@ -15,19 +20,34 @@ ability_flurry :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character
 }
 
 // Smite: deal [VALUE] damage. Favors big dice.
-ability_smite :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character, roll: ^Roll_Result) {
+ability_smite :: proc(
+	gs: ^Game_State,
+	attacker: ^Character,
+	target: ^Character,
+	roll: ^Roll_Result,
+) {
 	dmg := max(roll.matched_value - target.stats.defense, 0)
 	target.stats.hp = max(target.stats.hp - dmg, 0)
 }
 
 // Fireball: deal [MATCHES] x [VALUE] damage. Rewards both axes.
-ability_fireball :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character, roll: ^Roll_Result) {
+ability_fireball :: proc(
+	gs: ^Game_State,
+	attacker: ^Character,
+	target: ^Character,
+	roll: ^Roll_Result,
+) {
 	dmg := max(roll.matched_count * roll.matched_value - target.stats.defense, 0)
 	target.stats.hp = max(target.stats.hp - dmg, 0)
 }
 
 // Heal: restore [VALUE] HP. Favors big dice.
-ability_heal :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character, roll: ^Roll_Result) {
+ability_heal :: proc(
+	gs: ^Game_State,
+	attacker: ^Character,
+	target: ^Character,
+	roll: ^Roll_Result,
+) {
 	attacker.stats.hp += roll.matched_value
 }
 
@@ -35,43 +55,93 @@ ability_heal :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character, 
 // Same signature as Ability_Effect — full runtime context available.
 // Returns a temporary cstring (ctprintf, valid for one frame).
 
-describe_flurry :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character, roll: ^Roll_Result) -> cstring {
+describe_flurry :: proc(
+	gs: ^Game_State,
+	attacker: ^Character,
+	target: ^Character,
+	roll: ^Roll_Result,
+) -> cstring {
 	return fmt.ctprintf("%d dmg x %d hits", attacker.stats.attack, roll.matched_count)
 }
 
-describe_smite :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character, roll: ^Roll_Result) -> cstring {
+describe_smite :: proc(
+	gs: ^Game_State,
+	attacker: ^Character,
+	target: ^Character,
+	roll: ^Roll_Result,
+) -> cstring {
 	return fmt.ctprintf("%d dmg", roll.matched_value)
 }
 
-describe_fireball :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character, roll: ^Roll_Result) -> cstring {
-	return fmt.ctprintf("%d x %d = %d dmg", roll.matched_count, roll.matched_value, roll.matched_count * roll.matched_value)
+describe_fireball :: proc(
+	gs: ^Game_State,
+	attacker: ^Character,
+	target: ^Character,
+	roll: ^Roll_Result,
+) -> cstring {
+	return fmt.ctprintf(
+		"%d x %d = %d dmg",
+		roll.matched_count,
+		roll.matched_value,
+		roll.matched_count * roll.matched_value,
+	)
 }
 
-describe_heal :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character, roll: ^Roll_Result) -> cstring {
+describe_heal :: proc(
+	gs: ^Game_State,
+	attacker: ^Character,
+	target: ^Character,
+	roll: ^Roll_Result,
+) -> cstring {
 	return fmt.ctprintf("+%d HP", roll.matched_value)
 }
 
-describe_resolve_warrior :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character, roll: ^Roll_Result) -> cstring {
+describe_resolve_warrior :: proc(
+	gs: ^Game_State,
+	attacker: ^Character,
+	target: ^Character,
+	roll: ^Roll_Result,
+) -> cstring {
 	return "10 dmg (ignores DEF)"
 }
 
-describe_resolve_mass_heal :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character, roll: ^Roll_Result) -> cstring {
+describe_resolve_mass_heal :: proc(
+	gs: ^Game_State,
+	attacker: ^Character,
+	target: ^Character,
+	roll: ^Roll_Result,
+) -> cstring {
 	return "+8 HP to all allies"
 }
 
-describe_resolve_goblin :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character, roll: ^Roll_Result) -> cstring {
+describe_resolve_goblin :: proc(
+	gs: ^Game_State,
+	attacker: ^Character,
+	target: ^Character,
+	roll: ^Roll_Result,
+) -> cstring {
 	return "+10 HP"
 }
 
 // --- Resolve ability effects ---
 
 // Warrior resolve: deal 10 flat damage ignoring defense.
-ability_resolve_warrior :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character, roll: ^Roll_Result) {
+ability_resolve_warrior :: proc(
+	gs: ^Game_State,
+	attacker: ^Character,
+	target: ^Character,
+	roll: ^Roll_Result,
+) {
 	target.stats.hp = max(target.stats.hp - 10, 0)
 }
 
 // Healer resolve: heal all alive player party members for 8 HP.
-ability_resolve_mass_heal :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character, roll: ^Roll_Result) {
+ability_resolve_mass_heal :: proc(
+	gs: ^Game_State,
+	attacker: ^Character,
+	target: ^Character,
+	roll: ^Roll_Result,
+) {
 	for i in 0 ..< gs.player_party.count {
 		ch := &gs.player_party.characters[i]
 		if character_is_alive(ch) {
@@ -81,7 +151,12 @@ ability_resolve_mass_heal :: proc(gs: ^Game_State, attacker: ^Character, target:
 }
 
 // Goblin resolve: heal 10 HP.
-ability_resolve_goblin :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character, roll: ^Roll_Result) {
+ability_resolve_goblin :: proc(
+	gs: ^Game_State,
+	attacker: ^Character,
+	target: ^Character,
+	roll: ^Roll_Result,
+) {
 	attacker.stats.hp += 10
 }
 
@@ -90,7 +165,7 @@ ability_resolve_goblin :: proc(gs: ^Game_State, attacker: ^Character, target: ^C
 // Resolve abilities after a roll. Checks the main ability's min_matches threshold
 // and calls the effect if met. Charges resolve from unmatched dice.
 // Auto-triggers resolve ability when meter is full.
-resolve_abilities :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character) {
+handle_abilities :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character) {
 	roll := &attacker.roll
 
 	// Main ability
@@ -116,12 +191,9 @@ resolve_abilities :: proc(gs: ^Game_State, attacker: ^Character, target: ^Charac
 
 // --- Character templates ---
 
+// TODO: update all static_describe strings to use {placeholder} syntax (e.g. {MATCHES}, {VALUE}, {attack}) — [MATCHES] style conflicts with config section headers
 warrior_create :: proc() -> Character {
-	ch := character_create("Warrior", .Common, Character_Stats {
-		hp      = 20,
-		attack  = 3,
-		defense = 1,
-	})
+	ch := character_create("Warrior", .Common, Character_Stats{hp = 20, attack = 3, defense = 1})
 	ch.ability = Ability {
 		name            = "Flurry",
 		scaling         = .Match,
@@ -143,11 +215,7 @@ warrior_create :: proc() -> Character {
 }
 
 healer_create :: proc() -> Character {
-	ch := character_create("Healer", .Common, Character_Stats {
-		hp      = 16,
-		attack  = 1,
-		defense = 0,
-	})
+	ch := character_create("Healer", .Common, Character_Stats{hp = 16, attack = 1, defense = 0})
 	ch.ability = Ability {
 		name            = "Heal",
 		scaling         = .Value,
@@ -169,11 +237,7 @@ healer_create :: proc() -> Character {
 }
 
 goblin_create :: proc() -> Character {
-	ch := character_create("Goblin", .Common, Character_Stats {
-		hp      = 15,
-		attack  = 2,
-		defense = 0,
-	})
+	ch := character_create("Goblin", .Common, Character_Stats{hp = 15, attack = 2, defense = 0})
 	ch.ability = Ability {
 		name            = "Fireball",
 		scaling         = .Hybrid,
@@ -195,11 +259,7 @@ goblin_create :: proc() -> Character {
 }
 
 shaman_create :: proc() -> Character {
-	ch := character_create("Shaman", .Common, Character_Stats {
-		hp      = 12,
-		attack  = 1,
-		defense = 0,
-	})
+	ch := character_create("Shaman", .Common, Character_Stats{hp = 12, attack = 1, defense = 0})
 	ch.ability = Ability {
 		name            = "Smite",
 		scaling         = .Value,

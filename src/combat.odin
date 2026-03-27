@@ -69,7 +69,8 @@ party_all_dead :: proc(party: ^Party) -> bool {
 // Returns nil if all enemies are dead.
 get_target :: proc(enemy_party: ^Party, attacker_index: int) -> ^Character {
 	// Try facing opponent first
-	if attacker_index < enemy_party.count && character_is_alive(&enemy_party.characters[attacker_index]) {
+	if attacker_index < enemy_party.count &&
+	   character_is_alive(&enemy_party.characters[attacker_index]) {
 		return &enemy_party.characters[attacker_index]
 	}
 	// Fallback to first alive
@@ -121,7 +122,7 @@ resolve_roll :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character) 
 
 	// Ability + resolve
 	if target != nil {
-		resolve_abilities(gs, attacker, target)
+		handle_abilities(gs, attacker, target)
 	}
 
 	// Log match info first
@@ -141,12 +142,20 @@ resolve_roll :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character) 
 	// Pre-format display strings into roll — used by both the log and the draw layer.
 	// Called once here with full context; draw procs read from the buffer, no gs needed.
 	if attacker.ability_fired && attacker.ability.describe != nil {
-		s := fmt.bprintf(roll.ability_desc[:], "%s", attacker.ability.describe(gs, attacker, target, roll))
-		if len(s) < MAX_LOG_LENGTH { roll.ability_desc[len(s)] = 0 }
+		s := fmt.bprintf(
+			roll.ability_desc[:],
+			"%s",
+			attacker.ability.describe(gs, attacker, target, roll),
+		)
+		if len(s) < MAX_LOG_LENGTH {roll.ability_desc[len(s)] = 0}
 	}
 	if attacker.resolve_fired && attacker.resolve_ability.describe != nil {
-		s := fmt.bprintf(roll.resolve_desc[:], "%s", attacker.resolve_ability.describe(gs, attacker, target, roll))
-		if len(s) < MAX_LOG_LENGTH { roll.resolve_desc[len(s)] = 0 }
+		s := fmt.bprintf(
+			roll.resolve_desc[:],
+			"%s",
+			attacker.resolve_ability.describe(gs, attacker, target, roll),
+		)
+		if len(s) < MAX_LOG_LENGTH {roll.resolve_desc[len(s)] = 0}
 	}
 
 	// Log ability

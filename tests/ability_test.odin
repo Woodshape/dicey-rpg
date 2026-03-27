@@ -1,7 +1,7 @@
 package tests
 
-import "core:testing"
 import game "../src"
+import "core:testing"
 
 // --- Individual ability effects ---
 
@@ -84,14 +84,14 @@ heal_restores_value_hp :: proc(t: ^testing.T) {
 
 @(test)
 resolve_fires_ability_when_threshold_met :: proc(t: ^testing.T) {
-	attacker := game.warrior_create()  // Flurry, min_matches=2
+	attacker := game.warrior_create() // Flurry, min_matches=2
 	target := game.character_create("Target", .Common, {hp = 50, attack = 1, defense = 0})
 
 	attacker.has_rolled = true
 	attacker.roll.matched_count = 3
 	attacker.roll.matched_value = 4
 
-	game.resolve_abilities(nil, &attacker, &target)
+	game.handle_abilities(nil, &attacker, &target)
 
 	testing.expect(t, attacker.ability_fired, "Flurry should fire with 3 matches")
 	// warrior ATK=3, target DEF=0: 3 hits of max(3 - 0, 0) = 3 each = 9 damage
@@ -100,14 +100,14 @@ resolve_fires_ability_when_threshold_met :: proc(t: ^testing.T) {
 
 @(test)
 resolve_skips_ability_when_threshold_not_met :: proc(t: ^testing.T) {
-	attacker := game.warrior_create()  // min_matches=2
+	attacker := game.warrior_create() // min_matches=2
 	target := game.character_create("Target", .Common, {hp = 50, attack = 1, defense = 0})
 
 	attacker.has_rolled = true
 	attacker.roll.matched_count = 1
 	attacker.roll.matched_value = 6
 
-	game.resolve_abilities(nil, &attacker, &target)
+	game.handle_abilities(nil, &attacker, &target)
 
 	testing.expect(t, !attacker.ability_fired, "Flurry should not fire with 1 match")
 	testing.expect_value(t, target.stats.hp, 50)
@@ -123,7 +123,7 @@ resolve_zero_matches_skips_ability :: proc(t: ^testing.T) {
 	attacker.roll.matched_value = 0
 	attacker.roll.unmatched_count = 3
 
-	game.resolve_abilities(nil, &attacker, &target)
+	game.handle_abilities(nil, &attacker, &target)
 
 	testing.expect(t, !attacker.ability_fired, "ability should not fire with 0 matches")
 	testing.expect_value(t, target.stats.hp, 20)
@@ -142,7 +142,7 @@ resolve_charges_from_unmatched :: proc(t: ^testing.T) {
 	attacker.roll.unmatched_count = 3
 	attacker.roll.matched_count = 0
 
-	game.resolve_abilities(nil, &attacker, &target)
+	game.handle_abilities(nil, &attacker, &target)
 
 	testing.expect_value(t, attacker.resolve, 3)
 }
@@ -155,29 +155,29 @@ resolve_accumulates_across_rolls :: proc(t: ^testing.T) {
 	// First roll: 2 unmatched
 	attacker.has_rolled = true
 	attacker.roll.unmatched_count = 2
-	game.resolve_abilities(nil, &attacker, &target)
+	game.handle_abilities(nil, &attacker, &target)
 	testing.expect_value(t, attacker.resolve, 2)
 
 	// Second roll: 2 more unmatched
 	attacker.roll.unmatched_count = 2
-	game.resolve_abilities(nil, &attacker, &target)
+	game.handle_abilities(nil, &attacker, &target)
 	testing.expect_value(t, attacker.resolve, 4)
 }
 
 @(test)
 resolve_triggers_at_threshold :: proc(t: ^testing.T) {
-	attacker := game.warrior_create()  // resolve_max = 5
+	attacker := game.warrior_create() // resolve_max = 5
 	target := game.character_create("Target", .Common, {hp = 50, attack = 1, defense = 0})
 
 	// Pre-charge to 4
 	attacker.resolve = 4
 	attacker.has_rolled = true
-	attacker.roll.unmatched_count = 1  // pushes to 5 = resolve_max
+	attacker.roll.unmatched_count = 1 // pushes to 5 = resolve_max
 
-	game.resolve_abilities(nil, &attacker, &target)
+	game.handle_abilities(nil, &attacker, &target)
 
 	testing.expect(t, attacker.resolve_fired, "resolve should fire at threshold")
-	testing.expect_value(t, attacker.resolve, 0)  // reset after firing
+	testing.expect_value(t, attacker.resolve, 0) // reset after firing
 	// Heroic Strike deals 10 flat damage ignoring defense
 	testing.expect_value(t, target.stats.hp, 40)
 }
@@ -189,9 +189,9 @@ resolve_does_not_trigger_below_threshold :: proc(t: ^testing.T) {
 
 	attacker.resolve = 3
 	attacker.has_rolled = true
-	attacker.roll.unmatched_count = 1  // pushes to 4, below resolve_max=5
+	attacker.roll.unmatched_count = 1 // pushes to 4, below resolve_max=5
 
-	game.resolve_abilities(nil, &attacker, &target)
+	game.handle_abilities(nil, &attacker, &target)
 
 	testing.expect(t, !attacker.resolve_fired, "resolve should not fire below threshold")
 	testing.expect_value(t, attacker.resolve, 4)
