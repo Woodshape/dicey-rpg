@@ -337,9 +337,8 @@ draw_rolled_dice_at :: proc(character: ^Character, panel_x, panel_y: i32, intera
 	if character.ability_fired {
 		rl.DrawText(character.ability.name, panel_x, line, 14, rl.Color{100, 200, 255, 255})
 		line += 16
-		if character.ability.describe != nil {
-			desc := character.ability.describe(roll)
-			rl.DrawText(desc, panel_x + 8, line, 12, rl.Color{140, 180, 220, 255})
+		if roll.ability_desc[0] != 0 {
+			rl.DrawText(cstring(raw_data(roll.ability_desc[:])), panel_x + 8, line, 12, rl.Color{140, 180, 220, 255})
 			line += 14
 		}
 	}
@@ -349,9 +348,8 @@ draw_rolled_dice_at :: proc(character: ^Character, panel_x, panel_y: i32, intera
 		resolve_str := fmt.ctprintf("RESOLVE: %s!", character.resolve_ability.name)
 		rl.DrawText(resolve_str, panel_x, line, 14, rl.Color{255, 200, 50, 255})
 		line += 16
-		if character.resolve_ability.describe != nil {
-			desc := character.resolve_ability.describe(roll)
-			rl.DrawText(desc, panel_x + 8, line, 12, rl.Color{220, 180, 60, 255})
+		if roll.resolve_desc[0] != 0 {
+			rl.DrawText(cstring(raw_data(roll.resolve_desc[:])), panel_x + 8, line, 12, rl.Color{220, 180, 60, 255})
 			line += 14
 		}
 	}

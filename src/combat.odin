@@ -1,5 +1,6 @@
 package game
 
+import "core:fmt"
 import rl "vendor:raylib"
 
 // Top-level update dispatcher. Routes to the appropriate phase handler.
@@ -137,23 +138,32 @@ resolve_roll :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character) 
 		combat_log_add(&gs.log, rl.Color{180, 80, 80, 255}, "%s: No match", attacker.name)
 	}
 
+	// Pre-format display strings into roll — used by both the log and the draw layer.
+	// Called once here with full context; draw procs read from the buffer, no gs needed.
+	if attacker.ability_fired && attacker.ability.describe != nil {
+		s := fmt.bprintf(roll.ability_desc[:], "%s", attacker.ability.describe(gs, attacker, target, roll))
+		if len(s) < MAX_LOG_LENGTH { roll.ability_desc[len(s)] = 0 }
+	}
+	if attacker.resolve_fired && attacker.resolve_ability.describe != nil {
+		s := fmt.bprintf(roll.resolve_desc[:], "%s", attacker.resolve_ability.describe(gs, attacker, target, roll))
+		if len(s) < MAX_LOG_LENGTH { roll.resolve_desc[len(s)] = 0 }
+	}
+
 	// Log ability
-	if attacker.ability_fired {
+	if attacker.ability_fired && target != nil {
 		desc: cstring = attacker.ability.name
-		if attacker.ability.describe != nil {
-			desc = attacker.ability.describe(roll)
+		if roll.ability_desc[0] != 0 {
+			desc = cstring(raw_data(roll.ability_desc[:]))
 		}
-		if target != nil {
-			combat_log_add(
-				&gs.log,
-				rl.Color{100, 200, 255, 255},
-				"%s: %s (%s) -> %s",
-				attacker.name,
-				attacker.ability.name,
-				desc,
-				target.name,
-			)
-		}
+		combat_log_add(
+			&gs.log,
+			rl.Color{100, 200, 255, 255},
+			"%s: %s (%s) -> %s",
+			attacker.name,
+			attacker.ability.name,
+			desc,
+			target.name,
+		)
 	}
 
 	// Log resolve meter (using pre-resolution value + charge)
@@ -172,12 +182,17 @@ resolve_roll :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character) 
 
 	// Log resolve ability
 	if attacker.resolve_fired {
+		desc: cstring = attacker.resolve_ability.name
+		if roll.resolve_desc[0] != 0 {
+			desc = cstring(raw_data(roll.resolve_desc[:]))
+		}
 		combat_log_add(
 			&gs.log,
 			rl.Color{255, 200, 50, 255},
-			"%s: RESOLVE -> %s!",
+			"%s: RESOLVE %s -> %s",
 			attacker.name,
 			attacker.resolve_ability.name,
+			desc,
 		)
 	}
 

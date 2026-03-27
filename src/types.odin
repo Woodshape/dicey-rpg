@@ -91,6 +91,11 @@ Roll_Result :: struct {
 	matched_count:   int, // [MATCHES]: normal dice in match groups
 	unmatched_count: int, // normal dice NOT in match groups
 	// Invariant: matched_count + unmatched_count + skull_count == count
+	// Pre-formatted display strings, populated by resolve_roll (combat.odin).
+	// Computed once with full context; read by both the combat log and draw layer.
+	// Cleared automatically by character_clear_roll via zero-init.
+	ability_desc:    [MAX_LOG_LENGTH]u8,
+	resolve_desc:    [MAX_LOG_LENGTH]u8,
 }
 
 // Board cell
@@ -177,9 +182,10 @@ Ability_Scaling :: enum u8 {
 // Receives the full game state for maximum flexibility (AoE, board manipulation, hand theft, etc.).
 Ability_Effect :: #type proc(gs: ^Game_State, attacker: ^Character, target: ^Character, roll: ^Roll_Result)
 
-// Description procedure: returns a formatted string for UI display after firing.
-// Uses ctprintf internally — the returned cstring is temporary (valid for one frame).
-Ability_Describe :: #type proc(roll: ^Roll_Result) -> cstring
+// Description procedure: same signature as Ability_Effect so it has full runtime context
+// (attacker stats, target, board state, etc.). Returns a formatted cstring for UI display
+// and combat log. Uses ctprintf internally — the returned cstring is temporary (one frame).
+Ability_Describe :: #type proc(gs: ^Game_State, attacker: ^Character, target: ^Character, roll: ^Roll_Result) -> cstring
 
 Ability :: struct {
 	name:            cstring,

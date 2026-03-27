@@ -32,33 +32,30 @@ ability_heal :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character, 
 }
 
 // --- Ability descriptions ---
-// Return formatted strings with resolved [MATCHES] and [VALUE] for UI display.
-// TODO: rework describe procs to support dynamic use in the combat log.
-// Currently they produce resolved values (e.g. "3 x 5 = 15 dmg") for post-roll UI,
-// but combat.odin builds its own log strings separately. Unifying them would reduce
-// duplication and make the log more descriptive.
+// Same signature as Ability_Effect — full runtime context available.
+// Returns a temporary cstring (ctprintf, valid for one frame).
 
-describe_flurry :: proc(roll: ^Roll_Result) -> cstring {
-	return fmt.ctprintf("%s dmg x %d hits", roll.matched_count)
+describe_flurry :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character, roll: ^Roll_Result) -> cstring {
+	return fmt.ctprintf("%d dmg x %d hits", attacker.stats.attack, roll.matched_count)
 }
 
-describe_smite :: proc(roll: ^Roll_Result) -> cstring {
+describe_smite :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character, roll: ^Roll_Result) -> cstring {
 	return fmt.ctprintf("%d dmg", roll.matched_value)
 }
 
-describe_fireball :: proc(roll: ^Roll_Result) -> cstring {
+describe_fireball :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character, roll: ^Roll_Result) -> cstring {
 	return fmt.ctprintf("%d x %d = %d dmg", roll.matched_count, roll.matched_value, roll.matched_count * roll.matched_value)
 }
 
-describe_heal :: proc(roll: ^Roll_Result) -> cstring {
+describe_heal :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character, roll: ^Roll_Result) -> cstring {
 	return fmt.ctprintf("+%d HP", roll.matched_value)
 }
 
-describe_resolve_warrior :: proc(roll: ^Roll_Result) -> cstring {
+describe_resolve_warrior :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character, roll: ^Roll_Result) -> cstring {
 	return "10 dmg (ignores DEF)"
 }
 
-describe_resolve_goblin :: proc(roll: ^Roll_Result) -> cstring {
+describe_resolve_goblin :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character, roll: ^Roll_Result) -> cstring {
 	return "+10 HP"
 }
 
