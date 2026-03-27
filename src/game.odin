@@ -8,17 +8,21 @@ ENEMY_PANEL_X :: WINDOW_WIDTH - CHAR_PANEL_X - CHAR_PANEL_WIDTH
 ENEMY_PANEL_Y :: CHAR_PANEL_Y
 
 Game_State :: struct {
-	running:       bool,
-	board:         Board,
-	hand:          Hand,
-	enemy_hand:    Hand,
-	player_party:  Party,
-	enemy_party:   Party,
-	drag:          Drag_State,
-	turn:          Turn_Phase,
-	turn_timer:    f32,
-	rolling_index: int, // which character is currently showing roll results
-	log:           Combat_Log,
+	running:             bool,
+	board:               Board,
+	hand:                Hand,
+	enemy_hand:          Hand,
+	player_party:        Party,
+	enemy_party:         Party,
+	drag:                Drag_State,
+	turn:                Turn_Phase,
+	turn_timer:          f32,
+	rolling_index:       int, // which character is currently showing roll results
+	log:                 Combat_Log,
+	// Character inspect overlay
+	inspect_active:      bool,
+	inspect_party_enemy: bool, // false = player party, true = enemy party
+	inspect_char_index:  int,
 }
 
 game_init :: proc(prev_log: ^Combat_Log = nil) -> Game_State {
@@ -42,6 +46,18 @@ game_init :: proc(prev_log: ^Combat_Log = nil) -> Game_State {
 
 game_update :: proc(gs: ^Game_State) {
 	combat_update(gs)
+}
+
+// Returns the character currently selected for inspect, or nil if index is out of range.
+inspect_get_character :: proc(gs: ^Game_State) -> ^Character {
+	party := &gs.player_party
+	if gs.inspect_party_enemy {
+		party = &gs.enemy_party
+	}
+	if gs.inspect_char_index >= 0 && gs.inspect_char_index < party.count {
+		return &party.characters[gs.inspect_char_index]
+	}
+	return nil
 }
 
 try_start_drag :: proc(gs: ^Game_State, mouse_x, mouse_y: i32) {
@@ -165,6 +181,14 @@ game_draw :: proc(gs: ^Game_State) {
 
 	// Combat log
 	combat_log_draw(&gs.log)
+
+	// Character inspect overlay (above board/UI, below game-over)
+	if gs.inspect_active {
+		ch := inspect_get_character(gs)
+		if ch != nil {
+			draw_character_detail(ch)
+		}
+	}
 
 	// Game over overlay
 	if gs.turn == .Victory || gs.turn == .Defeat {

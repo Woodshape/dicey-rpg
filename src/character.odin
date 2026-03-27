@@ -105,6 +105,22 @@ panel_slot_position :: proc(panel_x, panel_y: i32, slot_index: int) -> (i32, i32
 	return x, y
 }
 
+// Returns the character index if mouse is over the header area (name/rarity/stats, above die slots)
+// of any active character in the party. Returns -1 if no hit.
+// Die slots start at panel_y+80, so the header region is panel_y to panel_y+76.
+mouse_on_party_header :: proc(party: ^Party, panel_x: i32, mouse_x, mouse_y: i32) -> int {
+	for ci in 0 ..< party.count {
+		ch := &party.characters[ci]
+		if !character_is_active(ch) { continue }
+		py := char_panel_y(ci)
+		if mouse_x >= panel_x && mouse_x < panel_x + CHAR_PANEL_WIDTH &&
+		   mouse_y >= py && mouse_y < py + 76 {
+			return ci
+		}
+	}
+	return -1
+}
+
 // Check if mouse is over a die slot for a panel at (panel_x, panel_y). Returns slot index or -1.
 mouse_to_char_slot_at :: proc(mouse_x, mouse_y: i32, panel_x, panel_y: i32, max_dice: int) -> int {
 	for i in 0 ..< max_dice {
@@ -340,6 +356,148 @@ draw_rolled_dice_at :: proc(character: ^Character, panel_x, panel_y: i32, intera
 		}
 	}
 
+}
+
+// --- Character inspect overlay ---
+
+// Draw one ability card (main or resolve) inside the inspect overlay.
+@(private = "file")
+draw_ability_panel :: proc(x, y, w, h: i32, ability: ^Ability, is_resolve: bool) {
+	// Background + border
+	rl.DrawRectangle(x, y, w, h, rl.Color{25, 28, 42, 200})
+	border_col := rl.Color{80, 80, 120, 200}
+	if is_resolve {
+		border_col = rl.Color{160, 130, 30, 200}
+	}
+	rl.DrawRectangleLines(x, y, w, h, border_col)
+
+	// Panel label
+	label: cstring
+	label_col: rl.Color
+	if is_resolve {
+		label = "RESOLVE"
+		label_col = rl.Color{220, 180, 50, 255}
+	} else {
+		label = "ABILITY"
+		label_col = rl.Color{120, 180, 240, 255}
+	}
+	rl.DrawText(label, x + 10, y + 8, 11, label_col)
+
+	cur_y := y + 26
+
+	// Ability name
+	if ability.name != nil {
+		rl.DrawText(ability.name, x + 10, cur_y, 18, rl.RAYWHITE)
+		cur_y += 24
+	} else {
+		rl.DrawText("(none)", x + 10, cur_y, 16, rl.GRAY)
+		cur_y += 22
+	}
+
+	// Scaling axis
+	scaling_str: cstring
+	scaling_col: rl.Color
+	switch ability.scaling {
+	case .Match:
+		scaling_str = "[MATCHES] scaling"
+		scaling_col = rl.Color{100, 200, 100, 255}
+	case .Value:
+		scaling_str = "[VALUE] scaling"
+		scaling_col = rl.Color{210, 160, 60, 255}
+	case .Hybrid:
+		scaling_str = "[MATCHES] x [VALUE] scaling"
+		scaling_col = rl.Color{180, 100, 230, 255}
+	}
+	rl.DrawText(scaling_str, x + 10, cur_y, 12, scaling_col)
+	cur_y += 18
+
+	// Min matches threshold — only shown when unusually high (>= 3).
+	// Requiring >= 2 is the default for all abilities and not worth surfacing.
+	if !is_resolve && ability.min_matches >= 3 {
+		mm_str := fmt.ctprintf("Requires [MATCHES] >= %d", ability.min_matches)
+		rl.DrawText(mm_str, x + 10, cur_y, 12, rl.Color{160, 160, 160, 255})
+		cur_y += 18
+	}
+
+	// Static formula
+	if ability.static_describe != nil {
+		rl.DrawRectangle(x + 8, cur_y + 2, w - 16, 22, rl.Color{40, 44, 60, 220})
+		rl.DrawText(ability.static_describe, x + 14, cur_y + 6, 12, rl.Color{200, 220, 255, 255})
+	}
+}
+
+// Draw the full-screen character inspect overlay.
+// Called from game_draw when gs.inspect_active is true.
+draw_character_detail :: proc(ch: ^Character) {
+	card_w: i32 = 900
+	card_h: i32 = 450
+	card_x: i32 = (WINDOW_WIDTH - card_w) / 2  // 190
+	card_y: i32 = (WINDOW_HEIGHT - card_h) / 2 // 135
+
+	// Portrait block (centered horizontally in the card)
+	por_w: i32 = 130
+	por_h: i32 = 180
+	por_x: i32 = card_x + (card_w - por_w) / 2
+	por_y: i32 = card_y + 80
+
+	// Ability panels flanking the portrait
+	panel_y: i32 = por_y
+	panel_h: i32 = por_h
+	l_x: i32 = card_x + 15
+	l_w: i32 = por_x - l_x - 15
+	r_x: i32 = por_x + por_w + 15
+	r_w: i32 = (card_x + card_w - 15) - r_x
+
+	// Stats row below the portrait
+	stats_y: i32 = panel_y + panel_h + 16
+
+	// Dim overlay
+	rl.DrawRectangle(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, rl.Color{0, 0, 0, 175})
+
+	// Card background + border
+	rl.DrawRectangle(card_x, card_y, card_w, card_h, rl.Color{18, 20, 32, 250})
+	rl.DrawRectangleLines(card_x, card_y, card_w, card_h, rl.Color{80, 80, 130, 255})
+
+	// Header: name
+	name_w := rl.MeasureText(ch.name, 28)
+	rl.DrawText(ch.name, card_x + (card_w - name_w) / 2, card_y + 14, 28, rl.RAYWHITE)
+
+	// Header: rarity
+	rar_str := RARITY_NAMES[ch.rarity]
+	rar_w := rl.MeasureText(rar_str, 14)
+	rl.DrawText(rar_str, card_x + (card_w - rar_w) / 2, card_y + 48, 14, rl.GRAY)
+
+	// Header divider
+	rl.DrawLine(card_x + 20, card_y + 70, card_x + card_w - 20, card_y + 70, rl.Color{60, 60, 90, 255})
+
+	// Portrait block
+	rl.DrawRectangle(por_x, por_y, por_w, por_h, rl.Color{35, 40, 65, 255})
+	rl.DrawRectangleLines(por_x, por_y, por_w, por_h, rl.Color{100, 100, 170, 255})
+	por_name_w := rl.MeasureText(ch.name, 14)
+	rl.DrawText(ch.name, por_x + (por_w - por_name_w) / 2, por_y + por_h / 2 - 10, 14, rl.RAYWHITE)
+
+	// Ability panels
+	draw_ability_panel(l_x, panel_y, l_w, panel_h, &ch.ability, false)
+	draw_ability_panel(r_x, panel_y, r_w, panel_h, &ch.resolve_ability, true)
+
+	// Stats
+	stats_str := fmt.ctprintf(
+		"HP: %d  |  ATK: %d  |  DEF: %d  |  RSV: %d/%d",
+		ch.stats.hp, ch.stats.attack, ch.stats.defense, ch.resolve, ch.resolve_max,
+	)
+	stats_w := rl.MeasureText(stats_str, 14)
+	rl.DrawText(stats_str, card_x + (card_w - stats_w) / 2, stats_y, 14, rl.Color{180, 220, 180, 255})
+
+	// Passive (placeholder — not yet wired)
+	// TODO: wire passive ability system
+	passive_str: cstring = "Passive: (none)"
+	passive_w := rl.MeasureText(passive_str, 13)
+	rl.DrawText(passive_str, card_x + (card_w - passive_w) / 2, stats_y + 22, 13, rl.Color{120, 120, 120, 255})
+
+	// Dismiss hint
+	hint: cstring = "Click anywhere to dismiss"
+	hint_w := rl.MeasureText(hint, 12)
+	rl.DrawText(hint, card_x + (card_w - hint_w) / 2, card_y + card_h - 22, 12, rl.Color{100, 100, 120, 255})
 }
 
 draw_roll_button_at :: proc(panel_x, panel_y, mouse_x, mouse_y: i32) {

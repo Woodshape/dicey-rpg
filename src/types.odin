@@ -182,11 +182,12 @@ Ability_Effect :: #type proc(gs: ^Game_State, attacker: ^Character, target: ^Cha
 Ability_Describe :: #type proc(roll: ^Roll_Result) -> cstring
 
 Ability :: struct {
-	name:        cstring,
-	scaling:     Ability_Scaling,
-	min_matches: int, // minimum [MATCHES] required to trigger (0 = always fires)
-	effect:      Ability_Effect,
-	describe:    Ability_Describe,
+	name:            cstring,
+	scaling:         Ability_Scaling,
+	min_matches:     int, // minimum [MATCHES] required to trigger (0 = always fires)
+	effect:          Ability_Effect,
+	describe:        Ability_Describe, // post-roll dynamic description (resolved values)
+	static_describe: cstring, // formula with [MATCHES]/[VALUE] placeholders, shown in inspect UI
 }
 
 Character :: struct {
@@ -218,7 +219,7 @@ character_is_active :: proc(character: ^Character) -> bool {
 }
 
 // UI layout for character panel
-CHAR_PANEL_X :: 30
+CHAR_PANEL_X      :: 30
 CHAR_PANEL_Y :: 80
 CHAR_PANEL_WIDTH :: 160
 CHAR_SLOT_SIZE :: 44

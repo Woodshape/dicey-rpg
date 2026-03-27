@@ -6,10 +6,10 @@ import "core:fmt"
 // Each takes (gs, attacker, target, roll) and applies its effect.
 // gs provides full game context for abilities that need it (AoE, board, hands, etc.).
 
-// Flurry: deal 1 damage [MATCHES] times. Favors consistent dice.
+// Flurry: deal [attack] damage [MATCHES] times. Favors consistent dice.
 ability_flurry :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character, roll: ^Roll_Result) {
 	for _ in 0 ..< roll.matched_count {
-		dmg := max(1 - target.stats.defense, 0)
+		dmg := max(attacker.stats.attack - target.stats.defense, 0)
 		target.stats.hp = max(target.stats.hp - dmg, 0)
 	}
 }
@@ -33,9 +33,13 @@ ability_heal :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character, 
 
 // --- Ability descriptions ---
 // Return formatted strings with resolved [MATCHES] and [VALUE] for UI display.
+// TODO: rework describe procs to support dynamic use in the combat log.
+// Currently they produce resolved values (e.g. "3 x 5 = 15 dmg") for post-roll UI,
+// but combat.odin builds its own log strings separately. Unifying them would reduce
+// duplication and make the log more descriptive.
 
 describe_flurry :: proc(roll: ^Roll_Result) -> cstring {
-	return fmt.ctprintf("1 dmg x %d hits", roll.matched_count)
+	return fmt.ctprintf("%s dmg x %d hits", roll.matched_count)
 }
 
 describe_smite :: proc(roll: ^Roll_Result) -> cstring {
@@ -108,18 +112,20 @@ warrior_create :: proc() -> Character {
 		defense = 1,
 	})
 	ch.ability = Ability {
-		name        = "Flurry",
-		scaling     = .Match,
-		min_matches = 2,
-		effect      = ability_flurry,
-		describe    = describe_flurry,
+		name            = "Flurry",
+		scaling         = .Match,
+		min_matches     = 2,
+		effect          = ability_flurry,
+		describe        = describe_flurry,
+		static_describe = "[attack] dmg x [MATCHES] hits",
 	}
 	ch.resolve_ability = Ability {
-		name        = "Heroic Strike",
-		scaling     = .Match,
-		min_matches = 0,
-		effect      = ability_resolve_warrior,
-		describe    = describe_resolve_warrior,
+		name            = "Heroic Strike",
+		scaling         = .Match,
+		min_matches     = 0,
+		effect          = ability_resolve_warrior,
+		describe        = describe_resolve_warrior,
+		static_describe = "10 dmg, ignores DEF",
 	}
 	ch.resolve_max = 5
 	return ch
@@ -132,18 +138,20 @@ healer_create :: proc() -> Character {
 		defense = 0,
 	})
 	ch.ability = Ability {
-		name        = "Heal",
-		scaling     = .Value,
-		min_matches = 2,
-		effect      = ability_heal,
-		describe    = describe_heal,
+		name            = "Heal",
+		scaling         = .Value,
+		min_matches     = 2,
+		effect          = ability_heal,
+		describe        = describe_heal,
+		static_describe = "+[VALUE] HP",
 	}
 	ch.resolve_ability = Ability {
-		name        = "Mass Heal",
-		scaling     = .Match,
-		min_matches = 0,
-		effect      = ability_resolve_warrior, // placeholder: same as warrior for now
-		describe    = describe_resolve_warrior,
+		name            = "Mass Heal",
+		scaling         = .Match,
+		min_matches     = 0,
+		effect          = ability_resolve_warrior, // placeholder: same as warrior for now
+		describe        = describe_resolve_warrior,
+		static_describe = "(not yet implemented)",
 	}
 	ch.resolve_max = 5
 	return ch
@@ -156,18 +164,20 @@ goblin_create :: proc() -> Character {
 		defense = 0,
 	})
 	ch.ability = Ability {
-		name        = "Fireball",
-		scaling     = .Hybrid,
-		min_matches = 2,
-		effect      = ability_fireball,
-		describe    = describe_fireball,
+		name            = "Fireball",
+		scaling         = .Hybrid,
+		min_matches     = 2,
+		effect          = ability_fireball,
+		describe        = describe_fireball,
+		static_describe = "[MATCHES] x [VALUE] dmg",
 	}
 	ch.resolve_ability = Ability {
-		name        = "Goblin Rally",
-		scaling     = .Match,
-		min_matches = 0,
-		effect      = ability_resolve_goblin,
-		describe    = describe_resolve_goblin,
+		name            = "Goblin Rally",
+		scaling         = .Match,
+		min_matches     = 0,
+		effect          = ability_resolve_goblin,
+		describe        = describe_resolve_goblin,
+		static_describe = "+10 HP",
 	}
 	ch.resolve_max = 5
 	return ch
@@ -180,18 +190,20 @@ shaman_create :: proc() -> Character {
 		defense = 0,
 	})
 	ch.ability = Ability {
-		name        = "Smite",
-		scaling     = .Value,
-		min_matches = 2,
-		effect      = ability_smite,
-		describe    = describe_smite,
+		name            = "Smite",
+		scaling         = .Value,
+		min_matches     = 2,
+		effect          = ability_smite,
+		describe        = describe_smite,
+		static_describe = "[VALUE] dmg",
 	}
 	ch.resolve_ability = Ability {
-		name        = "Dark Ritual",
-		scaling     = .Match,
-		min_matches = 0,
-		effect      = ability_resolve_goblin,
-		describe    = describe_resolve_goblin,
+		name            = "Dark Ritual",
+		scaling         = .Match,
+		min_matches     = 0,
+		effect          = ability_resolve_goblin,
+		describe        = describe_resolve_goblin,
+		static_describe = "+10 HP",
 	}
 	ch.resolve_max = 5
 	return ch

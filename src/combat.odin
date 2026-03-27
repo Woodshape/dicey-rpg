@@ -4,6 +4,39 @@ import rl "vendor:raylib"
 
 // Top-level update dispatcher. Routes to the appropriate phase handler.
 combat_update :: proc(gs: ^Game_State) {
+	// Handle character inspect toggle before any phase logic.
+	// Works in all non-game-over phases. Any left-click closes the view;
+	// clicking a character header opens it.
+	if gs.turn != .Victory && gs.turn != .Defeat {
+		if rl.IsMouseButtonPressed(.LEFT) {
+			mouse_x := rl.GetMouseX()
+			mouse_y := rl.GetMouseY()
+
+			if gs.inspect_active {
+				gs.inspect_active = false
+				return
+			}
+
+			ci := mouse_on_party_header(&gs.player_party, CHAR_PANEL_X, mouse_x, mouse_y)
+			if ci >= 0 {
+				gs.inspect_active = true
+				gs.inspect_party_enemy = false
+				gs.inspect_char_index = ci
+				gs.drag = {}
+				return
+			}
+
+			ci = mouse_on_party_header(&gs.enemy_party, ENEMY_PANEL_X, mouse_x, mouse_y)
+			if ci >= 0 {
+				gs.inspect_active = true
+				gs.inspect_party_enemy = true
+				gs.inspect_char_index = ci
+				gs.drag = {}
+				return
+			}
+		}
+	}
+
 	#partial switch gs.turn {
 	case .Player_Turn:
 		player_turn_update(gs)
@@ -169,6 +202,11 @@ check_board_refill :: proc(gs: ^Game_State) {
 
 player_turn_update :: proc(gs: ^Game_State) {
 	check_board_refill(gs)
+
+	// Block all player input while inspect overlay is open
+	if gs.inspect_active {
+		return
+	}
 
 	mouse_x := rl.GetMouseX()
 	mouse_y := rl.GetMouseY()
