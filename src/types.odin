@@ -107,8 +107,9 @@ Board_Cell :: struct {
 
 // Board
 Board :: struct {
-	size:  int,
-	cells: [BOARD_SIZE][BOARD_SIZE]Board_Cell,
+	size:         int,
+	cells:        [BOARD_SIZE][BOARD_SIZE]Board_Cell,
+	skull_chance: int, // % chance per cell; set by board_init, preserved on refill
 }
 
 // Hand

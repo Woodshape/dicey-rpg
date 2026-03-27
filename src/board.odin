@@ -15,9 +15,9 @@ cell_ring :: proc(board: ^Board, row, col: int) -> int {
 // The gradient uses a weighted random roll per tile. Each ring gets a
 // probability weight per die type based on how deep it is (0.0 = outer,
 // 1.0 = just before centre). Deeper rings shift weight toward bigger dice.
-ring_die_type :: proc(ring, max_ring: int) -> Die_Type {
+ring_die_type :: proc(ring, max_ring: int, skull_chance: int = SKULL_CHANCE) -> Die_Type {
 	// Skull dice can appear in any ring
-	if rand.int_max(100) < SKULL_CHANCE {
+	if skull_chance > 0 && rand.int_max(100) < skull_chance {
 		return .Skull
 	}
 
@@ -45,9 +45,10 @@ ring_die_type :: proc(ring, max_ring: int) -> Die_Type {
 	return .D12
 }
 
-// Initialize board with dice placed by rarity gradient
-board_init :: proc() -> Board {
-	board:= Board{ size = BOARD_SIZE }
+// Initialize board with dice placed by rarity gradient.
+// skull_chance overrides the default SKULL_CHANCE (e.g. 0 for no-skulls mode).
+board_init :: proc(skull_chance: int = SKULL_CHANCE) -> Board {
+	board := Board{size = BOARD_SIZE, skull_chance = skull_chance}
 	max_ring := (board.size - 1) / 2
 
 	for row in 0 ..< board.size {
@@ -55,9 +56,9 @@ board_init :: proc() -> Board {
 			ring := cell_ring(&board, row, col)
 			die_type: Die_Type
 			if ring == max_ring {
-				die_type = .D12  // centre tile is always d12
+				die_type = .D12 // centre tile is always d12
 			} else {
-				die_type = ring_die_type(ring, max_ring)
+				die_type = ring_die_type(ring, max_ring, skull_chance)
 			}
 			board.cells[row][col] = Board_Cell{
 				die_type = die_type,

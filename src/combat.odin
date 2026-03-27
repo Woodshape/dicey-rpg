@@ -215,7 +215,7 @@ resolve_roll :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character) 
 // This covers both an empty board and a board with only inaccessible inner tiles.
 check_board_refill :: proc(gs: ^Game_State) {
 	if !board_has_pickable(&gs.board) {
-		gs.board = board_init()
+		gs.board = board_init(gs.board.skull_chance)
 		combat_log_add(&gs.log, rl.Color{180, 180, 100, 255}, "Board refilled")
 	}
 }

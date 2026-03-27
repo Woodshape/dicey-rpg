@@ -25,10 +25,10 @@ Game_State :: struct {
 	inspect_char_index:  int,
 }
 
-game_init :: proc(encounter: string = "tutorial", prev_log: ^Combat_Log = nil) -> (Game_State, bool) {
+game_init :: proc(encounter: string = "tutorial", prev_log: ^Combat_Log = nil, skull_chance: int = SKULL_CHANCE) -> (Game_State, bool) {
 	gs := Game_State {
 		running = true,
-		board   = board_init(),
+		board   = board_init(skull_chance),
 	}
 	// Preserve log across restarts
 	if prev_log != nil {
