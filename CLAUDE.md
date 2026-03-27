@@ -17,6 +17,9 @@ src/                    -- all game source (single package: "game")
   ai.odin               -- enemy AI: die scoring, pick/roll decisions, assignment
   ability.odin          -- ability effects, resolution, describe procs
   config.odin           -- .cfg parser, lookup tables, character/encounter loading
+sim/                    -- combat simulator (separate binary, imports game package)
+  main.odin             -- CLI parsing, headless game loop, party-swap AI driver
+  stats.odin            -- per-game/per-roll stat collection, aggregation, CSV output
 tests/                  -- test package (separate from game)
   board_test.odin       -- board ring, perimeter, removal, gradient tests
   hand_test.odin        -- hand capacity, removal, vacated slot tests
@@ -77,6 +80,11 @@ odin test tests/
 
 # Debug build
 odin run src/ -out:build/dicey-rpg -debug
+
+# Build and run simulator
+odin build sim/ -out:build/dicey-sim
+./build/dicey-sim --encounter=tutorial --rounds=1000 --seed=42
+./build/dicey-sim --no-skulls --rounds=500   # ability-only analysis
 ```
 
 ## Architecture

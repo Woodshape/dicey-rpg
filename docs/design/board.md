@@ -52,9 +52,9 @@ w_d12 = max(depth * 2.0 - 1.0, 0.0)
 
 | Procedure | Purpose |
 |-----------|---------|
-| `board_init()` | Create a new board with gradient-distributed dice |
+| `board_init(skull_chance)` | Create a new board with gradient-distributed dice. `skull_chance` defaults to `SKULL_CHANCE`; pass 0 for no-skulls mode. Stored on `Board.skull_chance` so refills preserve it. |
 | `cell_ring(board, row, col)` | Ring depth of a cell (0 = outer) |
-| `ring_die_type(ring, max_ring)` | Weighted random die type for a ring |
+| `ring_die_type(ring, max_ring, skull_chance)` | Weighted random die type for a ring. `skull_chance` defaults to `SKULL_CHANCE`. |
 | `cell_is_pickable(board, row, col)` | Is this cell on the accessible perimeter? |
 | `board_remove_die(board, row, col)` | Remove a die; returns (type, ok). Validates perimeter. |
 | `board_count_dice(board)` | Count remaining occupied cells |

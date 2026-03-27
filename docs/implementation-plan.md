@@ -240,16 +240,18 @@ Each milestone is independently testable. Later milestones build on earlier ones
 
 **Design doc:** `docs/design/simulator.md`
 
-- [ ] `sim/main.odin`: CLI argument parsing (`--encounter`, `--rounds`, `--seed`, `--csv`)
-- [ ] Headless game loop: AI drives both sides, roll results resolve instantly (no display timer), turn limit (`MAX_SIM_TURNS`) catches infinite loops
-- [ ] Seeding: base seed via CLI (random if omitted, always printed), per-game seed = `base_seed + round_number`
-- [ ] `sim/stats.odin`: `Game_Stats` and `Char_Stats` structs, per-game collection via HP snapshots before/after `resolve_roll`
-- [ ] `Aggregate_Stats`: win rate, avg turns, per-character damage/healing/ability fire rate/resolve fire rate/survival rate/avg HP remaining
-- [ ] Stdout: human-readable summary table
-- [ ] CSV: per-game detail, one row per round, includes per-game seed for replay
-- [ ] Future-proof: `Sim_Config` with strategy proc pointers (both default to `ai_take_turn`)
+- [x] `sim/main.odin`: CLI argument parsing (`--encounter`, `--rounds`, `--seed`, `--csv`, `--no-skulls`)
+- [x] Headless game loop: AI drives both sides via party-swap trick, roll results resolve instantly (no display timer), turn limit (`MAX_SIM_TURNS = 200`) catches infinite loops
+- [x] Seeding: base seed via CLI (random if omitted, always printed), per-game seed = `base_seed + round_number`
+- [x] `sim/stats.odin`: `Game_Stats` and `Char_Stats` structs, per-game collection via HP snapshots before/after `resolve_roll`
+- [x] `Aggregate_Stats`: win rate, avg turns, per-character damage/healing/ability fire rate/resolve fire rate/survival rate/avg HP remaining
+- [x] Stdout: human-readable summary table + dice mechanics table
+- [x] CSV: per-game detail, one row per round, includes per-game seed for replay
+- [x] Dice mechanics analysis: per-roll `Roll_Stats` collection, `Dice_Aggregate` by die type with avg [M]/[V]/match%/damage by scaling type
+- [x] `board_init` accepts `skull_chance` parameter for `--no-skulls` mode
+- [x] Fixed `ability_resolve_mass_heal` to use `attacker_party()` instead of hardcoded `gs.player_party` (side-agnostic)
 
-**Status:** Not Started
+**Status:** Done
 
 ---
 

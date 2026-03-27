@@ -46,6 +46,14 @@ The full `Game_State` is passed for maximum flexibility. Abilities can read or m
 
 The `attacker` and `target` are convenience pointers for the common case. `roll` provides [MATCHES] and [VALUE] for scaling.
 
+### Side-Agnostic Party Lookup
+
+Abilities that affect the attacker's allies (e.g., party-wide heals) must **not** hardcode `gs.player_party` or `gs.enemy_party`. Use `attacker_party(gs, attacker)` to find the correct party at runtime — this works correctly when the simulator swaps parties for AI-driven player turns.
+
+```odin
+attacker_party :: proc(gs: ^Game_State, attacker: ^Character) -> ^Party
+```
+
 ### Scaling Axes
 
 | Axis | Formula Pattern | Best Die Type |

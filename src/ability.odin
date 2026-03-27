@@ -2,6 +2,22 @@ package game
 
 import "core:fmt"
 
+// Find which party the attacker belongs to. Used by AoE abilities
+// that need to heal/buff allies without hardcoding a side.
+attacker_party :: proc(gs: ^Game_State, attacker: ^Character) -> ^Party {
+	for i in 0 ..< gs.player_party.count {
+		if &gs.player_party.characters[i] == attacker {
+			return &gs.player_party
+		}
+	}
+	for i in 0 ..< gs.enemy_party.count {
+		if &gs.enemy_party.characters[i] == attacker {
+			return &gs.enemy_party
+		}
+	}
+	return nil
+}
+
 // --- Ability effect procedures ---
 // Each takes (gs, attacker, target, roll) and applies its effect.
 // gs provides full game context for abilities that need it (AoE, board, hands, etc.).
@@ -135,15 +151,20 @@ ability_resolve_warrior :: proc(
 	target.stats.hp = max(target.stats.hp - 10, 0)
 }
 
-// Healer resolve: heal all alive player party members for 8 HP.
+// Healer resolve: heal all alive allies for 8 HP.
+// Finds the attacker's party dynamically so it works for both sides.
 ability_resolve_mass_heal :: proc(
 	gs: ^Game_State,
 	attacker: ^Character,
 	target: ^Character,
 	roll: ^Roll_Result,
 ) {
-	for i in 0 ..< gs.player_party.count {
-		ch := &gs.player_party.characters[i]
+	party := attacker_party(gs, attacker)
+	if party == nil {
+		return
+	}
+	for i in 0 ..< party.count {
+		ch := &party.characters[i]
 		if character_is_alive(ch) {
 			ch.stats.hp += 8
 		}

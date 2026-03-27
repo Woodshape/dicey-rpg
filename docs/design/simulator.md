@@ -87,23 +87,18 @@ for each round:
 
 ## AI for Both Sides
 
-Both player and enemy use `ai_take_turn`. The function already handles either side — it reads the current `gs.turn` to determine which party is acting and which is the opponent.
+Both player and enemy use `ai_take_turn`. Since `ai_take_turn` is hardcoded to act on `gs.enemy_party`/`gs.enemy_hand`, the simulator uses a **party-swap trick** for the player side:
+
+1. Swap `player_party ↔ enemy_party` and `hand ↔ enemy_hand`
+2. Call `ai_take_turn` (AI thinks it's the enemy turn)
+3. Swap back
+4. Remap turn phases: `.Enemy_Roll_Result → .Player_Roll_Result`, `.Player_Turn → .Enemy_Turn`
+
+This works because abilities use `attacker_party(gs, attacker)` for ally-targeting (not hardcoded `gs.player_party`), and `resolve_roll` only modifies the attacker and target characters directly.
 
 ### Future: Strategy Profiles
 
-The simulator interface is designed so `ai_take_turn` can be swapped per side:
-
-```odin
-Sim_Config :: struct {
-    encounter:       string,
-    rounds:          int,
-    seed:            u64,
-    player_strategy: proc(gs: ^Game_State),  // default: ai_take_turn
-    enemy_strategy:  proc(gs: ^Game_State),  // default: ai_take_turn
-}
-```
-
-For now both default to `ai_take_turn`. When strategy profiles are implemented (see `docs/ideas/ai.md`), each side can use a different profile.
+When strategy profiles are implemented (see `docs/ideas/ai.md`), each side can use a different AI strategy.
 
 ---
 
