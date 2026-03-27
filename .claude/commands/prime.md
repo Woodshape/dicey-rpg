@@ -22,9 +22,10 @@ Read ALL design documents to understand the architecture and design decisions:
 - `docs/design/game.md` — Game_State, drag-and-drop, draw
 - `docs/design/combat-log.md` — ring buffer, file output
 
-## Step 3: Read open issues and ideas
+## Step 3: Read open issues, TODOs, and ideas
 
 - Read all files in `docs/issues/` — these are concrete problems with negative consequences that need fixing.
+- Read all files in `docs/todo/` — these are in-code TODOs collected by category. Cross-check against `src/` with a grep for `TODO` to catch any that aren't documented yet.
 - Read all files in `docs/ideas/` — these are design spaces and decisions to explore.
 
 ## Step 4: Check implementation status
@@ -40,6 +41,7 @@ Deliver:
 
 1. **Project status** — current milestone, what's done, what's remaining
 2. **Open issues** — list each issue from `docs/issues/` with a one-line summary
-3. **Design ideas** — list the major ideas from `docs/ideas/` worth noting
-4. **Architecture notes** — any observations about the codebase state (e.g., divergences between docs and code, patterns to be aware of)
-5. **Ready** — confirm readiness to work on the project
+3. **Open TODOs** — list each TODO from `docs/todo/` with a one-line summary; flag any in-code TODOs not yet in `docs/todo/`
+4. **Design ideas** — list the major ideas from `docs/ideas/` worth noting
+5. **Architecture notes** — any observations about the codebase state (e.g., divergences between docs and code, patterns to be aware of)
+6. **Ready** — confirm readiness to work on the project

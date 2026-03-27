@@ -34,6 +34,15 @@ Read `docs/issues/` and:
 
 Issues are like GitHub issues — they describe problems and get deleted when fixed.
 
+### Step 3b: Sync TODOs
+
+Grep `src/` for `TODO` comments and cross-check against `docs/todo/`:
+- **Add** any in-code TODOs not yet captured in `docs/todo/` (group by category/feature into the appropriate file)
+- **Remove** any entries in `docs/todo/` whose corresponding in-code TODO was resolved this session
+- **Update** entries where the scope or understanding changed
+
+The rule: every `// TODO` in `src/` must have a corresponding entry in `docs/todo/`, and every entry in `docs/todo/` must have a live `// TODO` in `src/`. Keep them in sync.
+
 ### Step 4: Update ideas
 
 Read `docs/ideas/` and:

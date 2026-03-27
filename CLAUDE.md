@@ -41,6 +41,7 @@ docs/
   implementation-plan.md     -- milestone-based implementation plan (history)
   ideas/                     -- design spaces and decisions to explore (ever-growing)
   issues/                    -- concrete problems to fix (removed when resolved)
+  todo/                      -- in-code TODOs collected by category/feature (synced with src/)
 ```
 
 All `src/` files share `package game`. Tests live in `tests/` as a separate package.
@@ -235,6 +236,14 @@ See `docs/implementation-plan.md` for the milestone breakdown. Work through mile
 - Run `odin test tests/` after any logic change to match detection, board, hand, or ability systems.
 - **Before changing core constants or system behavior**, read all related test files to identify tests that will break, and update them as part of the same change.
 - When adding a new mechanic, write the test first, then implement.
+
+## TODO Discipline
+
+Every `// TODO` comment in `src/` **must** have a corresponding entry in `docs/todo/`. Group entries by category or feature into separate files (e.g., `docs/todo/ability.md`). The reverse also applies: every entry in `docs/todo/` must reference a live `// TODO` in `src/`.
+
+- When adding a `// TODO` to source code, add the entry to `docs/todo/` in the same change.
+- When resolving a `// TODO`, remove both the comment and the `docs/todo/` entry.
+- `/prime` and `/shutdown` both grep `src/` and cross-check against `docs/todo/` to surface any drift.
 
 ## Design Docs Discipline
 
