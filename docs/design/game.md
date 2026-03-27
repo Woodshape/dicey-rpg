@@ -41,9 +41,15 @@ There are no globals. Every procedure receives what it needs through `Game_State
 
 ### Initialization
 
-`game_init(prev_log)` creates a fresh game state:
+`game_init(encounter, prev_log)` creates a fresh game state:
+
+```odin
+game_init :: proc(encounter: string = "tutorial", prev_log: ^Combat_Log = nil) -> (Game_State, bool)
+```
+
+- Returns `(Game_State, bool)` — the bool is `false` if config loading fails
+- Loads player and enemy parties via `config_load_encounter()` from `data/encounters/<encounter>.cfg` instead of hardcoded create procs
 - Initializes the board via `board_init()`
-- Creates player party (Warrior + Healer) and enemy party (Goblin + Shaman)
 - Preserves the combat log across Play Again restarts (if `prev_log` is provided)
 - Starts on `Player_Turn`
 
@@ -59,7 +65,7 @@ for !rl.WindowShouldClose() && gs.running {
 }
 ```
 
-`game_update` delegates entirely to `combat_update`. `game_draw` renders everything.
+`game_update` collects an `Input_State` struct from Raylib input functions (mouse position, button state, delta time) and passes it to `combat_update`. `game_draw` renders everything.
 
 ### Drag-and-Drop System
 
@@ -114,7 +120,7 @@ On an invalid drop (e.g., wrong target, full hand), the drag silently cancels.
 
 | Procedure | Purpose |
 |-----------|---------|
-| `game_init(prev_log)` | Create fresh Game_State |
+| `game_init(encounter, prev_log)` | Create fresh Game_State; returns (Game_State, bool) |
 | `game_update(gs)` | Per-frame update (delegates to `combat_update`) |
 | `game_draw(gs)` | Per-frame render |
 | `try_start_drag(gs, mx, my)` | Begin a drag operation |

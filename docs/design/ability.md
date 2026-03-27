@@ -9,7 +9,8 @@
 - Define ability effect procedures (the actual game logic)
 - Define ability description procedures (UI display strings)
 - Resolve abilities after a roll (main ability + resolve meter + resolve ability)
-- Provide character templates (Warrior, Healer, Goblin, Shaman)
+
+Character templates (e.g., `warrior_create`) have been removed. Characters are now loaded from `data/characters/*.cfg` via `config_load_character()` in `config.odin`. Effect and describe procs remain in `ability.odin`; lookup tables that map ability names to procs (`ABILITY_EFFECTS`, `ABILITY_DESCRIPTIONS`, `RESOLVE_EFFECTS`, `RESOLVE_DESCRIPTIONS`) live in `config.odin`.
 
 ## Architecture
 
@@ -18,10 +19,11 @@
 ```odin
 Ability :: struct {
     name:        cstring,
-    scaling:     Ability_Scaling,   // .Match, .Value, or .Hybrid
+    scaling:     Ability_Scaling,   // .None, .Match, .Value, or .Hybrid
     min_matches: int,               // minimum [MATCHES] to trigger
+    min_value:   int,               // minimum [VALUE] to trigger
     effect:      Ability_Effect,    // proc pointer — the game logic
-    describe:    Ability_Describe,  // proc pointer — UI string
+    description: Ability_Describe,  // proc pointer — UI string (renamed from static_describe)
 }
 ```
 
@@ -65,10 +67,10 @@ The order matters: the main ability fires first (it may change game state), then
 ### Describe Procedures
 
 ```odin
-Ability_Describe :: #type proc(roll: ^Roll_Result) -> cstring
+Ability_Describe :: #type proc(gs: ^Game_State, attacker: ^Character, target: ^Character, roll: ^Roll_Result) -> cstring
 ```
 
-Returns a formatted cstring using `fmt.ctprintf`. The returned string is temporary — valid for one frame only. Used by character UI to show ability results after a roll.
+Takes the same parameters as `Ability_Effect` but returns a formatted cstring. Uses `fmt.ctprintf` — the returned string is temporary, valid for one frame only. Used by character UI to show ability tooltips and post-roll results.
 
 ## Current Abilities
 
@@ -83,48 +85,29 @@ Returns a formatted cstring using `fmt.ctprintf`. The returned string is tempora
 | Resolve: Warrior | — | Deal 10 flat damage ignoring defense. |
 | Resolve: Goblin | — | Heal 10 HP to self. |
 
-### Character Templates
-
-| Template | Ability | Resolve | Stats |
-|----------|---------|---------|-------|
-| `warrior_create()` | Flurry (Match, min 2) | Heroic Strike (10 dmg, ignore DEF) | HP 20, ATK 3, DEF 1 |
-| `healer_create()` | Heal (Value, min 2) | Mass Heal (placeholder) | HP 16, ATK 1, DEF 0 |
-| `goblin_create()` | Fireball (Hybrid, min 2) | Goblin Rally (+10 HP) | HP 15, ATK 2, DEF 0 |
-| `shaman_create()` | Smite (Value, min 2) | Dark Ritual (+10 HP) | HP 12, ATK 1, DEF 0 |
-
 ## How to Add a New Ability
 
 1. **Write the effect procedure** in `ability.odin`:
    ```odin
    ability_my_effect :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character, roll: ^Roll_Result) {
-       // Use roll.matched_count ([MATCHES]) and/or roll.matched_value ([VALUE])
        dmg := max(roll.matched_value * 2 - target.stats.defense, 0)
        target.stats.hp = max(target.stats.hp - dmg, 0)
    }
    ```
 
-2. **Write the describe procedure**:
+2. **Write the describe procedure** in `ability.odin`:
    ```odin
-   describe_my_effect :: proc(roll: ^Roll_Result) -> cstring {
+   describe_my_effect :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character, roll: ^Roll_Result) -> cstring {
        return fmt.ctprintf("%d dmg", roll.matched_value * 2)
    }
    ```
 
-3. **Create a character template** that uses it:
-   ```odin
-   my_char_create :: proc() -> Character {
-       ch := character_create("MyChar", .Rare, Character_Stats{hp=25, attack=2, defense=1})
-       ch.ability = Ability{
-           name = "My Effect", scaling = .Value, min_matches = 2,
-           effect = ability_my_effect, describe = describe_my_effect,
-       }
-       // Set resolve ability similarly
-       ch.resolve_max = 5
-       return ch
-   }
-   ```
+3. **Register in lookup tables** in `config.odin`:
+   - Add to `ABILITY_EFFECTS` map: `"my_effect" = ability_my_effect`
+   - Add to `ABILITY_DESCRIPTIONS` map: `"my_effect" = describe_my_effect`
+   - (Or `RESOLVE_EFFECTS` / `RESOLVE_DESCRIPTIONS` for resolve abilities)
 
-4. **Add to a party** in `game_init` (in `game.odin`).
+4. **Create or edit a `.cfg` file** in `data/characters/` that references the ability by name.
 
 5. **Write tests** in `tests/ability_test.odin` — test the effect procedure directly with crafted `Roll_Result` values.
 

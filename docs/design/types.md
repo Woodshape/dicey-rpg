@@ -72,7 +72,23 @@ Drives the combat state machine in `combat.odin`.
 
 - `Ability_Effect` is a procedure pointer: `proc(gs: ^Game_State, attacker: ^Character, target: ^Character, roll: ^Roll_Result)`
 - `Ability_Describe` returns a formatted cstring for UI display (temporary, valid for one frame).
-- `Ability_Scaling` indicates which axis the ability favors: `.Match`, `.Value`, or `.Hybrid`.
+- `Ability_Scaling` has `.None` as its first (zero) value for flat effects that ignore roll data, followed by `.Match`, `.Value`, and `.Hybrid`.
+- `Ability` struct: `name`, `scaling`, `min_matches`, `min_value` (minimum [VALUE] to trigger), `effect`, `description` (renamed from `static_describe`).
+- `Ability_Describe` has the full signature: `proc(gs: ^Game_State, attacker: ^Character, target: ^Character, roll: ^Roll_Result) -> cstring`.
+
+### Input_State
+
+```odin
+Input_State :: struct {
+    mouse_x, mouse_y: i32,
+    left_pressed:     bool,
+    left_released:    bool,
+    right_pressed:    bool,
+    delta_time:       f32,
+}
+```
+
+Collected once per frame in `game_update` from Raylib input functions, then passed to `combat_update` and phase handlers. This decouples combat logic from direct Raylib calls.
 
 ### Drag_State
 

@@ -15,7 +15,8 @@ src/                    -- all game source (single package: "game")
   character.odin        -- character structs, assignment, roll state, UI
   combat.odin           -- turn state machine, action resolution, phase transitions
   ai.odin               -- enemy AI: die scoring, pick/roll decisions, assignment
-  ability.odin          -- ability effects, resolution, character templates
+  ability.odin          -- ability effects, resolution, describe procs
+  config.odin           -- .cfg parser, lookup tables, character/encounter loading
 tests/                  -- test package (separate from game)
   board_test.odin       -- board ring, perimeter, removal, gradient tests
   hand_test.odin        -- hand capacity, removal, vacated slot tests
@@ -24,6 +25,15 @@ tests/                  -- test package (separate from game)
   combat_test.odin      -- turn state machine, action validation
   ai_test.odin          -- AI scoring, assignment, roll decisions
   ability_test.odin     -- ability effects, resolution, resolve meter
+  config_test.odin      -- config parsing, character/encounter loading, validation
+data/
+  characters/             -- character definitions (.cfg)
+    warrior.cfg
+    healer.cfg
+    goblin.cfg
+    shaman.cfg
+  encounters/             -- encounter compositions (.cfg)
+    tutorial.cfg
 assets/                 -- placeholder assets
 docs/
   design/
@@ -35,9 +45,12 @@ docs/
     character.md             -- creation, pure type constraint, skull damage
     combat.md                -- turn state machine, resolution pipeline, win/lose
     ai.md                    -- die scoring, roll decisions, discard logic
-    ability.md               -- effects, resolution, templates, how to extend
+    ability.md               -- effects, resolution, lookup tables, how to extend
     game.md                  -- Game_State, drag-and-drop, draw pipeline
     combat-log.md            -- ring buffer, file output
+    config.md                -- .cfg format, character/encounter loading, validation
+    headless-refactor.md     -- Input_State extraction from combat update procs
+    simulator.md             -- headless combat simulator, stats collection, CLI
   implementation-plan.md     -- milestone-based implementation plan (history)
   ideas/                     -- design spaces and decisions to explore (ever-growing)
   issues/                    -- concrete problems to fix (removed when resolved)

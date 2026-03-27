@@ -26,15 +26,15 @@ Player_Turn → Player_Roll_Result → Enemy_Turn → Enemy_Roll_Result → Play
                                                                     Victory / Defeat
 ```
 
-Each phase has a dedicated update procedure called from `combat_update`:
+Each phase has a dedicated update procedure called from `combat_update`. All phase handlers except `enemy_turn_update` take an `Input_State` parameter — input is collected once per frame in `game_update` and threaded through. `enemy_turn_update` does not take `Input_State` because it is AI-driven. No combat procedures call `rl.GetMouse*`, `rl.IsMouseButton*`, or `rl.GetFrameTime` directly; all input comes from `Input_State`. The `rl` import is retained only for `rl.Color` in combat log entries.
 
 | Phase | Handler | Description |
 |-------|---------|-------------|
-| `Player_Turn` | `player_turn_update` | Player can assign (free), pick (ends turn), roll (shows result), or discard (free) |
-| `Player_Roll_Result` | `player_roll_result_update` | Timed display of roll results, then auto-advances |
-| `Enemy_Turn` | `enemy_turn_update` | Delegates to `ai_take_turn` |
-| `Enemy_Roll_Result` | `enemy_roll_result_update` | Timed display, then auto-advances |
-| `Victory / Defeat` | `game_over_update` | Shows overlay, waits for Play Again click |
+| `Player_Turn` | `player_turn_update(gs, input)` | Player can assign (free), pick (ends turn), roll (shows result), or discard (free) |
+| `Player_Roll_Result` | `player_roll_result_update(gs, input)` | Timed display of roll results, then auto-advances |
+| `Enemy_Turn` | `enemy_turn_update(gs)` | Delegates to `ai_take_turn` (no Input_State) |
+| `Enemy_Roll_Result` | `enemy_roll_result_update(gs, input)` | Timed display, then auto-advances |
+| `Victory / Defeat` | `game_over_update(gs, input)` | Shows overlay, waits for Play Again click |
 
 ### Roll Resolution Pipeline
 
@@ -74,12 +74,12 @@ Both `Player_Roll_Result` and `Enemy_Roll_Result` use a timer (`gs.turn_timer`) 
 
 | Procedure | Purpose |
 |-----------|---------|
-| `combat_update(gs)` | Top-level dispatcher — routes to phase handler |
-| `player_turn_update(gs)` | Player input: drag, roll, discard |
-| `player_roll_result_update(gs)` | Timed display, then advance |
-| `enemy_turn_update(gs)` | Delegates to `ai_take_turn` |
-| `enemy_roll_result_update(gs)` | Timed display, then advance |
-| `game_over_update(gs)` | Play Again click handler |
+| `combat_update(gs, input)` | Top-level dispatcher — routes to phase handler |
+| `player_turn_update(gs, input)` | Player input: drag, roll, discard |
+| `player_roll_result_update(gs, input)` | Timed display, then advance |
+| `enemy_turn_update(gs)` | Delegates to `ai_take_turn` (no Input_State) |
+| `enemy_roll_result_update(gs, input)` | Timed display, then advance |
+| `game_over_update(gs, input)` | Play Again click handler |
 | `resolve_roll(gs, attacker, target)` | Full roll resolution with logging |
 | `check_win_lose(gs, default_next)` | Returns Victory/Defeat/default |
 | `party_all_dead(party)` | True if all characters have `state != .Alive` |

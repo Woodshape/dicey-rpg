@@ -222,15 +222,15 @@ Each milestone is independently testable. Later milestones build on earlier ones
 
 **Design doc:** `docs/design/headless-refactor.md`
 
-- [ ] Add `Input_State` struct to `types.odin` (mouse position, button state, delta time)
-- [ ] Collect Raylib input once per frame in `game_update`, pass `Input_State` down
-- [ ] Thread `Input_State` through `combat_update`, `player_turn_update`, `player_roll_result_update`, `enemy_roll_result_update`, `game_over_update`
-- [ ] Remove all direct `rl.` input calls from `combat.odin`
-- [ ] Remove unused `rl` import from `ai.odin`
-- [ ] Verify all existing tests still pass
-- [ ] Verify game behaviour is identical
+- [x] Add `Input_State` struct to `types.odin` (mouse position, button state, delta time)
+- [x] Collect Raylib input once per frame in `game_update`, pass `Input_State` down
+- [x] Thread `Input_State` through `combat_update`, `player_turn_update`, `player_roll_result_update`, `enemy_roll_result_update`, `game_over_update`
+- [x] Remove all direct `rl.` input calls from `combat.odin`
+- [x] Remove unused `rl` import from `ai.odin` (already clean — no import existed)
+- [x] Verify all existing tests still pass (115/115)
+- [x] Verify game behaviour is identical
 
-**Status:** Not Started
+**Status:** Done
 
 ---
 
