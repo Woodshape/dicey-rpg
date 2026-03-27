@@ -41,7 +41,7 @@ Holds the full outcome of rolling a character's dice. Used by match detection, a
 
 ### Board_Cell / Board
 
-Fixed-size grid. `Board.size` is set from `BOARD_SIZE` at init. Cells track die type, occupancy, and ring depth.
+Fixed-size grid. `Board.size` is set from `BOARD_SIZE` at init. `Board.skull_chance` stores the skull % (set by `board_init`, preserved on refill). Cells track die type, occupancy, and ring depth.
 
 ### Hand
 

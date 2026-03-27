@@ -41,15 +41,15 @@ There are no globals. Every procedure receives what it needs through `Game_State
 
 ### Initialization
 
-`game_init(encounter, prev_log)` creates a fresh game state:
+`game_init(encounter, prev_log, skull_chance)` creates a fresh game state:
 
 ```odin
-game_init :: proc(encounter: string = "tutorial", prev_log: ^Combat_Log = nil) -> (Game_State, bool)
+game_init :: proc(encounter: string = "tutorial", prev_log: ^Combat_Log = nil, skull_chance: int = SKULL_CHANCE) -> (Game_State, bool)
 ```
 
 - Returns `(Game_State, bool)` — the bool is `false` if config loading fails
 - Loads player and enemy parties via `config_load_encounter()` from `data/encounters/<encounter>.cfg` instead of hardcoded create procs
-- Initializes the board via `board_init()`
+- Initializes the board via `board_init(skull_chance)` — pass 0 for no-skulls mode (used by simulator)
 - Preserves the combat log across Play Again restarts (if `prev_log` is provided)
 - Starts on `Player_Turn`
 

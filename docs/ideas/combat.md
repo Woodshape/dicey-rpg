@@ -37,6 +37,12 @@
 - Both conditions default to 0 in config (always trigger), so existing characters need no changes.
 - Implementation: add `min_value` to the `Ability` struct, update `handle_abilities` trigger check, update `Ability_Scaling` descriptions.
 
+## Simulator Balance Stats — Future Extensions
+
+- **Damage per turn (DPT):** Characters spend multiple turns picking before rolling once. DPT = total damage / total turns (including pick turns) would show effective throughput, not just per-roll burst.
+- **Carry analysis:** Win rate when a specific character survives vs dies. Shows which characters are load-bearing vs expendable. Requires per-game correlation between character survival and game outcome.
+- **Roll timing analysis:** When does the AI choose to roll — with 1, 2, or 3 dice? The dice count breakdown already shows match rates by count, but tracking *why* the AI rolled (full, no picks, forced) would help evaluate strategy profiles.
+
 ## Party Death — Assigned Dice
 
 - When a character dies, what happens to their assigned dice?

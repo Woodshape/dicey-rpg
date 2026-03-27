@@ -271,55 +271,50 @@ Roll_Stats :: struct {
 }
 ```
 
-These are collected into a flat array (or written directly to a separate CSV) and aggregated into:
+Collected into a `Roll_Collector` (fixed-size array of `Roll_Stats`, heap-allocated) and aggregated into two views:
 
-### Dice Mechanics Aggregates
+### Dice Mechanics Table
 
-```odin
-Dice_Aggregate :: struct {
-    die_type:            Die_Type,
-    total_rolls:         int,
-    avg_matches:         f64,            // avg [MATCHES] per roll
-    avg_value:           f64,            // avg [VALUE] per roll
-    match_rate:          f64,            // % of rolls with matched_count >= 2
-    avg_damage_match:    f64,            // avg ability damage for Match-scaled abilities
-    avg_damage_value:    f64,            // avg ability damage for Value-scaled abilities
-    avg_damage_hybrid:   f64,            // avg ability damage for Hybrid-scaled abilities
-    avg_resolve_charge:  f64,            // avg unmatched dice per roll
-}
-```
-
-### Stdout — Dice Mechanics Table
-
-Always included in the summary output regardless of mode:
+Aggregated by die type across all rolls. Answers "which die type is best for each scaling axis?"
 
 ```
-Dice Mechanics (ability-only, no skulls):
-  Die Type | Rolls | Avg [M] | Avg [V] | Match% | DMG(match) | DMG(value) | DMG(hybrid) | Resolve/roll
-  d4       |   312 |    2.8  |    2.1  |  91.3% |       8.4  |       4.2  |        5.9  |         0.4
-  d6       |   287 |    2.5  |    3.2  |  82.6% |       7.5  |       6.4  |        8.0  |         0.7
-  d8       |   198 |    2.2  |    4.8  |  71.4% |       6.6  |       9.6  |       10.6  |         1.1
-  d10      |   143 |    2.0  |    5.9  |  63.2% |       6.0  |      11.8  |       11.8  |         1.4
-  d12      |    91 |    1.8  |    7.1  |  57.1% |       5.4  |      14.2  |       12.8  |         1.7
+Dice Mechanics:
+  Type | Rolls | Avg[M] | Avg[V] | Match% | DMG(match) | DMG(value) | DMG(hybrid) | Resolve/roll
+  d4   | 6560  | 0.9    | 3.0    | 43.9%  | 5.4        | 1.5        | 4.2         | 1.6
+  d12  | 4036  | 0.3    | 8.4    | 14.2%  | 4.3        | 2.8        | 7.5         | 2.0
 ```
 
-This table directly answers: "Is d8 the sweet spot for Hybrid abilities?" or "How much resolve does a d12 build generate?"
+### Dice Count Breakdown
 
-### CSV — Per-Roll Detail
-
-A second CSV (`--roll-csv`, default `sim_rolls.csv`) records every roll for deeper analysis:
+Cross-tabulated by (die type × normal dice count). Answers "how does rolling 2 vs 3 dice of type X change match quality?"
 
 ```
-round,turn,character,die_type,die_count,matches,value,unmatched,ability,ability_damage
-1,3,Warrior,d6,3,2,4,1,Flurry,6
-1,5,Goblin,d8,3,3,5,0,Fireball,15
+Dice Count Breakdown:
+  d4:
+    2 dice: 2012 rolls, 25.5% match, avg[M] 0.5, avg[V] 3.1, fire 25.5%, avg dmg 3.0, 1.5 unmatched/roll
+    3 dice: 3854 rolls, 61.4% match, avg[M] 1.3, avg[V] 3.0, fire 61.4%, avg dmg 3.5, 1.7 unmatched/roll
+  d12:
+    2 dice: 1513 rolls, 8.4% match, avg[M] 0.2, avg[V] 8.6, fire 8.4%, avg dmg 4.5, 1.8 unmatched/roll
+    3 dice: 1908 rolls, 23.4% match, avg[M] 0.5, avg[V] 9.0, fire 23.4%, avg dmg 3.6, 2.5 unmatched/roll
 ```
+
+This is the primary balance tool — it shows the match probability curve per die count per type, enabling direct comparison of strategies (roll early with few dice vs fill to capacity).
+
+### Per-Character Detail
+
+Below each character's summary line, expanded stats show:
+- **Damage breakdown:** skull + ability damage per game
+- **Ability info:** name, scaling, threshold, fire/miss rate, avg dice on miss
+- **Match histogram:** distribution of 0x, 2x, 3x... matches, plus avg [M] and [V]
+- **Resolve stats:** fires/game, avg rolls to fill, unmatched/roll
 
 ---
 
 ## Future Extensions
 
 - **Strategy profiles** — swap `ai_take_turn` per side with different AI strategies (skull rush, match builder, value seeker, denier). See `docs/ideas/ai.md`.
-- **Stat extensions** — as abilities and effects grow in complexity, add new fields to `Char_Stats` and `Aggregate_Stats`. The struct-based design grows incrementally.
+- **Per-roll CSV** — write every roll to a separate CSV for external analysis (not yet implemented).
+- **DPT (damage per turn)** — track turns spent picking per character to compute effective damage per turn, not just per roll.
+- **Carry analysis** — win rate when character survives vs dies, showing which characters are load-bearing.
 - **Batch encounters** — run multiple encounters in one invocation, output a comparison table.
 - **Automated balance testing** — script that tweaks `.cfg` values and runs the simulator repeatedly, looking for win rate convergence.
