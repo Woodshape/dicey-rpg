@@ -3,11 +3,60 @@ package tests
 import game "../src"
 import "core:testing"
 
+// --- Test helpers ---
+
+// Build a warrior-like character for ability tests.
+// Stats and abilities match data/characters/warrior.cfg.
+test_warrior :: proc() -> game.Character {
+	ch := game.character_create("Warrior", .Common, {hp = 20, attack = 3, defense = 1})
+	ch.ability = game.Ability {
+		name        = "Flurry",
+		scaling     = .Match,
+		min_matches = 2,
+		effect      = game.ability_flurry,
+		describe    = game.describe_flurry,
+		description = "{attack} dmg x {MATCHES} hits",
+	}
+	ch.resolve_ability = game.Ability {
+		name        = "Heroic Strike",
+		scaling     = .Match,
+		min_matches = 0,
+		effect      = game.ability_resolve_warrior,
+		describe    = game.describe_resolve_warrior,
+		description = "10 dmg, ignores DEF",
+	}
+	ch.resolve_max = 5
+	return ch
+}
+
+// Build a goblin-like character for ability tests.
+test_goblin :: proc() -> game.Character {
+	ch := game.character_create("Goblin", .Common, {hp = 15, attack = 2, defense = 0})
+	ch.ability = game.Ability {
+		name        = "Fireball",
+		scaling     = .Hybrid,
+		min_matches = 2,
+		effect      = game.ability_fireball,
+		describe    = game.describe_fireball,
+		description = "{MATCHES} x {VALUE} dmg",
+	}
+	ch.resolve_ability = game.Ability {
+		name        = "Goblin Rally",
+		scaling     = .Match,
+		min_matches = 0,
+		effect      = game.ability_resolve_goblin,
+		describe    = game.describe_resolve_goblin,
+		description = "+10 HP",
+	}
+	ch.resolve_max = 5
+	return ch
+}
+
 // --- Individual ability effects ---
 
 @(test)
 flurry_deals_one_per_match :: proc(t: ^testing.T) {
-	attacker := game.warrior_create()
+	attacker := test_warrior()
 	target := game.character_create("Target", .Common, {hp = 20, attack = 1, defense = 0})
 	roll := game.Roll_Result {
 		matched_count = 3,
@@ -22,7 +71,7 @@ flurry_deals_one_per_match :: proc(t: ^testing.T) {
 
 @(test)
 flurry_respects_defense :: proc(t: ^testing.T) {
-	attacker := game.warrior_create()
+	attacker := test_warrior()
 	target := game.character_create("Tank", .Common, {hp = 20, attack = 1, defense = 5})
 	roll := game.Roll_Result {
 		matched_count = 4,
@@ -37,7 +86,7 @@ flurry_respects_defense :: proc(t: ^testing.T) {
 
 @(test)
 smite_deals_value_damage :: proc(t: ^testing.T) {
-	attacker := game.warrior_create()
+	attacker := test_warrior()
 	target := game.character_create("Target", .Common, {hp = 20, attack = 1, defense = 1})
 	roll := game.Roll_Result {
 		matched_count = 2,
@@ -52,7 +101,7 @@ smite_deals_value_damage :: proc(t: ^testing.T) {
 
 @(test)
 fireball_deals_matches_times_value :: proc(t: ^testing.T) {
-	attacker := game.goblin_create()
+	attacker := test_goblin()
 	target := game.character_create("Target", .Common, {hp = 30, attack = 1, defense = 0})
 	roll := game.Roll_Result {
 		matched_count = 4,
@@ -67,7 +116,7 @@ fireball_deals_matches_times_value :: proc(t: ^testing.T) {
 
 @(test)
 heal_restores_value_hp :: proc(t: ^testing.T) {
-	attacker := game.goblin_create()
+	attacker := test_goblin()
 	attacker.stats.hp = 5
 	target := game.character_create("Target", .Common, {hp = 20, attack = 1, defense = 0})
 	roll := game.Roll_Result {
@@ -84,7 +133,7 @@ heal_restores_value_hp :: proc(t: ^testing.T) {
 
 @(test)
 resolve_fires_ability_when_threshold_met :: proc(t: ^testing.T) {
-	attacker := game.warrior_create() // Flurry, min_matches=2
+	attacker := test_warrior() // Flurry, min_matches=2
 	target := game.character_create("Target", .Common, {hp = 50, attack = 1, defense = 0})
 
 	attacker.has_rolled = true
@@ -100,7 +149,7 @@ resolve_fires_ability_when_threshold_met :: proc(t: ^testing.T) {
 
 @(test)
 resolve_skips_ability_when_threshold_not_met :: proc(t: ^testing.T) {
-	attacker := game.warrior_create() // min_matches=2
+	attacker := test_warrior() // min_matches=2
 	target := game.character_create("Target", .Common, {hp = 50, attack = 1, defense = 0})
 
 	attacker.has_rolled = true
@@ -115,7 +164,7 @@ resolve_skips_ability_when_threshold_not_met :: proc(t: ^testing.T) {
 
 @(test)
 resolve_zero_matches_skips_ability :: proc(t: ^testing.T) {
-	attacker := game.warrior_create()
+	attacker := test_warrior()
 	target := game.character_create("Target", .Common, {hp = 20, attack = 1, defense = 0})
 
 	attacker.has_rolled = true
@@ -135,7 +184,7 @@ resolve_zero_matches_skips_ability :: proc(t: ^testing.T) {
 
 @(test)
 resolve_charges_from_unmatched :: proc(t: ^testing.T) {
-	attacker := game.warrior_create()
+	attacker := test_warrior()
 	target := game.character_create("Target", .Common, {hp = 50, attack = 1, defense = 0})
 
 	attacker.has_rolled = true
@@ -149,7 +198,7 @@ resolve_charges_from_unmatched :: proc(t: ^testing.T) {
 
 @(test)
 resolve_accumulates_across_rolls :: proc(t: ^testing.T) {
-	attacker := game.warrior_create()
+	attacker := test_warrior()
 	target := game.character_create("Target", .Common, {hp = 50, attack = 1, defense = 0})
 
 	// First roll: 2 unmatched
@@ -166,7 +215,7 @@ resolve_accumulates_across_rolls :: proc(t: ^testing.T) {
 
 @(test)
 resolve_triggers_at_threshold :: proc(t: ^testing.T) {
-	attacker := game.warrior_create() // resolve_max = 5
+	attacker := test_warrior() // resolve_max = 5
 	target := game.character_create("Target", .Common, {hp = 50, attack = 1, defense = 0})
 
 	// Pre-charge to 4
@@ -184,7 +233,7 @@ resolve_triggers_at_threshold :: proc(t: ^testing.T) {
 
 @(test)
 resolve_does_not_trigger_below_threshold :: proc(t: ^testing.T) {
-	attacker := game.warrior_create()
+	attacker := test_warrior()
 	target := game.character_create("Target", .Common, {hp = 50, attack = 1, defense = 0})
 
 	attacker.resolve = 3

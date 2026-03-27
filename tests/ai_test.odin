@@ -33,7 +33,7 @@ ai_considers_denial :: proc(t: ^testing.T) {
 
 @(test)
 ai_assigns_compatible_from_hand :: proc(t: ^testing.T) {
-	gs := game.game_init()
+	gs, _ := game.game_init()
 	game.hand_add(&gs.enemy_hand, .D6)
 
 	game.ai_assign_from_hand(&gs)
@@ -45,7 +45,7 @@ ai_assigns_compatible_from_hand :: proc(t: ^testing.T) {
 
 @(test)
 ai_does_not_assign_incompatible :: proc(t: ^testing.T) {
-	gs := game.game_init()
+	gs, _ := game.game_init()
 	// Commit all enemy characters to D6
 	for i in 0 ..< gs.enemy_party.count {
 		game.character_assign_die(&gs.enemy_party.characters[i], .D6)
@@ -63,7 +63,7 @@ ai_does_not_assign_incompatible :: proc(t: ^testing.T) {
 
 @(test)
 ai_rolls_when_character_full :: proc(t: ^testing.T) {
-	gs := game.game_init()
+	gs, _ := game.game_init()
 	// Fill all 3 slots (Common = 3 max)
 	for _ in 0 ..< 3 {
 		game.character_assign_die(&gs.enemy_party.characters[0], .D6)
@@ -75,14 +75,14 @@ ai_rolls_when_character_full :: proc(t: ^testing.T) {
 
 @(test)
 ai_does_not_roll_empty_character :: proc(t: ^testing.T) {
-	gs := game.game_init()
+	gs, _ := game.game_init()
 	should, _ := game.ai_should_roll(&gs)
 	testing.expect(t, !should, "AI should not roll with no assigned dice")
 }
 
 @(test)
 ai_does_not_roll_with_only_skulls :: proc(t: ^testing.T) {
-	gs := game.game_init()
+	gs, _ := game.game_init()
 	// Assign 2 skull dice — no normal dice
 	game.character_assign_die(&gs.enemy_party.characters[0], .Skull)
 	game.character_assign_die(&gs.enemy_party.characters[0], .Skull)
@@ -93,7 +93,7 @@ ai_does_not_roll_with_only_skulls :: proc(t: ^testing.T) {
 
 @(test)
 ai_rolls_with_normal_dice :: proc(t: ^testing.T) {
-	gs := game.game_init()
+	gs, _ := game.game_init()
 	// Assign 2 normal + 1 skull, character is full (Common = 3)
 	game.character_assign_die(&gs.enemy_party.characters[0], .D6)
 	game.character_assign_die(&gs.enemy_party.characters[0], .D6)
@@ -107,7 +107,7 @@ ai_rolls_with_normal_dice :: proc(t: ^testing.T) {
 
 @(test)
 ai_picks_from_board :: proc(t: ^testing.T) {
-	gs := game.game_init()
+	gs, _ := game.game_init()
 
 	row, col, found := game.ai_pick_best_die(&gs)
 	testing.expect(t, found, "AI should find a pickable die on a fresh board")
@@ -117,7 +117,7 @@ ai_picks_from_board :: proc(t: ^testing.T) {
 
 @(test)
 ai_cannot_pick_with_full_hand :: proc(t: ^testing.T) {
-	gs := game.game_init()
+	gs, _ := game.game_init()
 	for _ in 0 ..< game.MAX_HAND_SIZE {
 		game.hand_add(&gs.enemy_hand, .D4)
 	}
