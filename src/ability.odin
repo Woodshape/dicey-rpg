@@ -55,6 +55,10 @@ describe_resolve_warrior :: proc(gs: ^Game_State, attacker: ^Character, target: 
 	return "10 dmg (ignores DEF)"
 }
 
+describe_resolve_mass_heal :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character, roll: ^Roll_Result) -> cstring {
+	return "+8 HP to all allies"
+}
+
 describe_resolve_goblin :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character, roll: ^Roll_Result) -> cstring {
 	return "+10 HP"
 }
@@ -64,6 +68,16 @@ describe_resolve_goblin :: proc(gs: ^Game_State, attacker: ^Character, target: ^
 // Warrior resolve: deal 10 flat damage ignoring defense.
 ability_resolve_warrior :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character, roll: ^Roll_Result) {
 	target.stats.hp = max(target.stats.hp - 10, 0)
+}
+
+// Healer resolve: heal all alive player party members for 8 HP.
+ability_resolve_mass_heal :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character, roll: ^Roll_Result) {
+	for i in 0 ..< gs.player_party.count {
+		ch := &gs.player_party.characters[i]
+		if ch.stats.hp > 0 {
+			ch.stats.hp += 8
+		}
+	}
 }
 
 // Goblin resolve: heal 10 HP.
@@ -144,11 +158,11 @@ healer_create :: proc() -> Character {
 	}
 	ch.resolve_ability = Ability {
 		name            = "Mass Heal",
-		scaling         = .Match,
+		scaling         = .Value,
 		min_matches     = 0,
-		effect          = ability_resolve_warrior, // placeholder: same as warrior for now
-		describe        = describe_resolve_warrior,
-		static_describe = "(not yet implemented)",
+		effect          = ability_resolve_mass_heal,
+		describe        = describe_resolve_mass_heal,
+		static_describe = "+8 HP to all allies",
 	}
 	ch.resolve_max = 5
 	return ch
