@@ -241,6 +241,7 @@ See `docs/implementation-plan.md` for the milestone breakdown. Work through mile
 - Run `odin test tests/` after any logic change to match detection, board, hand, or ability systems.
 - **Before changing core constants or system behavior**, read all related test files to identify tests that will break, and update them as part of the same change.
 - When adding a new mechanic, write the test first, then implement.
+- **Every new core module gets its own test file.** When creating `src/foo.odin` with non-trivial logic, create `tests/foo_test.odin` as part of the same change — not as an afterthought. Cover the happy path, error cases, and defaults.
 
 ## TODO Discipline
 

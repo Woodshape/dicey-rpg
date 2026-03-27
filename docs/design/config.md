@@ -201,10 +201,10 @@ Three separate tables, one per ability category. Each maps a string key to a pro
 
 ```odin
 ABILITY_EFFECTS  : map[string]Ability_Effect
-ABILITY_DESCRIBES: map[string]Ability_Describe
+ABILITY_DESCRIPTIONS: map[string]Ability_Describe
 
 RESOLVE_EFFECTS  : map[string]Ability_Effect
-RESOLVE_DESCRIBES: map[string]Ability_Describe
+RESOLVE_DESCRIPTIONS: map[string]Ability_Describe
 
 PASSIVE_EFFECTS  : map[string]Passive_Effect  // reserved
 ```

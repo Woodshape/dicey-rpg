@@ -198,21 +198,21 @@ Each milestone is independently testable. Later milestones build on earlier ones
 
 **Design doc:** `docs/design/config.md`
 
-- [ ] Custom `.cfg` parser (`src/config.odin`): sections, key-value pairs, section-level lists, inline comma-separated lists
-- [ ] Character loading: read `data/characters/{name}.cfg`, resolve effect/describe procs via lookup tables
-- [ ] Encounter loading: read `data/encounters/{name}.cfg`, load referenced characters
-- [ ] Three separate lookup tables: `ABILITY_EFFECTS/DESCRIBES`, `RESOLVE_EFFECTS/DESCRIBES`, `PASSIVE_EFFECTS` (reserved)
-- [ ] Convention-based describe resolution (effect key auto-maps to describe key)
-- [ ] Validation: fail hard with `log.errorf` on missing files, unknown keys/sections/effects, missing required fields
-- [ ] Migrate all 4 character templates (warrior, healer, goblin, shaman) to `.cfg` files
-- [ ] Remove `*_create` template procs from `ability.odin`
-- [ ] `game_init` takes encounter name parameter (default: `"tutorial"`), loads via config system
-- [ ] Hot reload on Play Again (re-read all data files)
-- [ ] Rename `static_describe` to `description` in `Ability` struct and all read sites
-- [ ] Update all description placeholder syntax from `[MATCHES]` to `{MATCHES}`
-- [ ] Tests: config parsing, character loading, encounter loading, validation error cases
+- [x] Custom `.cfg` parser (`src/config.odin`): sections, key-value pairs, section-level lists, inline comma-separated lists
+- [x] Character loading: read `data/characters/{name}.cfg`, resolve effect/describe procs via lookup tables
+- [x] Encounter loading: read `data/encounters/{name}.cfg`, load referenced characters
+- [x] Three separate lookup tables: `ABILITY_EFFECTS/DESCRIBES`, `RESOLVE_EFFECTS/DESCRIBES`, `PASSIVE_EFFECTS` (reserved)
+- [x] Convention-based describe resolution (effect key auto-maps to describe key)
+- [x] Validation: fail hard with `log.errorf` on missing files, unknown keys/sections/effects, missing required fields
+- [x] Migrate all 4 character templates (warrior, healer, goblin, shaman) to `.cfg` files
+- [x] Remove `*_create` template procs from `ability.odin`
+- [x] `game_init` takes encounter name parameter (default: `"tutorial"`), loads via config system
+- [x] Hot reload on Play Again (re-read all data files)
+- [x] Rename `static_describe` to `description` in `Ability` struct and all read sites
+- [x] Update all description placeholder syntax from `[MATCHES]` to `{MATCHES}`
+- [x] Tests: config parsing, character loading, encounter loading, validation error cases
 
-**Status:** Not Started
+**Status:** Done
 
 ---
 
