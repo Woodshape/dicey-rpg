@@ -4,21 +4,18 @@ import "core:fmt"
 import rl "vendor:raylib"
 
 // Top-level update dispatcher. Routes to the appropriate phase handler.
-combat_update :: proc(gs: ^Game_State) {
+combat_update :: proc(gs: ^Game_State, input: Input_State) {
 	// Handle character inspect toggle before any phase logic.
 	// Works in all non-game-over phases. Any left-click closes the view;
 	// clicking a character header opens it.
 	if gs.turn != .Victory && gs.turn != .Defeat {
-		if rl.IsMouseButtonPressed(.LEFT) {
-			mouse_x := rl.GetMouseX()
-			mouse_y := rl.GetMouseY()
-
+		if input.left_pressed {
 			if gs.inspect_active {
 				gs.inspect_active = false
 				return
 			}
 
-			ci := mouse_on_party_header(&gs.player_party, CHAR_PANEL_X, mouse_x, mouse_y)
+			ci := mouse_on_party_header(&gs.player_party, CHAR_PANEL_X, input.mouse_x, input.mouse_y)
 			if ci >= 0 {
 				gs.inspect_active = true
 				gs.inspect_party_enemy = false
@@ -27,7 +24,7 @@ combat_update :: proc(gs: ^Game_State) {
 				return
 			}
 
-			ci = mouse_on_party_header(&gs.enemy_party, ENEMY_PANEL_X, mouse_x, mouse_y)
+			ci = mouse_on_party_header(&gs.enemy_party, ENEMY_PANEL_X, input.mouse_x, input.mouse_y)
 			if ci >= 0 {
 				gs.inspect_active = true
 				gs.inspect_party_enemy = true
@@ -40,15 +37,15 @@ combat_update :: proc(gs: ^Game_State) {
 
 	#partial switch gs.turn {
 	case .Player_Turn:
-		player_turn_update(gs)
+		player_turn_update(gs, input)
 	case .Player_Roll_Result:
-		player_roll_result_update(gs)
+		player_roll_result_update(gs, input)
 	case .Enemy_Turn:
 		enemy_turn_update(gs)
 	case .Enemy_Roll_Result:
-		enemy_roll_result_update(gs)
+		enemy_roll_result_update(gs, input)
 	case .Victory, .Defeat:
-		game_over_update(gs)
+		game_over_update(gs, input)
 	}
 }
 
@@ -225,7 +222,7 @@ check_board_refill :: proc(gs: ^Game_State) {
 
 // --- Player Turn ---
 
-player_turn_update :: proc(gs: ^Game_State) {
+player_turn_update :: proc(gs: ^Game_State, input: Input_State) {
 	check_board_refill(gs)
 
 	// Block all player input while inspect overlay is open
@@ -233,12 +230,9 @@ player_turn_update :: proc(gs: ^Game_State) {
 		return
 	}
 
-	mouse_x := rl.GetMouseX()
-	mouse_y := rl.GetMouseY()
-
 	// Right-click on a hand die to discard it (free action)
-	if rl.IsMouseButtonPressed(.RIGHT) {
-		slot := mouse_to_hand_slot(mouse_x, mouse_y)
+	if input.right_pressed {
+		slot := mouse_to_hand_slot(input.mouse_x, input.mouse_y)
 		if slot >= 0 && slot < gs.hand.count && hand_can_discard(&gs.hand, slot) {
 			die_type := gs.hand.dice[slot]
 			hand_discard(&gs.hand, slot)
@@ -246,9 +240,9 @@ player_turn_update :: proc(gs: ^Game_State) {
 		}
 	}
 
-	if rl.IsMouseButtonPressed(.LEFT) {
+	if input.left_pressed {
 		// Check roll button for any player character
-		roll_ci := mouse_on_party_roll_button(&gs.player_party, CHAR_PANEL_X, mouse_x, mouse_y)
+		roll_ci := mouse_on_party_roll_button(&gs.player_party, CHAR_PANEL_X, input.mouse_x, input.mouse_y)
 		if roll_ci >= 0 {
 			attacker := &gs.player_party.characters[roll_ci]
 			target := get_target(&gs.enemy_party, roll_ci)
@@ -260,11 +254,11 @@ player_turn_update :: proc(gs: ^Game_State) {
 		}
 
 		// Try to start a drag
-		try_start_drag(gs, mouse_x, mouse_y)
+		try_start_drag(gs, input.mouse_x, input.mouse_y)
 	}
 
-	if rl.IsMouseButtonReleased(.LEFT) && gs.drag.active {
-		action_used := try_drop(gs, mouse_x, mouse_y)
+	if input.left_released && gs.drag.active {
+		action_used := try_drop(gs, input.mouse_x, input.mouse_y)
 		gs.drag = {}
 		if action_used {
 			gs.turn = .Enemy_Turn
@@ -276,8 +270,8 @@ player_turn_update :: proc(gs: ^Game_State) {
 
 PLAYER_ROLL_DISPLAY_TIME :: 1.5 // seconds to show player roll results
 
-player_roll_result_update :: proc(gs: ^Game_State) {
-	gs.turn_timer += rl.GetFrameTime()
+player_roll_result_update :: proc(gs: ^Game_State, input: Input_State) {
+	gs.turn_timer += input.delta_time
 	if gs.turn_timer >= PLAYER_ROLL_DISPLAY_TIME {
 		character_clear_roll(&gs.player_party.characters[gs.rolling_index])
 		gs.turn_timer = 0
@@ -296,8 +290,8 @@ enemy_turn_update :: proc(gs: ^Game_State) {
 
 ENEMY_ROLL_DISPLAY_TIME :: 1.5 // seconds to show enemy roll results
 
-enemy_roll_result_update :: proc(gs: ^Game_State) {
-	gs.turn_timer += rl.GetFrameTime()
+enemy_roll_result_update :: proc(gs: ^Game_State, input: Input_State) {
+	gs.turn_timer += input.delta_time
 	if gs.turn_timer >= ENEMY_ROLL_DISPLAY_TIME {
 		character_clear_roll(&gs.enemy_party.characters[gs.rolling_index])
 		gs.turn_timer = 0
@@ -307,11 +301,9 @@ enemy_roll_result_update :: proc(gs: ^Game_State) {
 
 // --- Game Over ---
 
-game_over_update :: proc(gs: ^Game_State) {
-	if rl.IsMouseButtonPressed(.LEFT) {
-		mouse_x := rl.GetMouseX()
-		mouse_y := rl.GetMouseY()
-		if mouse_on_play_again(mouse_x, mouse_y) {
+game_over_update :: proc(gs: ^Game_State, input: Input_State) {
+	if input.left_pressed {
+		if mouse_on_play_again(input.mouse_x, input.mouse_y) {
 			new_gs, ok := game_init("tutorial", &gs.log)
 			if ok {
 				gs^ = new_gs

@@ -47,7 +47,15 @@ game_init :: proc(encounter: string = "tutorial", prev_log: ^Combat_Log = nil) -
 }
 
 game_update :: proc(gs: ^Game_State) {
-	combat_update(gs)
+	input := Input_State {
+		mouse_x       = rl.GetMouseX(),
+		mouse_y       = rl.GetMouseY(),
+		left_pressed  = rl.IsMouseButtonPressed(.LEFT),
+		left_released = rl.IsMouseButtonReleased(.LEFT),
+		right_pressed = rl.IsMouseButtonPressed(.RIGHT),
+		delta_time    = rl.GetFrameTime(),
+	}
+	combat_update(gs, input)
 }
 
 // Returns the character currently selected for inspect, or nil if index is out of range.
