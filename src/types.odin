@@ -173,8 +173,9 @@ Character_Stats :: struct {
 // 3. passive          — always active, no roll trigger (placeholder for now)
 
 Ability_Scaling :: enum u8 {
-	Match, // scales with [MATCHES]
-	Value, // scales with [VALUE]
+	None,   // flat effect, no scaling (e.g. fixed damage, fixed heal)
+	Match,  // scales with [MATCHES]
+	Value,  // scales with [VALUE]
 	Hybrid, // uses both [MATCHES] and [VALUE]
 }
 
@@ -260,6 +261,17 @@ Combat_Log :: struct {
 	head:         int, // ring buffer write position
 	game_number:  int, // increments on each Play Again
 	file_enabled: bool, // only true when running the actual game (not tests)
+}
+
+// Input state — collected once per frame, threaded through update procs.
+// Decouples game logic from Raylib input calls for headless simulation.
+Input_State :: struct {
+	mouse_x:       i32,
+	mouse_y:       i32,
+	left_pressed:  bool,
+	left_released: bool,
+	right_pressed: bool,
+	delta_time:    f32,
 }
 
 // Drag-and-drop state

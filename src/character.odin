@@ -401,6 +401,9 @@ draw_ability_panel :: proc(x, y, w, h: i32, ability: ^Ability, is_resolve: bool)
 	scaling_str: cstring
 	scaling_col: rl.Color
 	switch ability.scaling {
+	case .None:
+		scaling_str = "Fixed effect"
+		scaling_col = rl.Color{160, 160, 160, 255}
 	case .Match:
 		scaling_str = "[MATCHES] scaling"
 		scaling_col = rl.Color{100, 200, 100, 255}

@@ -19,7 +19,7 @@ test_warrior :: proc() -> game.Character {
 	}
 	ch.resolve_ability = game.Ability {
 		name        = "Heroic Strike",
-		scaling     = .Match,
+		scaling     = .None,
 		min_matches = 0,
 		effect      = game.ability_resolve_warrior,
 		describe    = game.describe_resolve_warrior,
@@ -42,7 +42,7 @@ test_goblin :: proc() -> game.Character {
 	}
 	ch.resolve_ability = game.Ability {
 		name        = "Goblin Rally",
-		scaling     = .Match,
+		scaling     = .None,
 		min_matches = 0,
 		effect      = game.ability_resolve_goblin,
 		describe    = game.describe_resolve_goblin,

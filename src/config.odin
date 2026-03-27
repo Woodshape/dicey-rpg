@@ -338,6 +338,8 @@ parse_rarity :: proc(s: string) -> (Character_Rarity, bool) {
 // Parse a scaling string into the enum value.
 parse_scaling :: proc(s: string) -> (Ability_Scaling, bool) {
 	switch s {
+	case "none":
+		return .None, true
 	case "match":
 		return .Match, true
 	case "value":
@@ -345,7 +347,7 @@ parse_scaling :: proc(s: string) -> (Ability_Scaling, bool) {
 	case "hybrid":
 		return .Hybrid, true
 	}
-	return .Match, false
+	return .None, false
 }
 
 // Load an ability section from a parsed config file.
@@ -390,7 +392,7 @@ load_ability_section :: proc(
 	scaling_str := config_get_string(cf, section, "scaling") or_return
 	scaling, scaling_ok := parse_scaling(scaling_str)
 	if !scaling_ok {
-		fmt.eprintfln("config error: %s: [%s] unknown scaling '%s' — valid: match, value, hybrid", cf.path, section, scaling_str)
+		fmt.eprintfln("config error: %s: [%s] unknown scaling '%s' — valid: none, match, value, hybrid", cf.path, section, scaling_str)
 		return
 	}
 	ability.scaling = scaling
