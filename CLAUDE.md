@@ -231,6 +231,7 @@ See `docs/implementation-plan.md` for the milestone breakdown. Work through mile
 
 ## Workflow
 
+- **Git is managed by the user.** Never commit or push in this workspace. Do not run `git add`, `git commit`, or `git push` unless the user explicitly asks.
 - Keep commits small and focused — one logical change per commit.
 - Update milestone checkboxes in `docs/implementation-plan.md` as tasks are completed.
 - Run `odin test tests/` after any logic change to match detection, board, hand, or ability systems.

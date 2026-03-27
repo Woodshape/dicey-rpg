@@ -1,7 +1,7 @@
 # Dicey RPG - Implementation Plan
 
 **Status:** Draft
-**Last Updated:** 2026-03-26
+**Last Updated:** 2026-03-27
 **Language:** Odin
 **Renderer:** Raylib (vendor bundle)
 **Target Resolution:** 1280x720
@@ -184,6 +184,9 @@ Each milestone is independently testable. Later milestones build on earlier ones
 - [ ] Balance pass on HP, Attack, Defense, ability damage, resolve meter charge rate
 - [ ] Board size tuning based on playtesting
 - [x] **Player deadlock prevention:** Discard action — right-click a hand die to destroy it (free action, no turn cost). AI also discards unusable dice when stuck. Blocked by future status effects (e.g. Frozen).
+- [x] **Character inspect overlay:** Click any character panel header (player or enemy) to open a centred overlay showing abilities (main + resolve + passive placeholder) with static `[MATCHES]`/`[VALUE]` descriptions, and full stats. Click anywhere to dismiss.
+- [x] **Ability description context:** `Ability_Describe` has the same full signature as `Ability_Effect` — full game state, attacker, target, and roll available. Descriptions are pre-computed into `Roll_Result` buffers at resolve time; both the combat log and draw layer read from the buffers (no `gs` threading into draw chain).
+- [x] **Character liveness model:** `character_is_alive` checks `state == .Alive`. `resolve_roll` sets `state = .Dead` when HP hits 0. All liveness checks use this — no more scattered `hp > 0` tests.
 
 **Status:** In Progress
 

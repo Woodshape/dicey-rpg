@@ -68,6 +68,10 @@ Check whether `CLAUDE.md` needs changes:
 
 If yes: update `CLAUDE.md`.
 
+### Step 6b: Do NOT commit
+
+Git is managed by the user. Do not run `git add`, `git commit`, or `git push`. Just report what changed.
+
 ### Step 7: Summary
 
 Deliver a brief report:

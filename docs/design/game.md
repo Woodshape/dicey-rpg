@@ -19,17 +19,21 @@ The single struct that holds ALL game state. Passed by pointer to every system.
 
 ```odin
 Game_State :: struct {
-    running:       bool,
-    board:         Board,
-    hand:          Hand,          // player hand
-    enemy_hand:    Hand,          // enemy hand
-    player_party:  Party,
-    enemy_party:   Party,
-    drag:          Drag_State,
-    turn:          Turn_Phase,
-    turn_timer:    f32,
-    rolling_index: int,           // which character is showing roll results
-    log:           Combat_Log,
+    running:             bool,
+    board:               Board,
+    hand:                Hand,          // player hand
+    enemy_hand:          Hand,          // enemy hand
+    player_party:        Party,
+    enemy_party:         Party,
+    drag:                Drag_State,
+    turn:                Turn_Phase,
+    turn_timer:          f32,
+    rolling_index:       int,           // which character is showing roll results
+    log:                 Combat_Log,
+    // Character inspect overlay
+    inspect_active:      bool,
+    inspect_party_enemy: bool,          // true = inspecting an enemy character
+    inspect_char_index:  int,           // index into player_party or enemy_party
 }
 ```
 
@@ -99,7 +103,8 @@ On an invalid drop (e.g., wrong target, full hand), the drag silently cancels.
 8. HUD: title, board count, hand count
 9. Turn indicator (centred top)
 10. Combat log (centred bottom)
-11. Game over overlay (if Victory/Defeat)
+11. Character inspect overlay (if `inspect_active`) — centred, blocks all input until dismissed
+12. Game over overlay (if Victory/Defeat)
 
 ### Enemy Panel Position
 
@@ -114,6 +119,7 @@ On an invalid drop (e.g., wrong target, full hand), the drag silently cancels.
 | `game_draw(gs)` | Per-frame render |
 | `try_start_drag(gs, mx, my)` | Begin a drag operation |
 | `try_drop(gs, mx, my)` | Complete a drag — returns true if turn-ending |
+| `inspect_get_character(gs)` | Return pointer to the character being inspected |
 | `draw_turn_indicator(turn)` | Phase label at top of screen |
 | `draw_game_over(turn)` | Victory/Defeat overlay with Play Again button |
 | `draw_dragged_die(die_type, mx, my)` | Die following cursor |

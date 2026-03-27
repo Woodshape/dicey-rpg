@@ -82,7 +82,7 @@ Both `Player_Roll_Result` and `Enemy_Roll_Result` use a timer (`gs.turn_timer`) 
 | `game_over_update(gs)` | Play Again click handler |
 | `resolve_roll(gs, attacker, target)` | Full roll resolution with logging |
 | `check_win_lose(gs, default_next)` | Returns Victory/Defeat/default |
-| `party_all_dead(party)` | True if all characters have HP <= 0 |
+| `party_all_dead(party)` | True if all characters have `state != .Alive` |
 | `get_target(enemy_party, attacker_index)` | Select attack target |
 | `check_board_refill(gs)` | Refill board if no pickable dice |
 | `can_pick(gs, hand)` / `can_roll(character)` | Action validation |
@@ -102,7 +102,7 @@ The combat system is driven entirely through `combat_update(gs)`, called once pe
 
 - Do not set `gs.turn` from outside `combat.odin` except during initialization.
 - Do not call `resolve_roll` without first calling `character_roll` — it reads `character.roll` which must be populated.
-- Do not check death with `character.state == .Dead`. Use `character.stats.hp <= 0` — the `.Dead` state is not set by the combat system.
+- Do not check character liveness with `character.stats.hp > 0`. Use `character_is_alive(character)` which checks `state == .Alive`. The `.Dead` state is set by `resolve_roll` when HP reaches 0; it is the source of truth.
 - Do not skip `check_board_refill` at the start of a turn — it prevents the game from stalling when the board is exhausted.
 
 ## Test Coverage
