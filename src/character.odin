@@ -423,9 +423,9 @@ draw_ability_panel :: proc(x, y, w, h: i32, ability: ^Ability, is_resolve: bool)
 	}
 
 	// Static formula
-	if ability.static_describe != nil {
+	if ability.description != nil {
 		rl.DrawRectangle(x + 8, cur_y + 2, w - 16, 22, rl.Color{40, 44, 60, 220})
-		rl.DrawText(ability.static_describe, x + 14, cur_y + 6, 12, rl.Color{200, 220, 255, 255})
+		rl.DrawText(ability.description, x + 14, cur_y + 6, 12, rl.Color{200, 220, 255, 255})
 	}
 }
 

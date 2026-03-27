@@ -188,12 +188,13 @@ Ability_Effect :: #type proc(gs: ^Game_State, attacker: ^Character, target: ^Cha
 Ability_Describe :: #type proc(gs: ^Game_State, attacker: ^Character, target: ^Character, roll: ^Roll_Result) -> cstring
 
 Ability :: struct {
-	name:            cstring,
-	scaling:         Ability_Scaling,
-	min_matches:     int, // minimum [MATCHES] required to trigger (0 = always fires)
-	effect:          Ability_Effect,
-	describe:        Ability_Describe, // post-roll dynamic description (resolved values)
-	static_describe: cstring, // formula with [MATCHES]/[VALUE] placeholders, shown in inspect UI
+	name:        cstring,
+	scaling:     Ability_Scaling,
+	min_matches: int, // minimum [MATCHES] required to trigger (0 = always fires)
+	min_value:   int, // minimum [VALUE] required to trigger (0 = always fires, not yet wired)
+	effect:      Ability_Effect,
+	describe:    Ability_Describe, // post-roll dynamic description (resolved values)
+	description: cstring, // formula with {MATCHES}/{VALUE} placeholders, shown in inspect UI
 }
 
 Character :: struct {

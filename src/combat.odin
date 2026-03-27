@@ -312,7 +312,11 @@ game_over_update :: proc(gs: ^Game_State) {
 		mouse_x := rl.GetMouseX()
 		mouse_y := rl.GetMouseY()
 		if mouse_on_play_again(mouse_x, mouse_y) {
-			gs^ = game_init(&gs.log)
+			new_gs, ok := game_init("tutorial", &gs.log)
+			if ok {
+				gs^ = new_gs
+			}
+			// On failure: error already logged, stay on game-over screen
 		}
 	}
 }

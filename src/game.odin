@@ -25,7 +25,7 @@ Game_State :: struct {
 	inspect_char_index:  int,
 }
 
-game_init :: proc(prev_log: ^Combat_Log = nil) -> Game_State {
+game_init :: proc(encounter: string = "tutorial", prev_log: ^Combat_Log = nil) -> (Game_State, bool) {
 	gs := Game_State {
 		running = true,
 		board   = board_init(),
@@ -35,13 +35,15 @@ game_init :: proc(prev_log: ^Combat_Log = nil) -> Game_State {
 		gs.log = prev_log^
 	}
 	combat_log_new_game(&gs.log)
-	gs.player_party.characters[0] = warrior_create()
-	gs.player_party.characters[1] = healer_create()
-	gs.player_party.count = 2
-	gs.enemy_party.characters[0] = goblin_create()
-	gs.enemy_party.characters[1] = shaman_create()
-	gs.enemy_party.count = 2
-	return gs
+
+	player_party, enemy_party, ok := config_load_encounter(encounter)
+	if !ok {
+		return gs, false
+	}
+	gs.player_party = player_party
+	gs.enemy_party = enemy_party
+
+	return gs, true
 }
 
 game_update :: proc(gs: ^Game_State) {
