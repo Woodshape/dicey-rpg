@@ -90,6 +90,7 @@ odin run src/ -out:build/dicey-rpg -debug
 odin build sim/ -out:build/dicey-sim
 ./build/dicey-sim --encounter=tutorial --rounds=1000 --seed=42
 ./build/dicey-sim --no-skulls --rounds=500   # ability-only analysis
+./build/dicey-sim --combat --seed=42         # single game with full combat log
 ```
 
 ## Architecture

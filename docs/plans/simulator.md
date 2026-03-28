@@ -23,6 +23,7 @@ sim/
 ```
 odin run sim/ -- --encounter=tutorial --rounds=1000 --seed=42
 odin run sim/ -- --encounter=tutorial --rounds=1000 --no-skulls    # ability-only balance
+odin run sim/ -- --combat --seed=42                                # single game with full combat log
 ```
 
 | Flag | Default | Description |
@@ -31,7 +32,8 @@ odin run sim/ -- --encounter=tutorial --rounds=1000 --no-skulls    # ability-onl
 | `--rounds` | `100` | Number of games to simulate |
 | `--seed` | random | RNG seed for reproducibility. If omitted, uses a random seed. The seed is always printed in output so any run can be reproduced. |
 | `--csv` | `sim_results.csv` | Output CSV file path |
-| `--no-skulls` | `false` | Disable skull dice on the board. Isolates ability-only balance. |
+| `--no-skulls` | `false` | Disable skull dice in the pool. Isolates ability-only balance. |
+| `--combat` | `false` | Run 1 game with full combat log to stdout and `combat_log.txt`. Use `--seed` to replay a specific game. |
 
 ### No Concurrency
 
