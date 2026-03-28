@@ -8,12 +8,19 @@ WINDOW_HEIGHT :: 720
 WINDOW_TITLE :: "Dicey RPG"
 TARGET_FPS :: 60
 
-// Board
-BOARD_SIZE :: 5 // 5x5 grid
-// BOARD_SIZE :: 7 // 7x7 grid
-CELL_SIZE :: 64 // pixels per cell
-CELL_GAP :: 6 // pixels between cells
-CELL_STRIDE :: CELL_SIZE + CELL_GAP // total step per cell
+// Draft pool
+MAX_POOL_SIZE :: 12 // generous upper bound for variable pool sizes
+DEFAULT_POOL_SIZE :: 6
+POOL_CELL_SIZE :: 64 // pixels per die in pool
+POOL_CELL_GAP :: 6 // pixels between dice in pool
+
+Weight_Group :: enum u8 {
+	Low,      // d4, d6 bias
+	Mid_Low,  // d6, d8 bias
+	Mid_High, // d8, d10 bias
+	High,     // d10, d12 bias
+}
+WEIGHT_GROUP_COUNT :: 4
 
 // Dice
 Die_Type :: enum u8 {
@@ -74,7 +81,7 @@ DIE_FACES := [Die_Type]int {
 	.Skull = 0, // skull dice are not rolled for a value
 }
 
-// Probability (out of 100) that any board cell becomes a skull die
+// Probability (out of 100) that any pool die becomes a skull die
 SKULL_CHANCE :: 10
 
 MAX_DIE_VALUE :: 12
@@ -98,18 +105,23 @@ Roll_Result :: struct {
 	resolve_desc:    [MAX_LOG_LENGTH]u8,
 }
 
-// Board cell
-Board_Cell :: struct {
-	die_type: Die_Type,
-	occupied: bool,
-	ring:     int,
+// Draft pool
+Draft_Pool :: struct {
+	dice:         [MAX_POOL_SIZE]Die_Type,
+	count:        int,  // total dice generated this round
+	remaining:    int,  // dice not yet picked
+	weight_group: Weight_Group,
+	skull_chance: int,
 }
 
-// Board
-Board :: struct {
-	size:         int,
-	cells:        [BOARD_SIZE][BOARD_SIZE]Board_Cell,
-	skull_chance: int, // % chance per cell; set by board_init, preserved on refill
+// Round state — tracks weight group cycling and round progression
+Round_State :: struct {
+	group_order:  [WEIGHT_GROUP_COUNT]Weight_Group, // shuffled cycle
+	cycle_index:  int,                               // position in current cycle
+	round_number: int,                               // 1-based, increments each draft round
+	first_pick:   bool,                              // true = player picks first this round
+	pool_size:    int,                               // dice per round (default 6)
+	skull_chance: int,                               // % per die
 }
 
 // Hand
@@ -271,12 +283,19 @@ CHAR_PANEL_STRIDE :: 200 // vertical spacing between stacked character panels
 
 // Turn state machine
 Turn_Phase :: enum u8 {
-	Player_Turn, // player can assign freely, pick or roll to end turn
-	Player_Roll_Result, // showing player's roll results, click Clear to advance
-	Enemy_Turn, // AI evaluates and executes one action
-	Enemy_Roll_Result, // brief pause showing enemy roll results, then auto-advances
-	Victory, // player won
-	Defeat, // player lost
+	// Draft phase
+	Draft_Player_Pick, // player picks one die from pool (free assign/discard allowed)
+	Draft_Enemy_Pick,  // AI picks one die from pool
+	// Combat phase
+	Combat_Player_Turn,  // player assigns freely, rolls one character or passes
+	Player_Roll_Result,  // timed display of roll results
+	Combat_Enemy_Turn,   // AI assigns, rolls one character or passes
+	Enemy_Roll_Result,   // timed display of roll results
+	// Round boundary
+	Round_End,           // check win/lose, advance to next draft round
+	// Terminal
+	Victory,
+	Defeat,
 }
 
 // Combat log
@@ -311,7 +330,7 @@ Input_State :: struct {
 // Drag-and-drop state
 Drag_Source :: enum {
 	None, // zero value — not dragging
-	Board,
+	Pool,
 	Hand,
 	Character,
 }
@@ -321,8 +340,7 @@ Drag_State :: struct {
 	source:     Drag_Source,
 	die_type:   Die_Type,
 	// Source identification (for ghosting the source slot)
-	board_row:  int,
-	board_col:  int,
+	pool_index: int, // index into draft pool (for Pool source)
 	index:      int, // hand slot index or character die index
 	char_index: int, // which character in the party (for Character source)
 }
