@@ -16,6 +16,7 @@ src/                    -- all game source (single package: "game")
   combat.odin           -- turn state machine, action resolution, phase transitions
   ai.odin               -- enemy AI: die scoring, pick/roll decisions, assignment
   ability.odin          -- ability effects, resolution, describe procs
+  condition.odin        -- condition/status effect system: apply, remove, tick, absorb
   config.odin           -- .cfg parser, lookup tables, character/encounter loading
 sim/                    -- combat simulator (separate binary, imports game package)
   main.odin             -- CLI parsing, headless game loop, party-swap AI driver
@@ -28,6 +29,7 @@ tests/                  -- test package (separate from game)
   combat_test.odin      -- turn state machine, action validation
   ai_test.odin          -- AI scoring, assignment, roll decisions
   ability_test.odin     -- ability effects, resolution, resolve meter
+  condition_test.odin   -- condition apply/remove, Shield absorption, Hex DEF reduction, turn ticking
   config_test.odin      -- config parsing, character/encounter loading, validation
 data/
   characters/             -- character definitions (.cfg)
@@ -51,6 +53,7 @@ docs/
     ability.md               -- effects, resolution, lookup tables, how to extend
     game.md                  -- Game_State, drag-and-drop, draw pipeline
     combat-log.md            -- ring buffer, file output
+    condition.md             -- status effects: Shield, Hex, ticking, absorption
     config.md                -- .cfg format, character/encounter loading, validation
     headless-refactor.md     -- Input_State extraction from combat update procs
     simulator.md             -- headless combat simulator, stats collection, CLI

@@ -180,8 +180,10 @@ Each milestone is independently testable. Later milestones build on earlier ones
 - [ ] Dice type icons or distinct shapes instead of plain colours
 - [x] Ability names and effects shown on screen
 - [x] Turn log / action history (combat log with file output)
-- [ ] At least one status effect (Paralyze as proof of concept)
-- [ ] Balance pass on HP, Attack, Defense, ability damage, resolve meter charge rate
+- [x] **Condition system:** `Condition` struct with kind, value, expiry model (turns/on-hit), interval/timer for future periodic effects. Shield (absorbs [VALUE] damage) and Hex (DEF -1 for 3 turns) implemented. Conditions tick per-side at turn transitions.
+- [x] **Balance pass (first iteration):** Flurry now [VALUE]×[MATCHES] (both axes matter), Shield absorbs [VALUE] damage (die size matters), Hex debuff on Shaman, offensive resolve abilities (Goblin Explosion AoE, Shadow Bolt nuke), resolve_max=10, SKULL_CHANCE=10%, enemy ATK buffed.
+- [x] **AI heuristic improvements:** Ability-aware die scoring (scaling fit), strategic assignment routing, deadlock prevention (last-resort roll with skulls when stuck).
+- [ ] Dice type icons or distinct shapes instead of plain colours
 - [ ] Board size tuning based on playtesting
 - [x] **Player deadlock prevention:** Discard action — right-click a hand die to destroy it (free action, no turn cost). AI also discards unusable dice when stuck. Blocked by future status effects (e.g. Frozen).
 - [x] **Character inspect overlay:** Click any character panel header (player or enemy) to open a centred overlay showing abilities (main + resolve + passive placeholder) with static `[MATCHES]`/`[VALUE]` descriptions, and full stats. Click anywhere to dismiss.

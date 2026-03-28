@@ -2,7 +2,7 @@
 
 ## Passive ability system
 
-**Files:** `src/types.odin:214`, `src/character.odin:495`
+**Files:** `src/types.odin:250`, `src/character.odin:499`
 
 The `Character` struct has a commented-out `passive: Ability` field and the draw proc has a placeholder comment. The passive ability slot is reserved in the inspect overlay UI but has no runtime wiring.
 

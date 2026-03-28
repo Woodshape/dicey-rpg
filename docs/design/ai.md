@@ -29,15 +29,18 @@
 ### Assignment from Hand
 
 `ai_assign_from_hand(gs)` iterates the enemy hand in reverse (so removal indices stay valid) and assigns each die to the best available character. Scoring prefers:
-- Characters with more room (fewer assigned dice)
+- Characters with more room (fewer assigned dice, scaled by 10)
 - Characters whose committed type matches the die (+20 bonus)
+- Characters whose ability scaling fits the die type (+`ai_scaling_fit * 2` bonus)
 
 ### Roll Decision
 
-`ai_should_roll(gs)` returns `(should_roll, char_index)`:
-- **Always roll** if a character is fully loaded (all slots filled)
-- **Roll with >= 2 normal dice** if no useful picks remain on the board
-- **Never roll** skull-only characters or characters with < 2 normal dice when picks are available
+`ai_should_roll(gs)` returns `(should_roll, char_index)`. Three tiers, evaluated per character:
+1. **Full + >= 2 normal** → roll (character is ready)
+2. **>= 2 normal + no useful picks** → roll (nothing better to do)
+3. **Full + no useful picks** → last-resort roll (even with < 2 normal dice or skulls-only; skull damage is better than deadlock)
+
+Never rolls characters with 0 assigned dice. Tier 3 prevents infinite skipping when the board has no useful dice and the hand/characters are fully committed.
 
 ### Die Scoring
 
@@ -50,7 +53,7 @@
 | Matches committed type | +10 | Strong pull toward consistency |
 | No type committed yet | +3 | Good to start building |
 | Denial (player wants this type) | +4 | Denying opponent's build |
-| Small die (d4/d6) | +1 | Easier to match |
+| Scaling fit (`ai_scaling_fit`) | +0–5 | Die type matches character's ability scaling axis |
 | No character can accept | 0 (skip) | Prevents hand clogging |
 
 The critical behavior: dice that NO alive character can accept score 0 and are never picked. This prevents the AI from filling its hand with useless dice.
@@ -61,6 +64,19 @@ The critical behavior: dice that NO alive character can accept score 0 and are n
 - Scores each die: +10 if any alive character can accept it
 - Discards the die with the lowest score (least useful)
 - Respects `hand_can_discard` for future status effect blocking
+
+### Scaling Fit
+
+`ai_scaling_fit(scaling, die_type)` scores how well a die type serves a character's ability scaling axis (0–5):
+
+| Scaling | Best dice | Mid | Worst |
+|---------|-----------|-----|-------|
+| `.Match` | d4 (5), d6 (3) | d8 (1) | d10, d12 (0) |
+| `.Value` | d12 (5), d10 (3) | d8 (1) | d4, d6 (0) |
+| `.Hybrid` | d6/d8 (4) | d4/d10 (2) | d12 (1) |
+| `.None` | all (0) | — | — |
+
+Used by both `ai_score_die_for_party` (direct add) and `ai_assign_from_hand` (×2 weight).
 
 ### Legacy Scorer
 
@@ -75,6 +91,7 @@ The critical behavior: dice that NO alive character can accept score 0 and are n
 | `ai_should_roll(gs)` | Decide whether to roll and which character |
 | `ai_pick_best_die(gs)` | Find highest-scoring pickable die on board |
 | `ai_score_die_for_party(die_type, party, player_types)` | Score a die against all characters |
+| `ai_scaling_fit(scaling, die_type)` | Score die fit for ability scaling axis (0–5) |
 | `ai_score_die(die_type, enemy_type, ...)` | Legacy single-character scorer |
 | `ai_pick_any_die(gs)` | Fallback: pick first available die |
 | `ai_hand_has_usable_die(party, hand)` | Any die in hand assignable? |
@@ -100,17 +117,19 @@ The AI is invoked entirely through `ai_take_turn(gs)` during the `Enemy_Turn` ph
 ## Known Issues
 
 See `docs/issues/ai.md`:
-- **Type commitment:** The AI doesn't track which die type it has strategically committed to per character across turns. It picks greedily per turn, which can waste actions on incompatible types.
-- **Ability awareness:** Scoring doesn't consider ability scaling axes. A [VALUE]-scaling character should prefer d10/d12; a [MATCHES]-scaling character should prefer d4/d6.
+- **Type commitment:** The AI doesn't track which die type it has strategically committed to per character across turns. It picks greedily per turn, which can waste actions on incompatible types. Partially mitigated by `ai_scaling_fit` steering picks toward appropriate dice.
+- **Ability awareness:** Now partially addressed — `ai_scaling_fit` scores dice by how well they serve the character's scaling axis. A [VALUE]-scaling character scores d10/d12 higher; a [MATCHES]-scaling character scores d4/d6 higher. However, the AI still doesn't plan multi-turn strategies around specific abilities.
 
 ## Test Coverage
 
-`tests/ai_test.odin` — 11 tests:
+`tests/ai_test.odin` — 16 tests:
 
 **Scoring:** `ai_prefers_matching_type`, `ai_scores_skull_dice_highly`, `ai_considers_denial`
 
+**Scaling fit:** `ai_scaling_fit_match_prefers_small`, `ai_scaling_fit_value_prefers_big`, `ai_scaling_fit_hybrid_prefers_mid`
+
 **Assignment:** `ai_assigns_compatible_from_hand`, `ai_does_not_assign_incompatible`
 
-**Roll decision:** `ai_rolls_when_character_full`, `ai_does_not_roll_empty_character`, `ai_does_not_roll_with_only_skulls`, `ai_rolls_with_normal_dice`
+**Roll decision:** `ai_rolls_when_character_full`, `ai_does_not_roll_empty_character`, `ai_does_not_roll_with_only_skulls`, `ai_rolls_with_normal_dice`, `ai_does_not_roll_full_with_only_skulls`, `ai_rolls_skulls_when_stuck`
 
 **Pick:** `ai_picks_from_board`, `ai_cannot_pick_with_full_hand`

@@ -53,6 +53,15 @@ The resolution order (skulls first, then abilities) is intentional — skull dam
 2. **Fall back to first alive** — if the facing opponent is dead
 3. **Return nil** — if all enemies are dead
 
+### Condition Ticking
+
+`combat_update` tracks `prev_turn` before dispatching to the phase handler. After the handler returns, if the turn phase changed, conditions are ticked for the side whose turn is beginning:
+
+- Transition to `Player_Turn` → `tick_party_conditions(&gs.player_party)`
+- Transition to `Enemy_Turn` → `tick_party_conditions(&gs.enemy_party)`
+
+`tick_party_conditions(party)` calls `condition_tick_turns` on each character, which decrements turn-based durations and fires periodic effects. Each side's conditions tick on THAT side's turn — a 3-turn debuff on an enemy lasts 3 enemy turns, not 3 total turns.
+
 ### Board Refill
 
 `check_board_refill(gs)` is called at the start of both `player_turn_update` and `enemy_turn_update`. If `board_has_pickable` returns false (no accessible dice), the board is fully reinitialized.
@@ -84,6 +93,7 @@ Both `Player_Roll_Result` and `Enemy_Roll_Result` use a timer (`gs.turn_timer`) 
 | `check_win_lose(gs, default_next)` | Returns Victory/Defeat/default |
 | `party_all_dead(party)` | True if all characters have `state != .Alive` |
 | `get_target(enemy_party, attacker_index)` | Select attack target |
+| `tick_party_conditions(party)` | Tick turn-based conditions for all party members |
 | `check_board_refill(gs)` | Refill board if no pickable dice |
 | `can_pick(gs, hand)` / `can_roll(character)` | Action validation |
 

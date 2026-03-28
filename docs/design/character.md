@@ -28,7 +28,12 @@ The constraint is enforced in `character_can_assign_die`:
 
 ### Skull Damage — Per-Hit Loop
 
-`apply_skull_damage(attacker, target)` applies `skull_count` individual attacks, each dealing `max(Attack - Defense, 0)`. The loop processes each skull die as a discrete hit — this is the foundation for future per-hit triggers (on-hit passives, damage shields, lifesteal).
+`apply_skull_damage(attacker, target)` applies `skull_count` individual attacks. Each hit:
+1. Computes raw damage: `max(Attack - character_effective_defense(target), 0)` — uses effective DEF which accounts for Hex debuffs
+2. Subtracts Shield absorption: `condition_absorb_damage(target, dmg)` — Shield pool absorbs up to `dmg`, removed when depleted
+3. Applies remaining damage to target HP
+
+The loop processes each skull die as a discrete hit, enabling per-hit condition interactions (Shield breaks mid-volley, Hex stacks compound, etc.). Returns total damage dealt after all reductions.
 
 ### Dice Slot Pattern
 

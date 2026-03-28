@@ -86,12 +86,15 @@ Takes the same parameters as `Ability_Effect` but returns a formatted cstring. U
 
 | Ability | Scaling | Formula |
 |---------|---------|---------|
-| Flurry | Match | Deal 1 damage [MATCHES] times. Each hit reduced by target DEF. |
+| Flurry | Hybrid | Deal [VALUE] damage [MATCHES] times. Each hit reduced by target DEF. |
 | Smite | Value | Deal [VALUE] damage, reduced by target DEF. |
 | Fireball | Hybrid | Deal [MATCHES] × [VALUE] damage, reduced by target DEF. |
 | Heal | Value | Restore [VALUE] HP to self. No DEF interaction. |
+| Shield | Value | Apply Shield to lowest-HP ally. Shield absorbs [VALUE] total damage, then expires. |
+| Hex | None | Reduce target DEF by 1 for 3 turns. Fires on min_matches = 2. |
 | Resolve: Warrior | — | Deal 10 flat damage ignoring defense. |
-| Resolve: Goblin | — | Heal 10 HP to self. |
+| Resolve: Goblin Explosion | — | Deal 6 damage to all enemies. Respects DEF and Shield. |
+| Resolve: Shadow Bolt | — | Deal 15 damage ignoring defense. Single target, respects Shield. |
 
 ## How to Add a New Ability
 

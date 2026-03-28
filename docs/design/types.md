@@ -76,6 +76,23 @@ Drives the combat state machine in `combat.odin`.
 - `Ability` struct: `name`, `scaling`, `min_matches`, `min_value` (minimum [VALUE] to trigger), `effect`, `description` (renamed from `static_describe`).
 - `Ability_Describe` has the full signature: `proc(gs: ^Game_State, attacker: ^Character, target: ^Character, roll: ^Roll_Result) -> cstring`.
 
+### Condition_Kind / Condition_Expiry / Condition
+
+```odin
+Condition_Kind :: enum u8 { None, Shield, Hex }
+Condition_Expiry :: enum u8 { None, Turns, On_Hit_Taken }
+Condition :: struct {
+    kind, value, expiry, remaining, interval, timer
+}
+```
+
+- `.None` is the sentinel zero value for both enums.
+- `Shield` absorbs incoming damage (value = remaining absorption pool). Removed when pool reaches 0.
+- `Hex` reduces target DEF by `value`. Expires after `remaining` turns.
+- `interval` / `timer` support periodic effects (e.g., future Poison/Regen). Currently unused.
+- Characters hold `conditions: [MAX_CONDITIONS]Condition` and `condition_count: int`.
+- Lookup table: `CONDITION_NAMES` — indexed by `Condition_Kind`, sentinel is `"??"`.
+
 ### Input_State
 
 ```odin
@@ -107,7 +124,8 @@ Ring buffer for combat messages. Fixed-size entries with inline text buffers —
 | `MAX_HAND_SIZE` | 5 | Hand capacity |
 | `MAX_CHARACTER_DICE` | 6 | Legendary max dice (array sizes) |
 | `MAX_PARTY_SIZE` | 4 | Party array size |
-| `SKULL_CHANCE` | 20 | % chance per board cell becomes skull |
+| `SKULL_CHANCE` | 10 | % chance per board cell becomes skull |
+| `MAX_CONDITIONS` | 4 | Max active conditions per character |
 | `MAX_DIE_VALUE` | 12 | Frequency array size for match detection |
 
 ## Best Practices

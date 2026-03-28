@@ -43,6 +43,19 @@
 - **Carry analysis:** Win rate when a specific character survives vs dies. Shows which characters are load-bearing vs expendable. Requires per-game correlation between character survival and game outcome.
 - **Roll timing analysis:** When does the AI choose to roll — with 1, 2, or 3 dice? The dice count breakdown already shows match rates by count, but tracking *why* the AI rolled (full, no picks, forced) would help evaluate strategy profiles.
 
+## Skull Design Concerns
+
+Skulls are currently "guaranteed value" — they always deal ATK damage on roll, regardless of match quality. Ability dice are "uncertain value" — they need matches to fire, and bad rolls waste them. This creates a dominant strategy of picking skulls over ability dice whenever possible.
+
+Options discussed:
+
+- **Skulls as direct board actions:** Picking a skull immediately deals damage instead of being assigned to a character. Makes skulls a tempo play (guaranteed small damage NOW) vs ability dice (investment for bigger payoff later). Removes skulls from character slots entirely, freeing assignment space for ability dice.
+- **Skull damage tied to match quality:** skull ATK = base ATK + (matched_count / 2). Rewards mixed skull+ability builds over pure skull stacking, since skulls benefit from having ability dice alongside them.
+- **Remove skulls from character slots:** Skulls don't occupy assignment slots. They're a board-level mechanic, not a character-level mechanic. Characters only hold ability dice. Skulls are tracked separately (per-character or per-party).
+- The per-hit loop design space (on-hit passives, damage shields, lifesteal) is valuable but may not require skulls to be in character slots to function.
+
+This is also related to the "Last-Resort Roll Deadlock" issue in issues/ai.md — skulls crowding out ability dice is the root cause of that deadlock scenario.
+
 ## Party Death — Assigned Dice
 
 - When a character dies, what happens to their assigned dice?
