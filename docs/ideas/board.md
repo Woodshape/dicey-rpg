@@ -38,22 +38,8 @@
 - No design decision yet on whether skulls should cluster, avoid the centre, or remain uniform.
 - A fixed count per board fill (e.g., always exactly 4 skulls) may be more predictable than per-cell RNG.
 
-## Draft Pool (Alternative to Board)
+## Draft Pool (Replacing Board)
 
-Replace the central board grid with a simpler draft pool model:
+**Full design document:** `docs/ideas/draft-pool.md`
 
-- Each round, a fixed number of dice are presented to both sides (drawn from a distribution).
-- Both parties pick from the shared pool in alternating turn order: player → enemy → player → enemy → etc., until all dice are picked.
-- This removes the spatial exposure/denial mechanic (no perimeter, no rings) but preserves the core drafting tension: what you pick denies the other side.
-- Simplifies the visual and interaction model — no grid, no adjacency, no ring unlocking.
-
-### Open questions
-
-- Do both sides assign and roll AFTER all dice are picked (batch phase), or can rolls happen in between picks (interleaved)?
-- Batch: cleaner separation of draft and combat phases. Both sides see the full draft before committing rolls. Strategic: you can adjust assignment after seeing what the opponent drafted.
-- Interleaved: more tactical, allows mid-draft rolls as tempo plays. Harder to balance — early rollers might get wiped before late drafters finish building.
-- How many dice per round? Should scale with party size.
-- Does the pool have the same rarity gradient (more d4/d6, fewer d10/d12), or a flatter distribution?
-- How do skull dice fit — fixed count per pool, or percentage-based?
-
-This is a design space exploration, not a committed direction. The board works mechanically but may be overengineered for the drafting decisions the game actually needs.
+The board grid is being replaced by a draft pool. See the dedicated design doc for the complete specification, design decisions, and open questions.

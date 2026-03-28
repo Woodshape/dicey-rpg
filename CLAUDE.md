@@ -57,6 +57,7 @@ docs/
     config.md                -- .cfg format, character/encounter loading, validation
   plans/                     -- implementation plans and milestone history
     implementation-plan.md   -- milestone-based implementation plan (history)
+    draft-pool.md            -- draft pool implementation plan (board replacement)
     headless-refactor.md     -- Input_State extraction from combat update procs
     simulator.md             -- headless combat simulator, stats collection, CLI
   ideas/                     -- design spaces and decisions to explore (ever-growing)

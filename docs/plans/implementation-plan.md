@@ -257,11 +257,34 @@ Each milestone is independently testable. Later milestones build on earlier ones
 
 ---
 
+### Milestone 12: Draft Pool (Board Replacement)
+
+**Goal:** Replace the board grid with a draft pool system. Batch flow: draft all dice first, then assign and roll. Simpler, faster, focused on pure drafting decisions.
+
+**Design doc:** `docs/ideas/draft-pool.md`
+**Implementation plan:** `docs/plans/draft-pool.md`
+
+- [ ] New types: `Draft_Pool`, `Weight_Group`, `Round_State`, reworked `Turn_Phase`
+- [ ] `src/pool.odin`: pool generation, weight group cycling, rendering, hit-testing
+- [ ] Delete `src/board.odin` and `tests/board_test.odin`
+- [ ] Rewrite `src/combat.odin`: draft phase → combat phase → round end state machine
+- [ ] Update `src/game.odin`: Game_State, drag-and-drop, rendering
+- [ ] Update `src/ai.odin`: pool scanning, phase-aware AI
+- [ ] Update `src/config.odin`: pool_size/skull_chance in encounter config
+- [ ] Update `sim/main.odin`: headless loop for new phases
+- [ ] `tests/pool_test.odin`: weight groups, pool mechanics, cycling
+- [ ] Update `tests/combat_test.odin` and `tests/ai_test.odin`
+- [ ] Update all design docs
+
+**Status:** Not Started
+
+---
+
 ## MVP Definition
 
 The MVP is complete when:
 - A player can fight an AI opponent through a full combat encounter
-- The board, hand, assignment, rolling, and matching systems all work
+- The draft pool, hand, assignment, rolling, and matching systems all work
 - At least 2 characters per side with distinct abilities
 - Win/lose condition with restart
 - Basic AI that makes intentional (if simple) decisions
