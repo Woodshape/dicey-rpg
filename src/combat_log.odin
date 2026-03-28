@@ -48,6 +48,16 @@ combat_log_init_file :: proc(log: ^Combat_Log) {
 	os.write_entire_file(LOG_FILE_PATH, transmute([]u8)string("=== NEW SESSION ===\n"))
 }
 
+// Print the full combat log file to stdout. Only works if file output was enabled.
+combat_log_print :: proc(log: ^Combat_Log) {
+	if !log.file_enabled { return }
+	data, ok := os.read_entire_file(LOG_FILE_PATH)
+	if ok {
+		fmt.print(string(data))
+		delete(data)
+	}
+}
+
 // Convenience: log with default white color
 combat_log_write :: proc(log: ^Combat_Log, format: string, args: ..any) {
 	combat_log_add(log, rl.Color{200, 200, 200, 255}, format, ..args)

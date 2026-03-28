@@ -1,7 +1,5 @@
 package sim
 
-// TODO: add --validate mode that runs 1 game with full combat log output for rule validation
-
 import "core:fmt"
 import "core:math/rand"
 import "core:os"
@@ -19,6 +17,7 @@ Sim_Config :: struct {
 	seed:      u64,
 	csv_path:  string,
 	no_skulls: bool,
+	combat:    bool, // single game with full combat log
 }
 
 main :: proc() {
@@ -35,6 +34,13 @@ main :: proc() {
 		}
 	}
 
+	// --- Combat mode: single game with full combat log ---
+	if config.combat {
+		run_combat(config, skull_chance)
+		return
+	}
+
+	// --- Stats mode: N games with aggregate statistics ---
 	fmt.printfln(
 		"Simulating %d rounds of '%s' (seed: %d)%s...",
 		config.rounds,
@@ -96,6 +102,38 @@ main :: proc() {
 		} else {
 			fmt.eprintfln("Failed to write CSV: %s", config.csv_path)
 		}
+	}
+}
+
+// Run a single game with full combat log output to stdout.
+run_combat :: proc(config: Sim_Config, skull_chance: int) {
+	rand.reset(config.seed)
+
+	// Enable file output before game_init so the seed line is captured
+	clog: game.Combat_Log
+	game.combat_log_init_file(&clog)
+
+	gs, ok := game.game_init(config.encounter, &clog, skull_chance, seed = config.seed)
+	if !ok {
+		fmt.eprintfln("Failed to init game")
+		os.exit(1)
+	}
+
+	// Run the game
+	stats := Game_Stats{seed = config.seed}
+	rolls := new(Roll_Collector)
+	defer free(rolls)
+	run_game(&gs, &stats, rolls)
+
+	// Print the full combat log to stdout
+	game.combat_log_print(&gs.log)
+
+	// Print outcome
+	fmt.println()
+	switch stats.winner {
+	case .Player: fmt.printfln("Result: VICTORY in %d turns", stats.turns)
+	case .Enemy:  fmt.printfln("Result: DEFEAT in %d turns", stats.turns)
+	case .Draw:   fmt.printfln("Result: DRAW (turn limit %d)", stats.turns)
 	}
 }
 
@@ -297,6 +335,8 @@ parse_args :: proc() -> Sim_Config {
 			config.csv_path = arg[len("--csv="):]
 		} else if arg == "--no-skulls" {
 			config.no_skulls = true
+		} else if arg == "--combat" {
+			config.combat = true
 		} else {
 			fmt.eprintfln("Unknown argument: %s", arg)
 			print_usage()
@@ -314,4 +354,5 @@ print_usage :: proc() {
 	fmt.eprintln("  --seed=N          RNG seed (default: current time)")
 	fmt.eprintln("  --csv=PATH        CSV output path (default: sim_results.csv)")
 	fmt.eprintln("  --no-skulls       Disable skull dice in the pool")
+	fmt.eprintln("  --combat          Run 1 game with full combat log (use --seed for replay)")
 }

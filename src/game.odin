@@ -26,7 +26,7 @@ Game_State :: struct {
 	inspect_char_index:  int,
 }
 
-game_init :: proc(encounter: string = "tutorial", prev_log: ^Combat_Log = nil, skull_chance: int = SKULL_CHANCE, pool_size: int = DEFAULT_POOL_SIZE) -> (Game_State, bool) {
+game_init :: proc(encounter: string = "tutorial", prev_log: ^Combat_Log = nil, skull_chance: int = SKULL_CHANCE, pool_size: int = DEFAULT_POOL_SIZE, seed: u64 = 0) -> (Game_State, bool) {
 	round := round_state_init(pool_size, skull_chance)
 	pool := pool_generate(&round)
 
@@ -48,6 +48,7 @@ game_init :: proc(encounter: string = "tutorial", prev_log: ^Combat_Log = nil, s
 		gs.log = prev_log^
 	}
 	combat_log_new_game(&gs.log)
+	combat_log_add(&gs.log, rl.Color{140, 140, 160, 255}, "Seed: %d", seed)
 
 	player_party, enemy_party, ok := config_load_encounter(encounter)
 	if !ok {

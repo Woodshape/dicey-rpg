@@ -1,6 +1,8 @@
 package game
 
 import "core:fmt"
+import "core:math/rand"
+import "core:time"
 import rl "vendor:raylib"
 
 // Top-level update dispatcher. Routes to the appropriate phase handler.
@@ -527,7 +529,9 @@ round_end_update :: proc(gs: ^Game_State) {
 game_over_update :: proc(gs: ^Game_State, input: Input_State) {
 	if input.left_pressed {
 		if mouse_on_play_again(input.mouse_x, input.mouse_y) {
-			new_gs, ok := game_init("tutorial", &gs.log)
+			new_seed := u64(time.time_to_unix(time.now()))
+			rand.reset(new_seed)
+			new_gs, ok := game_init("tutorial", &gs.log, seed = new_seed)
 			if ok {
 				gs^ = new_gs
 			}
