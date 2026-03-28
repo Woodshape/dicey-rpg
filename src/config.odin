@@ -263,6 +263,8 @@ ABILITY_EFFECTS := [?]Effect_Entry {
 	{"smite", ability_smite},
 	{"fireball", ability_fireball},
 	{"heal", ability_heal},
+	{"shield", ability_shield},
+	{"hex", ability_hex},
 }
 
 ABILITY_DESCRIPTIONS := [?]Describe_Entry {
@@ -270,19 +272,23 @@ ABILITY_DESCRIPTIONS := [?]Describe_Entry {
 	{"smite", describe_smite},
 	{"fireball", describe_fireball},
 	{"heal", describe_heal},
+	{"shield", describe_shield},
+	{"hex", describe_hex},
 }
 
 // Resolve ability effects
 RESOLVE_EFFECTS := [?]Effect_Entry {
 	{"resolve_warrior", ability_resolve_warrior},
 	{"resolve_mass_heal", ability_resolve_mass_heal},
-	{"resolve_goblin", ability_resolve_goblin},
+	{"resolve_goblin_explosion", ability_resolve_goblin_explosion},
+	{"resolve_shaman_nuke", ability_resolve_shaman_nuke},
 }
 
 RESOLVE_DESCRIPTIONS := [?]Describe_Entry {
 	{"resolve_warrior", describe_resolve_warrior},
 	{"resolve_mass_heal", describe_resolve_mass_heal},
-	{"resolve_goblin", describe_resolve_goblin},
+	{"resolve_goblin_explosion", describe_resolve_goblin_explosion},
+	{"resolve_shaman_nuke", describe_resolve_shaman_nuke},
 }
 
 // Passive effects (reserved — no entries yet)
