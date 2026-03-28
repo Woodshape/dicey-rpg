@@ -317,7 +317,7 @@ The simulator uses the same `config_load_encounter` procedure. No separate loadi
 odin run sim/ -- --encounter=tutorial --rounds=1000
 ```
 
-The simulator imports `config_load_encounter` from the game package (or a shared config package if the simulator is a separate binary). See `docs/design/simulator.md` for simulator architecture.
+The simulator imports `config_load_encounter` from the game package (or a shared config package if the simulator is a separate binary). See `docs/plans/simulator.md` for simulator architecture.
 
 ---
 

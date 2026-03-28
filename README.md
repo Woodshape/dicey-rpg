@@ -4,7 +4,7 @@ A turn-based dice-drafting RPG built with [Odin](https://odin-lang.org/) and [Ra
 
 Players and enemies take turns picking dice from a shared board, roll their drafted hand, and resolve abilities based on two axes: **[MATCHES]** (how many dice show the same value) and **[VALUE]** (how high that value is).
 
-See [docs/design/core-mechanics.md](docs/design/core-mechanics.md) for the full game design document.
+See [docs/core-mechanics.md](docs/core-mechanics.md) for the full game design document.
 
 ---
 

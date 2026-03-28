@@ -10,17 +10,17 @@ Read `CLAUDE.md` for build commands, conventions, and workflow rules.
 
 Read ALL design documents to understand the architecture and design decisions:
 
-- `docs/design/core-mechanics.md` — source of truth for game mechanics
-- `docs/design/types.md` — shared types, enums, constants
-- `docs/design/board.md` — grid, gradient, perimeter
-- `docs/design/dice.md` — rolling, match detection
-- `docs/design/hand.md` — hand management
-- `docs/design/character.md` — assignment, pure type constraint
-- `docs/design/combat.md` — turn state machine, resolution
-- `docs/design/ai.md` — enemy decision-making
-- `docs/design/ability.md` — effects, resolution, templates
-- `docs/design/game.md` — Game_State, drag-and-drop, draw
-- `docs/design/combat-log.md` — ring buffer, file output
+- `docs/core-mechanics.md` — source of truth for game mechanics
+- `docs/codebase/types.md` — shared types, enums, constants
+- `docs/codebase/board.md` — grid, gradient, perimeter
+- `docs/codebase/dice.md` — rolling, match detection
+- `docs/codebase/hand.md` — hand management
+- `docs/codebase/character.md` — assignment, pure type constraint
+- `docs/codebase/combat.md` — turn state machine, resolution
+- `docs/codebase/ai.md` — enemy decision-making
+- `docs/codebase/ability.md` — effects, resolution, templates
+- `docs/codebase/game.md` — Game_State, drag-and-drop, draw
+- `docs/codebase/combat-log.md` — ring buffer, file output
 
 ## Step 3: Read open issues, TODOs, and ideas
 

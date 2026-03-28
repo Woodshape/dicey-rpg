@@ -16,7 +16,7 @@ Review the conversation to identify:
 
 ### Step 2: Sync design docs with code
 
-For each source file that was modified, read the corresponding `docs/design/*.md` and check:
+For each source file that was modified, read the corresponding `docs/codebase/*.md` and check:
 - Does the design doc still accurately describe the module's architecture, procedures, and contracts?
 - Were new procedures added that change how the module is used or extended?
 - Were invariants, data structures, or patterns changed?
@@ -54,7 +54,7 @@ Ideas are an ever-growing collection. Do not remove ideas unless they were expli
 
 ### Step 5: Update implementation plan
 
-Read `docs/implementation-plan.md` and:
+Read `docs/plans/implementation-plan.md` and:
 - Check off any tasks completed during this session
 - Update milestone status if a milestone was completed
 - Note any new tasks that were added to the current milestone

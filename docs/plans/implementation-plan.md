@@ -198,7 +198,7 @@ Each milestone is independently testable. Later milestones build on earlier ones
 
 **Goal:** Move character and encounter definitions from code into `.cfg` data files. New characters that reuse existing ability effects are pure data — no recompilation needed. Balance changes take effect on Play Again.
 
-**Design doc:** `docs/design/config.md`
+**Design doc:** `docs/codebase/config.md`
 
 - [x] Custom `.cfg` parser (`src/config.odin`): sections, key-value pairs, section-level lists, inline comma-separated lists
 - [x] Character loading: read `data/characters/{name}.cfg`, resolve effect/describe procs via lookup tables
@@ -222,7 +222,7 @@ Each milestone is independently testable. Later milestones build on earlier ones
 
 **Goal:** Decouple game update logic from Raylib input calls so the combat loop can run headless.
 
-**Design doc:** `docs/design/headless-refactor.md`
+**Design doc:** `docs/plans/headless-refactor.md`
 
 - [x] Add `Input_State` struct to `types.odin` (mouse position, button state, delta time)
 - [x] Collect Raylib input once per frame in `game_update`, pass `Input_State` down
@@ -240,7 +240,7 @@ Each milestone is independently testable. Later milestones build on earlier ones
 
 **Goal:** Run N headless battles with configurable encounters and collect balance statistics. AI vs AI mirror match.
 
-**Design doc:** `docs/design/simulator.md`
+**Design doc:** `docs/plans/simulator.md`
 
 - [x] `sim/main.odin`: CLI argument parsing (`--encounter`, `--rounds`, `--seed`, `--csv`, `--no-skulls`)
 - [x] Headless game loop: AI drives both sides via party-swap trick, roll results resolve instantly (no display timer), turn limit (`MAX_SIM_TURNS = 200`) catches infinite loops

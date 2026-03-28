@@ -41,8 +41,8 @@ data/
     tutorial.cfg
 assets/                 -- placeholder assets
 docs/
-  design/
-    core-mechanics.md        -- game design document (source of truth for mechanics)
+  core-mechanics.md          -- game design document (source of truth for mechanics)
+  codebase/                  -- per-module reference docs, 1-to-1 with src/ files
     types.md                 -- shared types, enums, constants, sentinel values
     board.md                 -- grid, rarity gradient, perimeter logic
     dice.md                  -- rolling, match detection, Roll_Result invariant
@@ -55,9 +55,10 @@ docs/
     combat-log.md            -- ring buffer, file output
     condition.md             -- status effects: Shield, Hex, ticking, absorption
     config.md                -- .cfg format, character/encounter loading, validation
+  plans/                     -- implementation plans and milestone history
+    implementation-plan.md   -- milestone-based implementation plan (history)
     headless-refactor.md     -- Input_State extraction from combat update procs
     simulator.md             -- headless combat simulator, stats collection, CLI
-  implementation-plan.md     -- milestone-based implementation plan (history)
   ideas/                     -- design spaces and decisions to explore (ever-growing)
   issues/                    -- concrete problems to fix (removed when resolved)
   todo/                      -- in-code TODOs collected by category/feature (synced with src/)
@@ -226,7 +227,7 @@ Rules:
 
 ## Design Reference
 
-The game design document at `docs/design/core-mechanics.md` is the **source of truth** for all game mechanics. Key rules:
+The game design document at `docs/core-mechanics.md` is the **source of truth** for all game mechanics. Key rules:
 
 - **Dice types:** d4, d6, d8, d10, d12
 - **Board:** Square grid (configurable size), perimeter-only picks, pool-based rarity gradient (outer=d4/d6, blending through d8/d10 in middle rings, centre=d10/d12)
@@ -255,13 +256,13 @@ When in doubt, stop and ask. The cost of pausing is low; the cost of unwanted co
 
 ## Implementation Plan
 
-See `docs/implementation-plan.md` for the milestone breakdown. Work through milestones sequentially — each is independently testable. Current milestone status is tracked in that file.
+See `docs/plans/implementation-plan.md` for the milestone breakdown. Work through milestones sequentially — each is independently testable. Current milestone status is tracked in that file.
 
 ## Workflow
 
 - **Git is managed by the user.** Never commit or push in this workspace. Do not run `git add`, `git commit`, or `git push` unless the user explicitly asks.
 - Keep commits small and focused — one logical change per commit.
-- Update milestone checkboxes in `docs/implementation-plan.md` as tasks are completed.
+- Update milestone checkboxes in `docs/plans/implementation-plan.md` as tasks are completed.
 - Run `odin test tests/` after any logic change to match detection, board, hand, or ability systems.
 - **Before changing core constants or system behavior**, read all related test files to identify tests that will break, and update them as part of the same change.
 - When adding a new mechanic, write the test first, then implement.
@@ -277,7 +278,7 @@ Every `// TODO` comment in `src/` **must** have a corresponding entry in `docs/t
 
 ## Design Docs Discipline
 
-**Before modifying any source file, ALWAYS read the corresponding design doc in `docs/design/`.** The mapping is direct: `board.odin` → `docs/design/board.md`, `ai.odin` → `docs/design/ai.md`, etc. For shared types in `types.odin`, read `docs/design/types.md`. For drag-and-drop or `Game_State` changes, read `docs/design/game.md`.
+**Before modifying any source file, ALWAYS read the corresponding design doc in `docs/codebase/`.** The mapping is direct: `board.odin` → `docs/codebase/board.md`, `ai.odin` → `docs/codebase/ai.md`, etc. For shared types in `types.odin`, read `docs/codebase/types.md`. For drag-and-drop or `Game_State` changes, read `docs/codebase/game.md`.
 
 **After making changes**, update the design doc IF the change is significant — new architecture, new procedures that alter the module's contract, changed invariants, or new patterns others need to know about. Do NOT update the design doc for bugfixes, small method tweaks, or implementation details that don't affect how the module is used or extended.
 

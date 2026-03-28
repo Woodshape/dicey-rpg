@@ -2,7 +2,7 @@
 
 Headless binary that runs N battles with configurable encounters and collects balance statistics. Answers questions like "does 2x Goblin beat Warrior + Healer?" and "how does Smite perform vs Fireball?"
 
-**Depends on:** config system (`docs/design/config.md`), headless refactor (`docs/design/headless-refactor.md`).
+**Depends on:** config system (`docs/codebase/config.md`), headless refactor (`docs/plans/headless-refactor.md`).
 
 ---
 
