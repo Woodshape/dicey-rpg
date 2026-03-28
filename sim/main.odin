@@ -123,14 +123,29 @@ swap_sides :: proc(gs: ^game.Game_State) {
 	gs.hand, gs.enemy_hand = gs.enemy_hand, gs.hand
 }
 
-// Fix turn phase after a swapped ai_take_turn call for the player side.
+// Fix turn phase after a swapped AI call for the player side.
 // The AI sets phases as if it were the enemy — we remap to player equivalents.
-fix_player_turn_phase :: proc(gs: ^game.Game_State) {
+fix_player_draft_phase :: proc(gs: ^game.Game_State) {
+	#partial switch gs.turn {
+	case .Draft_Player_Pick:
+		gs.turn = .Draft_Enemy_Pick
+	case .Combat_Enemy_Turn:
+		gs.turn = .Combat_Player_Turn
+	case .Combat_Player_Turn:
+		gs.turn = .Combat_Enemy_Turn
+	}
+}
+
+fix_player_combat_phase :: proc(gs: ^game.Game_State) {
 	#partial switch gs.turn {
 	case .Enemy_Roll_Result:
 		gs.turn = .Player_Roll_Result
-	case .Player_Turn:
-		gs.turn = .Enemy_Turn
+	case .Combat_Enemy_Turn:
+		// ai_combat_turn looped back to roll another — remap to player side
+		gs.turn = .Combat_Player_Turn
+	case .Round_End:
+		// Player side finished rolling — enemy still needs to go
+		gs.turn = .Combat_Enemy_Turn
 	}
 }
 
@@ -171,58 +186,61 @@ run_game :: proc(gs: ^game.Game_State, stats: ^Game_Stats, rolls: ^Roll_Collecto
 
 	for {
 		#partial switch gs.turn {
-		case .Player_Turn:
-			game.check_board_refill(gs)
+		// --- Draft Phase ---
+		case .Draft_Player_Pick:
+			// Swap so ai_draft_pick acts on the player side
+			swap_sides(gs)
+			game.ai_draft_pick(gs)
+			swap_sides(gs)
+			fix_player_draft_phase(gs)
 
-			// Snapshot HP before the move
+		case .Draft_Enemy_Pick:
+			game.ai_draft_pick(gs)
+
+		// --- Combat Phase ---
+		case .Combat_Player_Turn:
 			player_hp := snapshot_party_hp(&gs.player_party)
 			enemy_hp := snapshot_party_hp(&gs.enemy_party)
 
-			// Swap so ai_take_turn acts on the player party
+			// Swap so ai_combat_turn acts on the player side
 			swap_sides(gs)
-			game.ai_take_turn(gs)
+			game.ai_combat_turn(gs)
 			swap_sides(gs)
-			fix_player_turn_phase(gs)
+			fix_player_combat_phase(gs)
 			turn_count += 1
 
 			if gs.turn == .Player_Roll_Result {
 				collect_after_roll(stats, rolls, gs, true, player_hp, enemy_hp)
-			} else if gs.turn == .Enemy_Turn {
-				tick_sim_conditions(&gs.enemy_party)
 			}
 
 		case .Player_Roll_Result:
 			game.character_clear_roll(&gs.player_party.characters[gs.rolling_index])
 			gs.turn_timer = 0
-			next := game.check_win_lose(gs, .Enemy_Turn)
-			if next == .Enemy_Turn {
-				tick_sim_conditions(&gs.enemy_party)
-			}
+			// Back to player combat turn to roll more characters
+			next := game.check_win_lose(gs, .Combat_Player_Turn)
 			gs.turn = next
 
-		case .Enemy_Turn:
-			game.check_board_refill(gs)
-
+		case .Combat_Enemy_Turn:
 			enemy_hp := snapshot_party_hp(&gs.enemy_party)
 			player_hp := snapshot_party_hp(&gs.player_party)
 
-			game.ai_take_turn(gs)
+			game.ai_combat_turn(gs)
 			turn_count += 1
 
 			if gs.turn == .Enemy_Roll_Result {
 				collect_after_roll(stats, rolls, gs, false, enemy_hp, player_hp)
-			} else if gs.turn == .Player_Turn {
-				tick_sim_conditions(&gs.player_party)
 			}
 
 		case .Enemy_Roll_Result:
 			game.character_clear_roll(&gs.enemy_party.characters[gs.rolling_index])
 			gs.turn_timer = 0
-			next := game.check_win_lose(gs, .Player_Turn)
-			if next == .Player_Turn {
-				tick_sim_conditions(&gs.player_party)
-			}
+			// Back to enemy combat turn to roll more characters
+			next := game.check_win_lose(gs, .Combat_Enemy_Turn)
 			gs.turn = next
+
+		case .Round_End:
+			// Check win/lose, then start next round
+			game.round_end_update(gs)
 
 		case .Victory:
 			stats.winner = .Player
@@ -293,5 +311,5 @@ print_usage :: proc() {
 	fmt.eprintln("  --rounds=N        Number of games (default: 100, max: 100000)")
 	fmt.eprintln("  --seed=N          RNG seed (default: current time)")
 	fmt.eprintln("  --csv=PATH        CSV output path (default: sim_results.csv)")
-	fmt.eprintln("  --no-skulls       Disable skull dice on the board")
+	fmt.eprintln("  --no-skulls       Disable skull dice in the pool")
 }

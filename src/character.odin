@@ -183,7 +183,7 @@ mouse_on_party_roll_button :: proc(party: ^Party, panel_x: i32, mouse_x, mouse_y
 
 // Draw a character panel at the given position.
 // interactive: true for the player (shows drag interaction, roll/clear buttons).
-character_draw_at :: proc(character: ^Character, panel_x, panel_y: i32, drag: ^Drag_State, interactive: bool, name_color: rl.Color) {
+character_draw_at :: proc(character: ^Character, panel_x, panel_y: i32, drag: ^Drag_State, interactive: bool, name_color: rl.Color, show_roll: bool = true) {
 	if character.state == .Empty {
 		return
 	}
@@ -211,7 +211,7 @@ character_draw_at :: proc(character: ^Character, panel_x, panel_y: i32, drag: ^D
 	} else {
 		draw_assigned_dice_at(character, panel_x, panel_y, drag, interactive)
 
-		if interactive && character.assigned_count > 0 && !drag.active {
+		if interactive && show_roll && character.assigned_count > 0 && !drag.active {
 			mouse_x := rl.GetMouseX()
 			mouse_y := rl.GetMouseY()
 			draw_roll_button_at(panel_x, panel_y, mouse_x, mouse_y)
@@ -220,10 +220,10 @@ character_draw_at :: proc(character: ^Character, panel_x, panel_y: i32, drag: ^D
 }
 
 // Draw all characters in a party, stacked vertically.
-party_draw :: proc(party: ^Party, panel_x: i32, drag: ^Drag_State, interactive: bool, name_color: rl.Color) {
+party_draw :: proc(party: ^Party, panel_x: i32, drag: ^Drag_State, interactive: bool, name_color: rl.Color, show_roll: bool = true) {
 	for i in 0 ..< party.count {
 		py := char_panel_y(i)
-		character_draw_at(&party.characters[i], panel_x, py, drag, interactive, name_color)
+		character_draw_at(&party.characters[i], panel_x, py, drag, interactive, name_color, show_roll)
 	}
 }
 
@@ -238,7 +238,7 @@ draw_assigned_dice_at :: proc(character: ^Character, panel_x, panel_y: i32, drag
 	}
 
 	// Drop target highlight only for interactive side
-	is_drop_target := interactive && drag.active && (drag.source == .Hand || drag.source == .Board) && character_can_assign_die(character, drag.die_type)
+	is_drop_target := interactive && drag.active && (drag.source == .Hand || drag.source == .Pool) && character_can_assign_die(character, drag.die_type)
 
 	for i in 0 ..< character.max_dice {
 		x, y := panel_slot_position(panel_x, panel_y, i)

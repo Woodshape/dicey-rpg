@@ -1,12 +1,82 @@
 package game
 
-// AI turn logic. Called during Enemy_Turn phase.
-// Decides and executes one action (pick or roll), then advances the turn.
-ai_take_turn :: proc(gs: ^Game_State) {
-	// Assign any compatible dice from enemy hand to characters first (free)
+// --- Draft Phase AI ---
+
+// AI picks the best die from the pool during Draft_Enemy_Pick.
+// Picks, assigns from hand, and advances the turn phase.
+ai_draft_pick :: proc(gs: ^Game_State) {
+	// Assign any compatible dice from enemy hand first (free)
 	ai_assign_from_hand(gs)
 
-	// Decide: roll or pick
+	idx, found := ai_pick_best_pool_die(gs)
+	if !found {
+		// Pool is empty or hand is full — should not happen during draft, but handle gracefully
+		if pool_is_empty(&gs.pool) {
+			gs.turn = .Combat_Enemy_Turn
+		} else {
+			// Hand full — discard to make room, then try again next frame
+			if hand_is_full(&gs.enemy_hand) {
+				discard_idx := ai_pick_discard(&gs.enemy_party, &gs.enemy_hand)
+				if discard_idx >= 0 {
+					die_type := gs.enemy_hand.dice[discard_idx]
+					hand_discard(&gs.enemy_hand, discard_idx)
+					combat_log_write(&gs.log, "Enemy discards %s", DIE_TYPE_NAMES[die_type])
+				}
+			}
+			// Pick any die as fallback
+			if !hand_is_full(&gs.enemy_hand) && !pool_is_empty(&gs.pool) {
+				die_type, ok := pool_remove_die(&gs.pool, 0)
+				if ok {
+					hand_add(&gs.enemy_hand, die_type)
+					ai_assign_from_hand(gs)
+					combat_log_write(&gs.log, "Enemy picks %s -> hand", DIE_TYPE_NAMES[die_type])
+				}
+			}
+		}
+	} else {
+		die_type, ok := pool_remove_die(&gs.pool, idx)
+		if ok {
+			hand_add(&gs.enemy_hand, die_type)
+			hand_before := gs.enemy_hand.count
+			ai_assign_from_hand(gs)
+			if gs.enemy_hand.count < hand_before {
+				assigned_to: cstring = "hand"
+				for ci in 0 ..< gs.enemy_party.count {
+					ch := &gs.enemy_party.characters[ci]
+					if !character_is_alive(ch) { continue }
+					if ch.assigned_count > 0 && ch.assigned[ch.assigned_count - 1] == die_type {
+						assigned_to = ch.name
+						break
+					}
+				}
+				combat_log_write(&gs.log, "Enemy picks %s -> %s", DIE_TYPE_NAMES[die_type], assigned_to)
+			} else {
+				combat_log_write(&gs.log, "Enemy picks %s -> hand", DIE_TYPE_NAMES[die_type])
+			}
+		}
+	}
+
+	// Advance phase
+	if pool_is_empty(&gs.pool) {
+		// Draft complete — enter combat phase
+		// First combat turn goes to player if player picked first this round, enemy otherwise
+		if gs.round.first_pick {
+			gs.turn = .Combat_Player_Turn
+		} else {
+			gs.turn = .Combat_Enemy_Turn
+		}
+	} else {
+		gs.turn = .Draft_Player_Pick
+	}
+}
+
+// --- Combat Phase AI ---
+
+// AI assigns dice and rolls characters one at a time.
+// When nothing left to roll, advances to Round_End.
+ai_combat_turn :: proc(gs: ^Game_State) {
+	ai_assign_from_hand(gs)
+
 	should_roll, roll_ci := ai_should_roll(gs)
 	if should_roll {
 		attacker := &gs.enemy_party.characters[roll_ci]
@@ -19,50 +89,7 @@ ai_take_turn :: proc(gs: ^Game_State) {
 		return
 	}
 
-	// Try to pick a die from the board
-	row, col, found := ai_pick_best_die(gs)
-	if found {
-		die_type := gs.board.cells[row][col].die_type
-		board_remove_die(&gs.board, row, col)
-		hand_add(&gs.enemy_hand, die_type)
-		hand_before := gs.enemy_hand.count
-		ai_assign_from_hand(gs)
-		if gs.enemy_hand.count < hand_before {
-			// Die was assigned — find which character got it
-			assigned_to: cstring = "hand"
-			for ci in 0 ..< gs.enemy_party.count {
-				ch := &gs.enemy_party.characters[ci]
-				if !character_is_alive(ch) { continue }
-				// Check if this character's last assigned die matches
-				if ch.assigned_count > 0 && ch.assigned[ch.assigned_count - 1] == die_type {
-					assigned_to = ch.name
-					break
-				}
-			}
-			combat_log_write(&gs.log, "Enemy picks %s -> %s", DIE_TYPE_NAMES[die_type], assigned_to)
-		} else {
-			combat_log_write(&gs.log, "Enemy picks %s -> hand", DIE_TYPE_NAMES[die_type])
-		}
-		gs.turn = .Player_Turn
-		return
-	}
-
-	// No useful pick — but if hand isn't full and the board has dice, pick any die
-	// rather than skipping. A useless die can be discarded later; skipping wastes tempo.
-	if !hand_is_full(&gs.enemy_hand) {
-		row, col, any_found := ai_pick_any_die(gs)
-		if any_found {
-			die_type := gs.board.cells[row][col].die_type
-			board_remove_die(&gs.board, row, col)
-			hand_add(&gs.enemy_hand, die_type)
-			ai_assign_from_hand(gs)
-			combat_log_write(&gs.log, "Enemy picks %s -> hand", DIE_TYPE_NAMES[die_type])
-			gs.turn = .Player_Turn
-			return
-		}
-	}
-
-	// Hand is full and stuck — discard an unusable die to free a slot
+	// Discard unusable dice if stuck
 	if hand_is_full(&gs.enemy_hand) && !ai_hand_has_usable_die(&gs.enemy_party, &gs.enemy_hand) {
 		discard_idx := ai_pick_discard(&gs.enemy_party, &gs.enemy_hand)
 		if discard_idx >= 0 {
@@ -72,10 +99,11 @@ ai_take_turn :: proc(gs: ^Game_State) {
 		}
 	}
 
-	// No valid action — skip turn
-	combat_log_write(&gs.log, "Enemy skips turn")
-	gs.turn = .Player_Turn
+	// Nothing left to roll — end the round
+	gs.turn = .Round_End
 }
+
+// --- Shared AI Logic ---
 
 // Assign all compatible dice from enemy hand to enemy characters.
 // Prefers the character with fewer assigned dice (load balance).
@@ -114,13 +142,9 @@ ai_assign_from_hand :: proc(gs: ^Game_State) {
 }
 
 // Decide whether the enemy should roll and which character.
-// Only rolls if the character has >= 2 normal (non-skull) dice assigned, OR is completely full.
-// Also rolls if there are no useful dice left to pick (prevents infinite skipping).
+// In the combat phase, drafting is already complete — roll any character with >= 2 normal dice.
 // Returns (should_roll, char_index).
 ai_should_roll :: proc(gs: ^Game_State) -> (bool, int) {
-	// Check if any useful dice can be picked from the board
-	_, _, has_useful_pick := ai_pick_best_die(gs)
-
 	for ci in 0 ..< gs.enemy_party.count {
 		ch := &gs.enemy_party.characters[ci]
 		if !character_is_alive(ch) || ch.assigned_count <= 0 {continue}
@@ -133,35 +157,29 @@ ai_should_roll :: proc(gs: ^Game_State) -> (bool, int) {
 			}
 		}
 
-		// Roll if character is full with at least 2 normal dice
-		if normal_count >= 2 && ch.assigned_count >= ch.max_dice {
+		// Roll if character has at least 2 normal dice
+		if normal_count >= 2 {
 			return true, ci
 		}
 
-		// Roll if at least 2 normal dice and nothing useful to pick
-		if normal_count >= 2 && !has_useful_pick {
-			return true, ci
-		}
-
-		// Last resort: roll with any assigned dice (even skulls-only or 1 normal)
-		// when full and no useful picks exist. Skull damage is better than deadlock.
-		if ch.assigned_count >= ch.max_dice && !has_useful_pick {
+		// Roll if character is full (even skulls-only — skull damage is better than nothing)
+		if ch.assigned_count >= ch.max_dice {
 			return true, ci
 		}
 	}
 	return false, 0
 }
 
-// Find the best die on the board for the enemy to pick.
-// Scores each (die, character) pair and picks the best overall.
-// Returns (row, col, found).
-ai_pick_best_die :: proc(gs: ^Game_State) -> (int, int, bool) {
+// Find the best die in the pool for the enemy to pick.
+// Scores each die against all enemy characters and picks the best overall.
+// Returns (pool_index, found).
+ai_pick_best_pool_die :: proc(gs: ^Game_State) -> (int, bool) {
 	if hand_is_full(&gs.enemy_hand) {
-		return 0, 0, false
+		return 0, false
 	}
 
-	best_row, best_col := -1, -1
-	best_score := 0  // skip dice that score 0 (no character can use them)
+	best_idx := -1
+	best_score := 0 // skip dice that score 0 (no character can use them)
 
 	// Collect player types for denial scoring
 	player_types: [MAX_PARTY_SIZE]Die_Type
@@ -176,29 +194,22 @@ ai_pick_best_die :: proc(gs: ^Game_State) -> (int, int, bool) {
 		}
 	}
 
-	for row in 0 ..< gs.board.size {
-		for col in 0 ..< gs.board.size {
-			if !cell_is_pickable(&gs.board, row, col) {
-				continue
-			}
-			die_type := gs.board.cells[row][col].die_type
+	for i in 0 ..< gs.pool.remaining {
+		die_type := gs.pool.dice[i]
 
-			// Score this die against each alive enemy character, take the best
-			score := ai_score_die_for_party(
-				die_type,
-				&gs.enemy_party,
-				player_types[:player_type_count],
-			)
+		score := ai_score_die_for_party(
+			die_type,
+			&gs.enemy_party,
+			player_types[:player_type_count],
+		)
 
-			if score > best_score {
-				best_score = score
-				best_row = row
-				best_col = col
-			}
+		if score > best_score {
+			best_score = score
+			best_idx = i
 		}
 	}
 
-	return best_row, best_col, best_row >= 0
+	return best_idx, best_idx >= 0
 }
 
 // How well does a die type fit a character's ability scaling axis?
@@ -336,19 +347,6 @@ ai_score_die :: proc(
 	}
 
 	return score
-}
-
-// Fallback: pick any pickable die from the board (no scoring).
-// Used when ai_pick_best_die finds nothing useful but the AI shouldn't skip.
-ai_pick_any_die :: proc(gs: ^Game_State) -> (int, int, bool) {
-	for row in 0 ..< gs.board.size {
-		for col in 0 ..< gs.board.size {
-			if cell_is_pickable(&gs.board, row, col) {
-				return row, col, true
-			}
-		}
-	}
-	return 0, 0, false
 }
 
 // Check if any die in the hand can be assigned to any alive character.

@@ -223,11 +223,11 @@ Ability_Scaling :: enum u8 {
 }
 
 // Effect procedure: called when an ability fires.
-// Receives the full game state for maximum flexibility (AoE, board manipulation, hand theft, etc.).
+// Receives the full game state for maximum flexibility (AoE, pool manipulation, hand theft, etc.).
 Ability_Effect :: #type proc(gs: ^Game_State, attacker: ^Character, target: ^Character, roll: ^Roll_Result)
 
 // Description procedure: same signature as Ability_Effect so it has full runtime context
-// (attacker stats, target, board state, etc.). Returns a formatted cstring for UI display
+// (attacker stats, target, pool state, etc.). Returns a formatted cstring for UI display
 // and combat log. Uses ctprintf internally — the returned cstring is temporary (one frame).
 Ability_Describe :: #type proc(gs: ^Game_State, attacker: ^Character, target: ^Character, roll: ^Roll_Result) -> cstring
 

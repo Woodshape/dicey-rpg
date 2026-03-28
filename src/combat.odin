@@ -38,23 +38,31 @@ combat_update :: proc(gs: ^Game_State, input: Input_State) {
 	prev_turn := gs.turn
 
 	#partial switch gs.turn {
-	case .Player_Turn:
-		player_turn_update(gs, input)
+	case .Draft_Player_Pick:
+		draft_player_pick_update(gs, input)
+	case .Draft_Enemy_Pick:
+		draft_enemy_pick_update(gs)
+	case .Combat_Player_Turn:
+		combat_player_turn_update(gs, input)
 	case .Player_Roll_Result:
 		player_roll_result_update(gs, input)
-	case .Enemy_Turn:
-		enemy_turn_update(gs)
+	case .Combat_Enemy_Turn:
+		combat_enemy_turn_update(gs)
 	case .Enemy_Roll_Result:
 		enemy_roll_result_update(gs, input)
+	case .Round_End:
+		round_end_update(gs)
 	case .Victory, .Defeat:
 		game_over_update(gs, input)
 	}
 
-	// Tick turn-based conditions once when a side's turn begins
+	// Tick turn-based conditions once when a side's combat turn begins
 	if gs.turn != prev_turn {
-		if gs.turn == .Player_Turn {
+		if gs.turn == .Combat_Player_Turn && prev_turn != .Player_Roll_Result {
+			// Tick player conditions at the start of the combat phase (not between rolls)
 			tick_party_conditions(&gs.player_party)
-		} else if gs.turn == .Enemy_Turn {
+		} else if gs.turn == .Combat_Enemy_Turn && prev_turn != .Enemy_Roll_Result {
+			// Tick enemy conditions at the start of the combat phase (not between rolls)
 			tick_party_conditions(&gs.enemy_party)
 		}
 	}
@@ -111,29 +119,50 @@ check_win_lose :: proc(gs: ^Game_State, default_next: Turn_Phase) -> Turn_Phase 
 resolve_roll :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character) {
 	roll := &attacker.roll
 
+	// Log rolled values for auditability
+	log_rolled_values(gs, attacker, roll)
+
 	// Skull damage
 	if roll.skull_count > 0 && target != nil {
+		hp_before := target.stats.hp
 		dmg := apply_skull_damage(attacker, target)
-		combat_log_add(
-			&gs.log,
-			rl.Color{200, 60, 60, 255},
-			"%s: Skull x%d -> %d dmg to %s",
-			attacker.name,
-			roll.skull_count,
-			dmg,
-			target.name,
-		)
+		absorbed := hp_before - target.stats.hp - dmg  // negative = shield absorbed
+		if dmg > 0 || absorbed < 0 {
+			// Compute actual absorption: raw hits minus what HP actually lost
+			raw_per_hit := max(attacker.stats.attack - character_effective_defense(target), 0)
+			raw_total := raw_per_hit * roll.skull_count
+			shield_absorbed := raw_total - dmg
+			if shield_absorbed > 0 {
+				combat_log_add(
+					&gs.log,
+					rl.Color{200, 60, 60, 255},
+					"%s: Skull x%d -> %d dmg to %s (-%d shield) [HP %d]",
+					attacker.name, roll.skull_count, dmg, target.name,
+					shield_absorbed, target.stats.hp,
+				)
+			} else {
+				combat_log_add(
+					&gs.log,
+					rl.Color{200, 60, 60, 255},
+					"%s: Skull x%d -> %d dmg to %s [HP %d]",
+					attacker.name, roll.skull_count, dmg, target.name,
+					target.stats.hp,
+				)
+			}
+		}
 	}
 
-	// Snapshot resolve before resolution (it may reset)
+	// Snapshot resolve and target HP before ability resolution
 	resolve_before := attacker.resolve
+	target_hp_before := target != nil ? target.stats.hp : 0
+	attacker_hp_before := attacker.stats.hp
 
 	// Ability + resolve
 	if target != nil {
 		handle_abilities(gs, attacker, target)
 	}
 
-	// Log match info first
+	// Log match info
 	if roll.matched_count > 0 {
 		combat_log_add(
 			&gs.log,
@@ -148,7 +177,6 @@ resolve_roll :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character) 
 	}
 
 	// Pre-format display strings into roll — used by both the log and the draw layer.
-	// Called once here with full context; draw procs read from the buffer, no gs needed.
 	if attacker.ability_fired && attacker.ability.describe != nil {
 		s := fmt.bprintf(
 			roll.ability_desc[:],
@@ -166,21 +194,30 @@ resolve_roll :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character) 
 		if len(s) < MAX_LOG_LENGTH {roll.resolve_desc[len(s)] = 0}
 	}
 
-	// Log ability
+	// Log ability with HP result
 	if attacker.ability_fired && target != nil {
 		desc: cstring = attacker.ability.name
 		if roll.ability_desc[0] != 0 {
 			desc = cstring(raw_data(roll.ability_desc[:]))
 		}
-		combat_log_add(
-			&gs.log,
-			rl.Color{100, 200, 255, 255},
-			"%s: %s (%s) -> %s",
-			attacker.name,
-			attacker.ability.name,
-			desc,
-			target.name,
-		)
+		// Detect if ability healed the attacker or damaged the target
+		if attacker.stats.hp > attacker_hp_before {
+			combat_log_add(
+				&gs.log,
+				rl.Color{100, 200, 255, 255},
+				"%s: %s (%s) [HP %d]",
+				attacker.name, attacker.ability.name, desc,
+				attacker.stats.hp,
+			)
+		} else {
+			combat_log_add(
+				&gs.log,
+				rl.Color{100, 200, 255, 255},
+				"%s: %s (%s) -> %s [HP %d]",
+				attacker.name, attacker.ability.name, desc, target.name,
+				target.stats.hp,
+			)
+		}
 	}
 
 	// Log resolve meter (using pre-resolution value + charge)
@@ -220,6 +257,41 @@ resolve_roll :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character) 
 	}
 }
 
+// Log the actual dice values rolled (e.g., "Warrior rolls [3, 3, Skl]")
+log_rolled_values :: proc(gs: ^Game_State, attacker: ^Character, roll: ^Roll_Result) {
+	// Build a compact string of rolled values
+	buf: [64]u8
+	pos := 0
+
+	for i in 0 ..< roll.count {
+		if i > 0 {
+			buf[pos] = ','; pos += 1
+			buf[pos] = ' '; pos += 1
+		}
+		if roll.skulls[i] == 1 {
+			buf[pos] = 'S'; pos += 1
+			buf[pos] = 'k'; pos += 1
+			buf[pos] = 'l'; pos += 1
+		} else {
+			v := roll.values[i]
+			if v >= 10 {
+				buf[pos] = '0' + u8(v / 10); pos += 1
+			}
+			buf[pos] = '0' + u8(v % 10); pos += 1
+		}
+	}
+	buf[pos] = 0
+
+	combat_log_add(
+		&gs.log,
+		rl.Color{140, 140, 160, 255},
+		"%s rolls [%s] (%d dice)",
+		attacker.name,
+		cstring(raw_data(buf[:])),
+		roll.count,
+	)
+}
+
 // --- Condition Ticking ---
 
 // Tick turn-based conditions for all characters in a party.
@@ -230,24 +302,60 @@ tick_party_conditions :: proc(party: ^Party) {
 	}
 }
 
-// --- Board Refill ---
+// --- Draft Phase ---
 
-// Refill the board if no pickable dice remain.
-// This covers both an empty board and a board with only inaccessible inner tiles.
-check_board_refill :: proc(gs: ^Game_State) {
-	if !board_has_pickable(&gs.board) {
-		gs.board = board_init(gs.board.skull_chance)
-		combat_log_add(&gs.log, rl.Color{180, 180, 100, 255}, "Board refilled")
+// Player picks one die from the pool. Free assign/discard also available.
+draft_player_pick_update :: proc(gs: ^Game_State, input: Input_State) {
+	if gs.inspect_active {
+		return
+	}
+
+	// Right-click on a hand die to discard it (free action)
+	if input.right_pressed {
+		slot := mouse_to_hand_slot(input.mouse_x, input.mouse_y)
+		if slot >= 0 && slot < gs.hand.count && hand_can_discard(&gs.hand, slot) {
+			die_type := gs.hand.dice[slot]
+			hand_discard(&gs.hand, slot)
+			combat_log_write(&gs.log, "You discard %s", DIE_TYPE_NAMES[die_type])
+		}
+	}
+
+	if input.left_pressed {
+		// Try to start a drag (pool, hand, or character)
+		try_start_drag(gs, input.mouse_x, input.mouse_y)
+	}
+
+	if input.left_released && gs.drag.active {
+		pick_used := try_drop(gs, input.mouse_x, input.mouse_y)
+		gs.drag = {}
+		if pick_used {
+			// Advance to enemy pick, or combat phase if pool empty
+			if pool_is_empty(&gs.pool) {
+				gs.turn = .Combat_Player_Turn
+			} else {
+				gs.turn = .Draft_Enemy_Pick
+			}
+		}
 	}
 }
 
-// --- Player Turn ---
+// AI picks one die from the pool.
+draft_enemy_pick_update :: proc(gs: ^Game_State) {
+	ai_draft_pick(gs)
+}
 
-player_turn_update :: proc(gs: ^Game_State, input: Input_State) {
-	check_board_refill(gs)
+// --- Combat Phase ---
 
-	// Block all player input while inspect overlay is open
+// Player assigns freely and rolls characters one at a time.
+// When no characters have dice left, auto-advances to enemy combat turn.
+combat_player_turn_update :: proc(gs: ^Game_State, input: Input_State) {
 	if gs.inspect_active {
+		return
+	}
+
+	// Auto-advance: if no alive player character has assigned dice, enemy's turn
+	if !party_has_assigned_dice(&gs.player_party) {
+		gs.turn = .Combat_Enemy_Turn
 		return
 	}
 
@@ -274,16 +382,19 @@ player_turn_update :: proc(gs: ^Game_State, input: Input_State) {
 			return
 		}
 
-		// Try to start a drag
+		// Done button — skip remaining rolls, advance to enemy
+		if mouse_on_done_button(input.mouse_x, input.mouse_y) {
+			gs.turn = .Combat_Enemy_Turn
+			return
+		}
+
+		// Try to start a drag (hand or character — no pool during combat)
 		try_start_drag(gs, input.mouse_x, input.mouse_y)
 	}
 
 	if input.left_released && gs.drag.active {
-		action_used := try_drop(gs, input.mouse_x, input.mouse_y)
+		try_drop(gs, input.mouse_x, input.mouse_y)
 		gs.drag = {}
-		if action_used {
-			gs.turn = .Enemy_Turn
-		}
 	}
 }
 
@@ -296,15 +407,15 @@ player_roll_result_update :: proc(gs: ^Game_State, input: Input_State) {
 	if gs.turn_timer >= PLAYER_ROLL_DISPLAY_TIME {
 		character_clear_roll(&gs.player_party.characters[gs.rolling_index])
 		gs.turn_timer = 0
-		gs.turn = check_win_lose(gs, .Enemy_Turn)
+		// Back to player combat turn to roll more characters or auto-advance
+		gs.turn = check_win_lose(gs, .Combat_Player_Turn)
 	}
 }
 
-// --- Enemy Turn ---
+// --- Enemy Combat Turn ---
 
-enemy_turn_update :: proc(gs: ^Game_State) {
-	check_board_refill(gs)
-	ai_take_turn(gs)
+combat_enemy_turn_update :: proc(gs: ^Game_State) {
+	ai_combat_turn(gs)
 }
 
 // --- Enemy Roll Result ---
@@ -316,7 +427,31 @@ enemy_roll_result_update :: proc(gs: ^Game_State, input: Input_State) {
 	if gs.turn_timer >= ENEMY_ROLL_DISPLAY_TIME {
 		character_clear_roll(&gs.enemy_party.characters[gs.rolling_index])
 		gs.turn_timer = 0
-		gs.turn = check_win_lose(gs, .Player_Turn)
+		// Back to enemy combat turn to roll more characters or auto-advance
+		gs.turn = check_win_lose(gs, .Combat_Enemy_Turn)
+	}
+}
+
+// --- Round End ---
+
+round_end_update :: proc(gs: ^Game_State) {
+	// Check win/lose before starting next round
+	next := check_win_lose(gs, .Draft_Player_Pick)
+	if next == .Victory || next == .Defeat {
+		gs.turn = next
+		return
+	}
+
+	// Advance round state and generate new pool
+	round_state_advance(&gs.round)
+	gs.pool = pool_generate(&gs.round)
+	combat_log_add(&gs.log, rl.Color{180, 180, 100, 255}, "--- Round %d ---", gs.round.round_number)
+
+	// Alternate first pick
+	if gs.round.first_pick {
+		gs.turn = .Draft_Player_Pick
+	} else {
+		gs.turn = .Draft_Enemy_Pick
 	}
 }
 
@@ -334,12 +469,43 @@ game_over_update :: proc(gs: ^Game_State, input: Input_State) {
 	}
 }
 
-// --- Action validation ---
+// --- Helpers ---
 
-can_pick :: proc(gs: ^Game_State, hand: ^Hand) -> bool {
-	return !hand_is_full(hand) && board_has_pickable(&gs.board)
+// Check if any alive character in the party has assigned dice.
+party_has_assigned_dice :: proc(party: ^Party) -> bool {
+	for i in 0 ..< party.count {
+		ch := &party.characters[i]
+		if character_is_alive(ch) && ch.assigned_count > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// Action validation
+can_pick :: proc(pool: ^Draft_Pool, hand: ^Hand) -> bool {
+	return !hand_is_full(hand) && !pool_is_empty(pool)
 }
 
 can_roll :: proc(character: ^Character) -> bool {
 	return character.assigned_count > 0 && !character.has_rolled
+}
+
+// Done button — lets the player skip remaining rolls during combat phase
+DONE_BUTTON_WIDTH  :: 80
+DONE_BUTTON_HEIGHT :: 28
+
+done_button_rect :: proc() -> rl.Rectangle {
+	return rl.Rectangle {
+		x      = f32(WINDOW_WIDTH / 2 - DONE_BUTTON_WIDTH / 2),
+		y      = f32(WINDOW_HEIGHT / 2 + 80),
+		width  = DONE_BUTTON_WIDTH,
+		height = DONE_BUTTON_HEIGHT,
+	}
+}
+
+mouse_on_done_button :: proc(mouse_x, mouse_y: i32) -> bool {
+	r := done_button_rect()
+	return f32(mouse_x) >= r.x && f32(mouse_x) < r.x + r.width &&
+	       f32(mouse_y) >= r.y && f32(mouse_y) < r.y + r.height
 }

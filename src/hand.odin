@@ -121,7 +121,7 @@ hand_draw_at :: proc(hand: ^Hand, center_x: i32, drag: ^Drag_State, interactive:
 	}
 
 	// Is the hand a valid drop target right now?
-	is_drop_target := interactive && drag.active && (drag.source == .Board || drag.source == .Character)
+	is_drop_target := interactive && drag.active && (drag.source == .Pool || drag.source == .Character)
 
 	for i in 0 ..< MAX_HAND_SIZE {
 		x, y := hand_slot_position_at(center_x, i)

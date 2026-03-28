@@ -99,13 +99,14 @@ ai_rolls_when_character_full :: proc(t: ^testing.T) {
 @(test)
 ai_does_not_roll_full_with_only_skulls :: proc(t: ^testing.T) {
 	gs, _ := game.game_init()
-	// Fill all 3 slots with skulls — no ability can fire
+	// Fill all 3 slots with skulls — character is full but only skulls
 	for _ in 0 ..< game.RARITY_MAX_DICE[game.Character_Rarity.Common] {
 		game.character_assign_die(&gs.enemy_party.characters[0], .Skull)
 	}
 
 	should, _ := game.ai_should_roll(&gs)
-	testing.expect(t, !should, "AI should not roll when full but all dice are skulls")
+	// In the new system, full character should roll even with skulls (skull damage > nothing)
+	testing.expect(t, should, "AI should roll when character is full even with only skulls")
 }
 
 @(test)
@@ -118,12 +119,12 @@ ai_does_not_roll_empty_character :: proc(t: ^testing.T) {
 @(test)
 ai_does_not_roll_with_only_skulls :: proc(t: ^testing.T) {
 	gs, _ := game.game_init()
-	// Assign 2 skull dice — no normal dice
+	// Assign 2 skull dice — not full, no normal dice
 	game.character_assign_die(&gs.enemy_party.characters[0], .Skull)
 	game.character_assign_die(&gs.enemy_party.characters[0], .Skull)
 
 	should, _ := game.ai_should_roll(&gs)
-	testing.expect(t, !should, "AI should not roll with only skull dice (no ability can fire)")
+	testing.expect(t, !should, "AI should not roll with only skull dice when not full")
 }
 
 @(test)
@@ -141,34 +142,27 @@ ai_rolls_with_normal_dice :: proc(t: ^testing.T) {
 @(test)
 ai_rolls_skulls_when_stuck :: proc(t: ^testing.T) {
 	gs, _ := game.game_init()
-	// Fill character with 2 skulls + 1 normal (full, but only 1 normal die)
+	// Fill character with 2 skulls + 1 normal (full, Common = 3)
 	game.character_assign_die(&gs.enemy_party.characters[0], .Skull)
 	game.character_assign_die(&gs.enemy_party.characters[0], .Skull)
 	game.character_assign_die(&gs.enemy_party.characters[0], .D6)
 	// Kill the other enemy so only this character matters
 	gs.enemy_party.characters[1].state = .Dead
-	// Clear the board so no useful picks exist
-	for row in 0 ..< game.BOARD_SIZE {
-		for col in 0 ..< game.BOARD_SIZE {
-			gs.board.cells[row][col].occupied = false
-		}
-	}
 
 	should, ci := game.ai_should_roll(&gs)
-	testing.expect(t, should, "AI should roll skulls+1 normal when stuck to avoid deadlock")
+	testing.expect(t, should, "AI should roll full character with skulls+normal")
 	testing.expect_value(t, ci, 0)
 }
 
-// --- AI pick ---
+// --- AI pick from pool ---
 
 @(test)
-ai_picks_from_board :: proc(t: ^testing.T) {
+ai_picks_from_pool :: proc(t: ^testing.T) {
 	gs, _ := game.game_init()
 
-	row, col, found := game.ai_pick_best_die(&gs)
-	testing.expect(t, found, "AI should find a pickable die on a fresh board")
-	testing.expect(t, row >= 0 && row < game.BOARD_SIZE, "row should be in bounds")
-	testing.expect(t, col >= 0 && col < game.BOARD_SIZE, "col should be in bounds")
+	idx, found := game.ai_pick_best_pool_die(&gs)
+	testing.expect(t, found, "AI should find a pickable die in a fresh pool")
+	testing.expect(t, idx >= 0 && idx < gs.pool.remaining, "index should be in bounds")
 }
 
 @(test)
@@ -178,6 +172,6 @@ ai_cannot_pick_with_full_hand :: proc(t: ^testing.T) {
 		game.hand_add(&gs.enemy_hand, .D4)
 	}
 
-	_, _, found := game.ai_pick_best_die(&gs)
+	_, found := game.ai_pick_best_pool_die(&gs)
 	testing.expect(t, !found, "AI should not pick when hand is full")
 }
