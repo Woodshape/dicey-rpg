@@ -60,10 +60,10 @@ combat_update :: proc(gs: ^Game_State, input: Input_State) {
 	if gs.turn != prev_turn {
 		if gs.turn == .Combat_Player_Turn && prev_turn != .Player_Roll_Result {
 			// Tick player conditions at the start of the combat phase (not between rolls)
-			tick_party_conditions(&gs.player_party)
+			tick_party_conditions(&gs.player_party, &gs.log)
 		} else if gs.turn == .Combat_Enemy_Turn && prev_turn != .Enemy_Roll_Result {
 			// Tick enemy conditions at the start of the combat phase (not between rolls)
-			tick_party_conditions(&gs.enemy_party)
+			tick_party_conditions(&gs.enemy_party, &gs.log)
 		}
 	}
 }
@@ -234,20 +234,33 @@ resolve_roll :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character) 
 		)
 	}
 
-	// Log resolve ability
+	// Log resolve ability with target and HP
 	if attacker.resolve_fired {
 		desc: cstring = attacker.resolve_ability.name
 		if roll.resolve_desc[0] != 0 {
 			desc = cstring(raw_data(roll.resolve_desc[:]))
 		}
-		combat_log_add(
-			&gs.log,
-			rl.Color{255, 200, 50, 255},
-			"%s: RESOLVE %s -> %s",
-			attacker.name,
-			attacker.resolve_ability.name,
-			desc,
-		)
+		if target != nil {
+			combat_log_add(
+				&gs.log,
+				rl.Color{255, 200, 50, 255},
+				"%s: RESOLVE %s (%s) -> %s [HP %d]",
+				attacker.name,
+				attacker.resolve_ability.name,
+				desc,
+				target.name,
+				target.stats.hp,
+			)
+		} else {
+			combat_log_add(
+				&gs.log,
+				rl.Color{255, 200, 50, 255},
+				"%s: RESOLVE %s (%s)",
+				attacker.name,
+				attacker.resolve_ability.name,
+				desc,
+			)
+		}
 	}
 
 	// Mark dead and log
@@ -257,8 +270,18 @@ resolve_roll :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character) 
 	}
 }
 
-// Log the actual dice values rolled (e.g., "Warrior rolls [3, 3, Skl]")
+// Log the actual dice values rolled with die type (e.g., "Warrior rolls 3d12 [3, 12, Skl]")
 log_rolled_values :: proc(gs: ^Game_State, attacker: ^Character, roll: ^Roll_Result) {
+	// Determine die type from assigned dice (still on character at this point)
+	die_type_name: cstring = "?"
+	normal_count := 0
+	for i in 0 ..< attacker.assigned_count {
+		if die_type_is_normal(attacker.assigned[i]) {
+			die_type_name = DIE_TYPE_NAMES[attacker.assigned[i]]
+			normal_count += 1
+		}
+	}
+
 	// Build a compact string of rolled values
 	buf: [64]u8
 	pos := 0
@@ -282,23 +305,67 @@ log_rolled_values :: proc(gs: ^Game_State, attacker: ^Character, roll: ^Roll_Res
 	}
 	buf[pos] = 0
 
-	combat_log_add(
-		&gs.log,
-		rl.Color{140, 140, 160, 255},
-		"%s rolls [%s] (%d dice)",
-		attacker.name,
-		cstring(raw_data(buf[:])),
-		roll.count,
-	)
+	if roll.skull_count > 0 && normal_count > 0 {
+		combat_log_add(
+			&gs.log,
+			rl.Color{140, 140, 160, 255},
+			"%s rolls %d%s+%dSkl [%s]",
+			attacker.name, normal_count, die_type_name,
+			roll.skull_count, cstring(raw_data(buf[:])),
+		)
+	} else if roll.skull_count > 0 {
+		combat_log_add(
+			&gs.log,
+			rl.Color{140, 140, 160, 255},
+			"%s rolls %dSkl [%s]",
+			attacker.name, roll.skull_count, cstring(raw_data(buf[:])),
+		)
+	} else {
+		combat_log_add(
+			&gs.log,
+			rl.Color{140, 140, 160, 255},
+			"%s rolls %d%s [%s]",
+			attacker.name, normal_count, die_type_name,
+			cstring(raw_data(buf[:])),
+		)
+	}
 }
 
 // --- Condition Ticking ---
 
 // Tick turn-based conditions for all characters in a party.
 // Called once when a side's turn begins (at phase transition, not per-frame).
-tick_party_conditions :: proc(party: ^Party) {
-	for i in 0 ..< party.count {
-		condition_tick_turns(&party.characters[i])
+// Logs condition expiries to the combat log when log is provided.
+tick_party_conditions :: proc(party: ^Party, log: ^Combat_Log = nil) {
+	for ci in 0 ..< party.count {
+		ch := &party.characters[ci]
+		if log == nil {
+			condition_tick_turns(ch)
+			continue
+		}
+		// Snapshot conditions before ticking to detect expiries
+		old_kinds: [MAX_CONDITIONS]Condition_Kind
+		old_count := ch.condition_count
+		for i in 0 ..< old_count {
+			old_kinds[i] = ch.conditions[i].kind
+		}
+
+		condition_tick_turns(ch)
+
+		// Log any conditions that were removed
+		for i in 0 ..< old_count {
+			kind := old_kinds[i]
+			if kind == .None { continue }
+			if !condition_has(ch, kind) {
+				combat_log_add(
+					log,
+					rl.Color{160, 140, 100, 255},
+					"%s: %s expired",
+					ch.name,
+					CONDITION_NAMES[kind],
+				)
+			}
+		}
 	}
 }
 
