@@ -75,7 +75,7 @@ DIE_FACES := [Die_Type]int {
 }
 
 // Probability (out of 100) that any board cell becomes a skull die
-SKULL_CHANCE :: 20
+SKULL_CHANCE :: 10
 
 MAX_DIE_VALUE :: 12
 
