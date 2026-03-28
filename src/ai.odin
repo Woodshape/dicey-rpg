@@ -92,12 +92,14 @@ ai_assign_from_hand :: proc(gs: ^Game_State) {
 			if !character_is_alive(ch) {continue}
 			if !character_can_assign_die(ch, die_type) {continue}
 
-			// Score: prefer fewer assigned dice (more room), prefer type match
+			// Score: prefer fewer assigned dice (more room), prefer type match, prefer scaling fit
 			score := (ch.max_dice - ch.assigned_count) * 10
 			assigned_type, has_type := character_assigned_normal_die_type(ch)
 			if has_type && die_type_is_normal(die_type) && assigned_type == die_type {
 				score += 20 // strong preference for matching type
 			}
+			// Route dice to characters whose abilities benefit from this die type
+			score += ai_scaling_fit(ch.ability.scaling, die_type) * 2
 			if score > best_score {
 				best_score = score
 				best_ci = ci
@@ -123,11 +125,6 @@ ai_should_roll :: proc(gs: ^Game_State) -> (bool, int) {
 		ch := &gs.enemy_party.characters[ci]
 		if !character_is_alive(ch) || ch.assigned_count <= 0 {continue}
 
-		// Roll if character is full
-		if ch.assigned_count >= ch.max_dice {
-			return true, ci
-		}
-
 		// Count normal (non-skull) dice
 		normal_count := 0
 		for di in 0 ..< ch.assigned_count {
@@ -136,8 +133,16 @@ ai_should_roll :: proc(gs: ^Game_State) -> (bool, int) {
 			}
 		}
 
+		// Never roll with fewer than 2 normal dice — no ability can fire
+		if normal_count < 2 {continue}
+
+		// Roll if character is full
+		if ch.assigned_count >= ch.max_dice {
+			return true, ci
+		}
+
 		// Roll if at least 2 normal dice and nothing useful to pick
-		if normal_count >= 2 && !has_useful_pick {
+		if !has_useful_pick {
 			return true, ci
 		}
 	}
@@ -191,6 +196,41 @@ ai_pick_best_die :: proc(gs: ^Game_State) -> (int, int, bool) {
 	}
 
 	return best_row, best_col, best_row >= 0
+}
+
+// How well does a die type fit a character's ability scaling axis?
+// Match-scaling wants small dice (d4/d6), value-scaling wants big dice (d10/d12),
+// hybrid wants mid-range (d6/d8). Returns 0-5.
+ai_scaling_fit :: proc(scaling: Ability_Scaling, die_type: Die_Type) -> int {
+	if !die_type_is_normal(die_type) {return 0}
+	switch scaling {
+	case .Match:
+		switch die_type {
+		case .D4:  return 5
+		case .D6:  return 3
+		case .D8:  return 1
+		case .D10, .D12: return 0
+		case .None, .Skull: return 0
+		}
+	case .Value:
+		switch die_type {
+		case .D12: return 5
+		case .D10: return 3
+		case .D8:  return 1
+		case .D4, .D6: return 0
+		case .None, .Skull: return 0
+		}
+	case .Hybrid:
+		switch die_type {
+		case .D6, .D8: return 4
+		case .D4, .D10: return 2
+		case .D12: return 1
+		case .None, .Skull: return 0
+		}
+	case .None:
+		return 0
+	}
+	return 0
 }
 
 // Score a die type considering all alive enemy characters.
@@ -251,10 +291,8 @@ ai_score_die_for_party :: proc(
 			score += 3
 		}
 
-		// Slight preference for smaller dice (easier to match)
-		if die_type == .D4 || die_type == .D6 {
-			score += 1
-		}
+		// Ability-aware preference: score by how well this die fits the character's scaling
+		score += ai_scaling_fit(ch.ability.scaling, die_type)
 
 		if score > best {
 			best = score

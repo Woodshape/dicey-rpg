@@ -29,6 +29,29 @@ ai_considers_denial :: proc(t: ^testing.T) {
 	testing.expect(t, score_with_denial > score_no_denial, "AI should add denial bonus when player needs that type")
 }
 
+// --- AI scaling fit ---
+
+@(test)
+ai_scaling_fit_match_prefers_small :: proc(t: ^testing.T) {
+	testing.expect(t, game.ai_scaling_fit(.Match, .D4) > game.ai_scaling_fit(.Match, .D12),
+		"Match-scaling should prefer d4 over d12")
+}
+
+@(test)
+ai_scaling_fit_value_prefers_big :: proc(t: ^testing.T) {
+	testing.expect(t, game.ai_scaling_fit(.Value, .D12) > game.ai_scaling_fit(.Value, .D4),
+		"Value-scaling should prefer d12 over d4")
+}
+
+@(test)
+ai_scaling_fit_hybrid_prefers_mid :: proc(t: ^testing.T) {
+	fit_d6 := game.ai_scaling_fit(.Hybrid, .D6)
+	fit_d4 := game.ai_scaling_fit(.Hybrid, .D4)
+	fit_d12 := game.ai_scaling_fit(.Hybrid, .D12)
+	testing.expect(t, fit_d6 > fit_d4, "Hybrid-scaling should prefer d6 over d4")
+	testing.expect(t, fit_d6 > fit_d12, "Hybrid-scaling should prefer d6 over d12")
+}
+
 // --- AI assignment ---
 
 @(test)
@@ -64,13 +87,25 @@ ai_does_not_assign_incompatible :: proc(t: ^testing.T) {
 @(test)
 ai_rolls_when_character_full :: proc(t: ^testing.T) {
 	gs, _ := game.game_init()
-	// Fill all 3 slots (Common = 3 max)
+	// Fill all 3 slots (Common = 3 max) with normal dice
 	for _ in 0 ..< 3 {
 		game.character_assign_die(&gs.enemy_party.characters[0], .D6)
 	}
 
 	should, _ := game.ai_should_roll(&gs)
-	testing.expect(t, should, "AI should roll when character is fully loaded")
+	testing.expect(t, should, "AI should roll when character is fully loaded with normal dice")
+}
+
+@(test)
+ai_does_not_roll_full_with_only_skulls :: proc(t: ^testing.T) {
+	gs, _ := game.game_init()
+	// Fill all 3 slots with skulls — no ability can fire
+	for _ in 0 ..< game.RARITY_MAX_DICE[game.Character_Rarity.Common] {
+		game.character_assign_die(&gs.enemy_party.characters[0], .Skull)
+	}
+
+	should, _ := game.ai_should_roll(&gs)
+	testing.expect(t, !should, "AI should not roll when full but all dice are skulls")
 }
 
 @(test)
