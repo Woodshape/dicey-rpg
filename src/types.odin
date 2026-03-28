@@ -166,6 +166,36 @@ Character_Stats :: struct {
 	defense: int,
 }
 
+// Conditions (status effects on characters)
+Condition_Kind :: enum u8 {
+	None,    // sentinel
+	Shield,  // blocks next hit entirely
+	Hex,     // reduces DEF by value
+}
+
+Condition_Expiry :: enum u8 {
+	None,          // sentinel
+	Turns,         // decrements at start of owner's turn
+	On_Hit_Taken,  // decrements when owner takes a hit
+}
+
+Condition :: struct {
+	kind:      Condition_Kind,
+	value:     int,             // magnitude (DEF reduction for Hex, unused for Shield)
+	expiry:    Condition_Expiry,
+	remaining: int,             // duration left (turns or hits); removed at 0
+	interval:  int,             // ticks between periodic effect (0 = passive/reactive, no periodic trigger)
+	timer:     int,             // counts up toward interval; resets when periodic effect fires
+}
+
+MAX_CONDITIONS :: 4
+
+CONDITION_NAMES := [Condition_Kind]cstring {
+	.None   = "??",
+	.Shield = "Shield",
+	.Hex    = "Hex",
+}
+
 // Abilities
 //
 // Each character has exactly 3 ability slots:
@@ -211,6 +241,9 @@ Character :: struct {
 	// Roll state
 	has_rolled:      bool,
 	roll:            Roll_Result,
+	// Conditions (status effects)
+	conditions:      [MAX_CONDITIONS]Condition,
+	condition_count: int,
 	// Abilities (1 main + 1 resolve + 1 passive)
 	ability:         Ability,
 	resolve_ability: Ability,
