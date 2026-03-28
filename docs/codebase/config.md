@@ -324,5 +324,5 @@ The simulator imports `config_load_encounter` from the game package (or a shared
 ## Future Extensions
 
 - **`data/abilities/`** — when ability definitions themselves need data-driven parameters (damage values, scaling formulas), ability configs move to their own files. Effect procs remain in Odin but read parameters from data.
-- **`[board]` section in encounters** — per-encounter board configuration (size, skull chance) when needed.
+- **`pool_size` / `skull_chance` in encounters** — per-encounter pool configuration. `game_init` already accepts these as parameters; config parsing just needs to thread them through.
 - **`[passive]` activation** — when the passive ability system is wired, the parser already accepts the section. Just connect it to `PASSIVE_EFFECTS` and add the runtime logic.

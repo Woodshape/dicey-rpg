@@ -264,19 +264,20 @@ Each milestone is independently testable. Later milestones build on earlier ones
 **Design doc:** `docs/ideas/draft-pool.md`
 **Implementation plan:** `docs/plans/draft-pool.md`
 
-- [ ] New types: `Draft_Pool`, `Weight_Group`, `Round_State`, reworked `Turn_Phase`
-- [ ] `src/pool.odin`: pool generation, weight group cycling, rendering, hit-testing
-- [ ] Delete `src/board.odin` and `tests/board_test.odin`
-- [ ] Rewrite `src/combat.odin`: draft phase → combat phase → round end state machine
-- [ ] Update `src/game.odin`: Game_State, drag-and-drop, rendering
-- [ ] Update `src/ai.odin`: pool scanning, phase-aware AI
-- [ ] Update `src/config.odin`: pool_size/skull_chance in encounter config
-- [ ] Update `sim/main.odin`: headless loop for new phases
-- [ ] `tests/pool_test.odin`: weight groups, pool mechanics, cycling
-- [ ] Update `tests/combat_test.odin` and `tests/ai_test.odin`
-- [ ] Update all design docs
+- [x] New types: `Draft_Pool`, `Weight_Group`, `Round_State`, reworked `Turn_Phase` (9 phases)
+- [x] `src/pool.odin`: pool generation, weight group cycling, rendering, hit-testing
+- [x] Delete `src/board.odin` and `tests/board_test.odin`
+- [x] Rewrite `src/combat.odin`: draft phase → combat phase → round end state machine. Each side rolls all characters before the other side goes (not alternating). "Done" button to skip remaining rolls.
+- [x] Update `src/game.odin`: Game_State (pool + round), drag-and-drop (pool source), rendering (pool + HUD + done button + phase-aware roll buttons)
+- [x] Update `src/ai.odin`: `ai_draft_pick` + `ai_combat_turn` replace `ai_take_turn`. Pool scanning via `ai_pick_best_pool_die`.
+- [x] Update `src/config.odin`: pool_size/skull_chance ready for encounter config
+- [x] Update `sim/main.odin`: headless loop for new phases with party-swap trick
+- [x] `tests/pool_test.odin`: 17 tests — weight groups, pool mechanics, cycling, round state
+- [x] Update `tests/combat_test.odin` (15 tests) and `tests/ai_test.odin` (16 tests)
+- [x] Update all design docs
+- [x] Enhanced combat log: rolled values, HP after damage/heal, shield absorption
 
-**Status:** Not Started
+**Status:** Done
 
 ---
 

@@ -9,7 +9,7 @@ src/                    -- all game source (single package: "game")
   main.odin             -- entry point, window, game loop
   game.odin             -- game state struct, update/draw, drag-and-drop logic
   types.odin            -- shared types, enums, constants
-  board.odin            -- board grid, rarity gradient, perimeter logic
+  pool.odin             -- draft pool generation, weight groups, rendering
   dice.odin             -- dice rolling, match detection (pure logic)
   hand.odin             -- hand management (max 5 dice)
   character.odin        -- character structs, assignment, roll state, UI
@@ -22,7 +22,7 @@ sim/                    -- combat simulator (separate binary, imports game packa
   main.odin             -- CLI parsing, headless game loop, party-swap AI driver
   stats.odin            -- per-game/per-roll stat collection, aggregation, CSV output
 tests/                  -- test package (separate from game)
-  board_test.odin       -- board ring, perimeter, removal, gradient tests
+  pool_test.odin        -- pool generation, weight groups, cycling, round state
   hand_test.odin        -- hand capacity, removal, vacated slot tests
   character_test.odin   -- assignment, type constraint, rarity, state tests
   dice_test.odin        -- match detection for all patterns, edge cases, invariants
@@ -44,7 +44,7 @@ docs/
   core-mechanics.md          -- game design document (source of truth for mechanics)
   codebase/                  -- per-module reference docs, 1-to-1 with src/ files
     types.md                 -- shared types, enums, constants, sentinel values
-    board.md                 -- grid, rarity gradient, perimeter logic
+    pool.md                  -- draft pool, weight groups, round state
     dice.md                  -- rolling, match detection, Roll_Result invariant
     hand.md                  -- hand management, add/remove/discard
     character.md             -- creation, pure type constraint, skull damage

@@ -39,9 +39,32 @@ Roll_Result :: struct {
 
 Holds the full outcome of rolling a character's dice. Used by match detection, ability resolution, and UI display. The invariant is asserted in both `character_roll` and `detect_match`.
 
-### Board_Cell / Board
+### Draft_Pool / Weight_Group / Round_State
 
-Fixed-size grid. `Board.size` is set from `BOARD_SIZE` at init. `Board.skull_chance` stores the skull % (set by `board_init`, preserved on refill). Cells track die type, occupancy, and ring depth.
+```odin
+Weight_Group :: enum u8 { Low, Mid_Low, Mid_High, High }
+
+Draft_Pool :: struct {
+    dice:         [MAX_POOL_SIZE]Die_Type,
+    count:        int,  // total dice generated this round
+    remaining:    int,  // dice not yet picked
+    weight_group: Weight_Group,
+    skull_chance: int,
+}
+
+Round_State :: struct {
+    group_order:  [WEIGHT_GROUP_COUNT]Weight_Group,
+    cycle_index:  int,
+    round_number: int,
+    first_pick:   bool,
+    pool_size:    int,
+    skull_chance: int,
+}
+```
+
+- `Draft_Pool` holds the current round's available dice. `count` is the total generated; `remaining` tracks how many are left to pick.
+- `Weight_Group` controls the die type distribution for a round: `Low` biases toward d4/d6, up to `High` which biases toward d10/d12.
+- `Round_State` manages the cycling of weight groups across rounds. `group_order` is a shuffled cycle of all four groups; `cycle_index` tracks position within it. `round_number` is 1-based and increments each draft round. `first_pick` alternates who picks first. `pool_size` and `skull_chance` are configurable per session.
 
 ### Hand
 
@@ -63,10 +86,24 @@ Character_State :: enum u8 { Empty, Alive, Dead }
 ### Turn_Phase
 
 ```odin
-Turn_Phase :: enum u8 { Player_Turn, Player_Roll_Result, Enemy_Turn, Enemy_Roll_Result, Victory, Defeat }
+Turn_Phase :: enum u8 {
+    // Draft phase
+    Draft_Player_Pick,   // player picks one die from pool (free assign/discard allowed)
+    Draft_Enemy_Pick,    // AI picks one die from pool
+    // Combat phase
+    Combat_Player_Turn,  // player assigns freely, rolls one character or passes
+    Player_Roll_Result,  // timed display of roll results
+    Combat_Enemy_Turn,   // AI assigns, rolls one character or passes
+    Enemy_Roll_Result,   // timed display of roll results
+    // Round boundary
+    Round_End,           // check win/lose, advance to next draft round
+    // Terminal
+    Victory,
+    Defeat,
+}
 ```
 
-Drives the combat state machine in `combat.odin`.
+Drives the combat state machine in `combat.odin`. Each round begins with a draft phase (`Draft_Player_Pick` / `Draft_Enemy_Pick`) where both sides alternate picking from the pool, then transitions into the combat phase (`Combat_Player_Turn` through `Enemy_Roll_Result`). `Round_End` handles win/lose checks and advances to the next round.
 
 ### Ability / Ability_Scaling
 
@@ -109,7 +146,24 @@ Collected once per frame in `game_update` from Raylib input functions, then pass
 
 ### Drag_State
 
-Tracks the current drag-and-drop operation. `Drag_Source` enum indicates where the drag started (Board, Hand, Character).
+Tracks the current drag-and-drop operation. `Drag_Source` enum indicates where the drag started (Pool, Hand, Character).
+
+```odin
+Drag_Source :: enum { None, Pool, Hand, Character }
+
+Drag_State :: struct {
+    active:     bool,
+    source:     Drag_Source,
+    die_type:   Die_Type,
+    pool_index: int, // index into draft pool (for Pool source)
+    index:      int, // hand slot index or character die index
+    char_index: int, // which character in the party (for Character source)
+}
+```
+
+- `.None` is the sentinel zero value — not dragging.
+- `pool_index` identifies which die in the draft pool is being dragged (used to ghost the source slot).
+- `index` and `char_index` serve Hand and Character drag sources respectively.
 
 ### Combat_Log / Log_Entry
 
@@ -119,12 +173,14 @@ Ring buffer for combat messages. Fixed-size entries with inline text buffers —
 
 | Constant | Value | Used by |
 |----------|-------|---------|
-| `BOARD_SIZE` | 5 | Board grid dimensions |
-| `CELL_SIZE` / `CELL_GAP` | 64 / 6 | Board cell rendering |
+| `MAX_POOL_SIZE` | 12 | Draft pool array upper bound |
+| `DEFAULT_POOL_SIZE` | 6 | Default dice per draft round |
+| `POOL_CELL_SIZE` / `POOL_CELL_GAP` | 64 / 6 | Pool die rendering |
+| `WEIGHT_GROUP_COUNT` | 4 | Number of weight groups in a cycle |
 | `MAX_HAND_SIZE` | 5 | Hand capacity |
 | `MAX_CHARACTER_DICE` | 6 | Legendary max dice (array sizes) |
 | `MAX_PARTY_SIZE` | 4 | Party array size |
-| `SKULL_CHANCE` | 10 | % chance per board cell becomes skull |
+| `SKULL_CHANCE` | 10 | % chance per pool die becomes skull |
 | `MAX_CONDITIONS` | 4 | Max active conditions per character |
 | `MAX_DIE_VALUE` | 12 | Frequency array size for match detection |
 
@@ -139,4 +195,4 @@ Ring buffer for combat messages. Fixed-size entries with inline text buffers —
 
 - Do not put logic in `types.odin` — only type definitions, constants, and simple predicate procs like `die_type_is_normal`.
 - Do not use game-meaningful enum values as sentinels. Slot state (Empty/Alive/Dead) is separate from character properties (Rarity).
-- Do not hardcode `BOARD_SIZE`, `MAX_HAND_SIZE`, or `RARITY_MAX_DICE` values in test code — always reference the constant.
+- Do not hardcode `DEFAULT_POOL_SIZE`, `MAX_HAND_SIZE`, or `RARITY_MAX_DICE` values in test code — always reference the constant.

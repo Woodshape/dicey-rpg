@@ -6,21 +6,22 @@ import game "../src"
 // --- Turn state machine ---
 
 @(test)
-game_starts_on_player_turn :: proc(t: ^testing.T) {
+game_starts_on_draft_player_pick :: proc(t: ^testing.T) {
 	gs, _ := game.game_init()
-	testing.expect_value(t, gs.turn, game.Turn_Phase.Player_Turn)
+	testing.expect_value(t, gs.turn, game.Turn_Phase.Draft_Player_Pick)
 }
 
 @(test)
 assign_does_not_end_turn :: proc(t: ^testing.T) {
 	// Hand-to-character is a free Assign, should not change turn
 	gs, _ := game.game_init()
+	gs.turn = .Combat_Player_Turn // move to combat phase for assign test
 	game.hand_add(&gs.hand, .D6)
 
-	testing.expect_value(t, gs.turn, game.Turn_Phase.Player_Turn)
+	testing.expect_value(t, gs.turn, game.Turn_Phase.Combat_Player_Turn)
 	game.character_assign_die(&gs.player_party.characters[0], .D6)
 	game.hand_remove(&gs.hand, 0)
-	testing.expect_value(t, gs.turn, game.Turn_Phase.Player_Turn)
+	testing.expect_value(t, gs.turn, game.Turn_Phase.Combat_Player_Turn)
 }
 
 @(test)
@@ -39,17 +40,16 @@ can_roll_with_assigned_dice :: proc(t: ^testing.T) {
 @(test)
 cannot_pick_with_full_hand :: proc(t: ^testing.T) {
 	gs, _ := game.game_init()
-	// Fill hand to max
 	for _ in 0 ..< game.MAX_HAND_SIZE {
 		game.hand_add(&gs.hand, .D4)
 	}
-	testing.expect(t, !game.can_pick(&gs, &gs.hand), "should not be able to pick with full hand")
+	testing.expect(t, !game.can_pick(&gs.pool, &gs.hand), "should not be able to pick with full hand")
 }
 
 @(test)
 can_pick_with_space_in_hand :: proc(t: ^testing.T) {
 	gs, _ := game.game_init()
-	testing.expect(t, game.can_pick(&gs, &gs.hand), "should be able to pick with empty hand and board dice available")
+	testing.expect(t, game.can_pick(&gs.pool, &gs.hand), "should be able to pick with empty hand and pool dice available")
 }
 
 // --- Win/Lose ---
@@ -57,26 +57,24 @@ can_pick_with_space_in_hand :: proc(t: ^testing.T) {
 @(test)
 enemy_death_triggers_victory :: proc(t: ^testing.T) {
 	gs, _ := game.game_init()
-	// Kill all enemies
 	for i in 0 ..< gs.enemy_party.count {
 		gs.enemy_party.characters[i].stats.hp = 0
 		gs.enemy_party.characters[i].state = .Dead
 	}
 
-	result := game.check_win_lose(&gs, .Player_Turn)
+	result := game.check_win_lose(&gs, .Combat_Player_Turn)
 	testing.expect_value(t, result, game.Turn_Phase.Victory)
 }
 
 @(test)
 player_death_triggers_defeat :: proc(t: ^testing.T) {
 	gs, _ := game.game_init()
-	// Kill all players
 	for i in 0 ..< gs.player_party.count {
 		gs.player_party.characters[i].stats.hp = 0
 		gs.player_party.characters[i].state = .Dead
 	}
 
-	result := game.check_win_lose(&gs, .Enemy_Turn)
+	result := game.check_win_lose(&gs, .Combat_Enemy_Turn)
 	testing.expect_value(t, result, game.Turn_Phase.Defeat)
 }
 
@@ -84,23 +82,21 @@ player_death_triggers_defeat :: proc(t: ^testing.T) {
 both_alive_returns_default :: proc(t: ^testing.T) {
 	gs, _ := game.game_init()
 
-	result := game.check_win_lose(&gs, .Enemy_Turn)
-	testing.expect_value(t, result, game.Turn_Phase.Enemy_Turn)
+	result := game.check_win_lose(&gs, .Combat_Enemy_Turn)
+	testing.expect_value(t, result, game.Turn_Phase.Combat_Enemy_Turn)
 }
 
 @(test)
 partial_enemy_death_not_victory :: proc(t: ^testing.T) {
 	gs, _ := game.game_init()
-	// Kill only the first enemy — second is still alive
 	gs.enemy_party.characters[0].stats.hp = 0
 
-	result := game.check_win_lose(&gs, .Player_Turn)
-	testing.expect_value(t, result, game.Turn_Phase.Player_Turn)
+	result := game.check_win_lose(&gs, .Combat_Player_Turn)
+	testing.expect_value(t, result, game.Turn_Phase.Combat_Player_Turn)
 }
 
 @(test)
 all_dead_enemy_takes_priority :: proc(t: ^testing.T) {
-	// If both sides fully dead, enemy death = victory
 	gs, _ := game.game_init()
 	for i in 0 ..< gs.player_party.count {
 		gs.player_party.characters[i].stats.hp = 0
@@ -111,42 +107,33 @@ all_dead_enemy_takes_priority :: proc(t: ^testing.T) {
 		gs.enemy_party.characters[i].state = .Dead
 	}
 
-	result := game.check_win_lose(&gs, .Player_Turn)
+	result := game.check_win_lose(&gs, .Combat_Player_Turn)
 	testing.expect_value(t, result, game.Turn_Phase.Victory)
 }
 
-// --- Board Refill ---
+// --- Draft Phase ---
 
 @(test)
-board_refills_when_empty :: proc(t: ^testing.T) {
+draft_pool_not_empty_on_start :: proc(t: ^testing.T) {
 	gs, _ := game.game_init()
-
-	// Empty the board
-	for row in 0 ..< game.BOARD_SIZE {
-		for col in 0 ..< game.BOARD_SIZE {
-			gs.board.cells[row][col].occupied = false
-		}
-	}
-	testing.expect_value(t, game.board_count_dice(&gs.board), 0)
-
-	game.check_board_refill(&gs)
-
-	testing.expect_value(t, game.board_count_dice(&gs.board), game.BOARD_SIZE * game.BOARD_SIZE)
+	testing.expect(t, gs.pool.remaining > 0, "pool should have dice at game start")
+	testing.expect_value(t, gs.pool.remaining, game.DEFAULT_POOL_SIZE)
 }
 
 @(test)
-board_does_not_refill_when_pickable_dice_remain :: proc(t: ^testing.T) {
+draft_pick_reduces_pool :: proc(t: ^testing.T) {
 	gs, _ := game.game_init()
-	initial := game.board_count_dice(&gs.board)
+	initial := gs.pool.remaining
+	game.pool_remove_die(&gs.pool, 0)
+	testing.expect_value(t, gs.pool.remaining, initial - 1)
+}
 
-	// Remove one die — plenty of pickable dice still on the board
-	game.board_remove_die(&gs.board, 0, 0)
-	testing.expect_value(t, game.board_count_dice(&gs.board), initial - 1)
-
-	game.check_board_refill(&gs)
-
-	// Should NOT refill — pickable dice still exist
-	testing.expect_value(t, game.board_count_dice(&gs.board), initial - 1)
+@(test)
+no_assigned_dice_means_no_rollable :: proc(t: ^testing.T) {
+	gs, _ := game.game_init()
+	// All characters start with 0 assigned dice
+	has_dice := game.party_has_assigned_dice(&gs.player_party)
+	testing.expect(t, !has_dice, "no characters should have assigned dice at start")
 }
 
 // --- Play Again ---
@@ -164,8 +151,9 @@ play_again_resets_game_state :: proc(t: ^testing.T) {
 	// Reset
 	gs, _ = game.game_init()
 
-	testing.expect_value(t, gs.turn, game.Turn_Phase.Player_Turn)
+	testing.expect_value(t, gs.turn, game.Turn_Phase.Draft_Player_Pick)
 	testing.expect_value(t, gs.hand.count, 0)
 	testing.expect(t, gs.player_party.characters[0].stats.hp > 0, "player should have full HP after restart")
 	testing.expect(t, gs.enemy_party.characters[0].stats.hp > 0, "enemy should have full HP after restart")
+	testing.expect(t, gs.pool.remaining > 0, "pool should be populated after restart")
 }

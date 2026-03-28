@@ -41,7 +41,7 @@ Ability_Effect :: #type proc(gs: ^Game_State, attacker: ^Character, target: ^Cha
 The full `Game_State` is passed for maximum flexibility. Abilities can read or modify:
 - Both parties (AoE damage, party-wide heals)
 - Both hands (steal, destroy, corrupt)
-- The board (place/remove dice)
+- The draft pool (manipulate available dice)
 - The combat log
 
 The `attacker` and `target` are convenience pointers for the common case. `roll` provides [MATCHES] and [VALUE] for scaling.

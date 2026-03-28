@@ -20,7 +20,7 @@ attacker_party :: proc(gs: ^Game_State, attacker: ^Character) -> ^Party {
 
 // --- Ability effect procedures ---
 // Each takes (gs, attacker, target, roll) and applies its effect.
-// gs provides full game context for abilities that need it (AoE, board, hands, etc.).
+// gs provides full game context for abilities that need it (AoE, pool, hands, etc.).
 
 // Flurry: deal [VALUE] damage [MATCHES] times. Both axes matter:
 // small dice = more hits (high [MATCHES]), big dice = harder hits (high [VALUE]).

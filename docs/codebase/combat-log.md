@@ -65,7 +65,7 @@ New entries overwrite the oldest when the buffer is full. The `head` pointer adv
 combat_log_add(&gs.log, rl.Color{200, 60, 60, 255}, "%s deals %d damage to %s", attacker.name, dmg, target.name)
 
 // Log a neutral event
-combat_log_write(&gs.log, "Board refilled")
+combat_log_write(&gs.log, "--- Round 2 ---")
 ```
 
 ## Best Practices

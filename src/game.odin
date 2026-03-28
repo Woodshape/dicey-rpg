@@ -9,7 +9,8 @@ ENEMY_PANEL_Y :: CHAR_PANEL_Y
 
 Game_State :: struct {
 	running:             bool,
-	board:               Board,
+	pool:                Draft_Pool,
+	round:               Round_State,
 	hand:                Hand,
 	enemy_hand:          Hand,
 	player_party:        Party,
@@ -25,11 +26,23 @@ Game_State :: struct {
 	inspect_char_index:  int,
 }
 
-game_init :: proc(encounter: string = "tutorial", prev_log: ^Combat_Log = nil, skull_chance: int = SKULL_CHANCE) -> (Game_State, bool) {
+game_init :: proc(encounter: string = "tutorial", prev_log: ^Combat_Log = nil, skull_chance: int = SKULL_CHANCE, pool_size: int = DEFAULT_POOL_SIZE) -> (Game_State, bool) {
+	round := round_state_init(pool_size, skull_chance)
+	pool := pool_generate(&round)
+
 	gs := Game_State {
 		running = true,
-		board   = board_init(skull_chance),
+		pool    = pool,
+		round   = round,
 	}
+
+	// Start on draft phase — player picks first in round 1
+	if round.first_pick {
+		gs.turn = .Draft_Player_Pick
+	} else {
+		gs.turn = .Draft_Enemy_Pick
+	}
+
 	// Preserve log across restarts
 	if prev_log != nil {
 		gs.log = prev_log^
@@ -70,20 +83,24 @@ inspect_get_character :: proc(gs: ^Game_State) -> ^Character {
 	return nil
 }
 
+// Check if we're in the draft phase (pool drags allowed)
+is_draft_phase :: proc(turn: Turn_Phase) -> bool {
+	return turn == .Draft_Player_Pick || turn == .Draft_Enemy_Pick
+}
+
 try_start_drag :: proc(gs: ^Game_State, mouse_x, mouse_y: i32) {
-	// Board drag (can drop on hand or character)
-	row, col := mouse_to_cell(&gs.board, mouse_x, mouse_y)
-	if row >= 0 && col >= 0 {
-		if cell_is_pickable(&gs.board, row, col) {
+	// Pool drag (only during draft phase)
+	if is_draft_phase(gs.turn) {
+		slot := mouse_to_pool_slot(&gs.pool, mouse_x, mouse_y)
+		if slot >= 0 {
 			gs.drag = Drag_State{
-				active    = true,
-				source    = .Board,
-				die_type  = gs.board.cells[row][col].die_type,
-				board_row = row,
-				board_col = col,
+				active     = true,
+				source     = .Pool,
+				die_type   = gs.pool.dice[slot],
+				pool_index = slot,
 			}
+			return
 		}
-		return
 	}
 
 	// Hand drag
@@ -114,23 +131,24 @@ try_start_drag :: proc(gs: ^Game_State, mouse_x, mouse_y: i32) {
 	}
 }
 
-// Returns true if a Pick action was consumed (ends turn), false for free Assign moves.
+// Returns true if a Pick action was consumed (ends draft turn), false for free Assign moves.
 try_drop :: proc(gs: ^Game_State, mouse_x, mouse_y: i32) -> bool {
 	#partial switch gs.drag.source {
-	case .Board:
-		// Board drops are Pick actions (cost a turn)
+	case .Pool:
+		// Pool drops go to hand (Pick action — ends draft turn)
 		hand_slot := mouse_to_hand_slot(mouse_x, mouse_y)
 		in_hand := hand_slot >= 0 || mouse_in_hand_region(mouse_x, mouse_y)
 		if in_hand && !hand_is_full(&gs.hand) {
-			board_remove_die(&gs.board, gs.drag.board_row, gs.drag.board_col)
+			pool_remove_die(&gs.pool, gs.drag.pool_index)
 			hand_add(&gs.hand, gs.drag.die_type)
 			combat_log_write(&gs.log, "You pick %s -> hand", DIE_TYPE_NAMES[gs.drag.die_type])
 			return true
 		}
 
+		// Pool to character (Pick action — ends draft turn)
 		ci, _ := mouse_to_party_char_slot(&gs.player_party, CHAR_PANEL_X, mouse_x, mouse_y)
 		if ci >= 0 && character_can_assign_die(&gs.player_party.characters[ci], gs.drag.die_type) {
-			board_remove_die(&gs.board, gs.drag.board_row, gs.drag.board_col)
+			pool_remove_die(&gs.pool, gs.drag.pool_index)
 			character_assign_die(&gs.player_party.characters[ci], gs.drag.die_type)
 			combat_log_write(&gs.log, "You pick %s -> %s", DIE_TYPE_NAMES[gs.drag.die_type], gs.player_party.characters[ci].name)
 			return true
@@ -163,36 +181,42 @@ game_draw :: proc(gs: ^Game_State) {
 
 	rl.ClearBackground(rl.Color{30, 30, 40, 255})
 
-	board_draw(&gs.board, &gs.drag)
+	pool_draw(&gs.pool, &gs.drag)
 	hand_draw(&gs.hand, &gs.drag)
-	party_draw(&gs.player_party, CHAR_PANEL_X, &gs.drag, true, rl.RAYWHITE)
+	in_combat := gs.turn == .Combat_Player_Turn || gs.turn == .Player_Roll_Result
+	party_draw(&gs.player_party, CHAR_PANEL_X, &gs.drag, true, rl.RAYWHITE, in_combat)
 	party_draw(&gs.enemy_party, ENEMY_PANEL_X, &gs.drag, false, rl.Color{220, 100, 100, 255})
 	hand_draw_at(&gs.enemy_hand, ENEMY_HAND_CENTER_X, &gs.drag, false)
 
 	// Dragged die follows cursor
 	if gs.drag.active {
-		mouse_x := rl.GetMouseX()
-		mouse_y := rl.GetMouseY()
-		draw_dragged_die(gs.drag.die_type, mouse_x, mouse_y)
+		mx := rl.GetMouseX()
+		my := rl.GetMouseY()
+		draw_dragged_die(gs.drag.die_type, mx, my)
 	}
 
 	// HUD
 	rl.DrawText("Dicey RPG", 20, 20, 24, rl.RAYWHITE)
 
-	remaining := board_count_dice(&gs.board)
-	count_str := fmt.ctprintf("Board: %d  |  Hand: %d/%d",
-		remaining,
+	count_str := fmt.ctprintf("Pool: %d/%d  |  Hand: %d/%d  |  Round: %d",
+		gs.pool.remaining, gs.pool.count,
 		gs.hand.count, MAX_HAND_SIZE,
+		gs.round.round_number,
 	)
 	rl.DrawText(count_str, 20, 50, 16, rl.GRAY)
 
 	// Turn indicator
 	draw_turn_indicator(gs.turn)
 
+	// Done button during combat player turn (only when characters have dice to skip)
+	if gs.turn == .Combat_Player_Turn && party_has_assigned_dice(&gs.player_party) {
+		draw_done_button()
+	}
+
 	// Combat log
 	combat_log_draw(&gs.log)
 
-	// Character inspect overlay (above board/UI, below game-over)
+	// Character inspect overlay (above pool/UI, below game-over)
 	if gs.inspect_active {
 		ch := inspect_get_character(gs)
 		if ch != nil {
@@ -212,18 +236,27 @@ draw_turn_indicator :: proc(turn: Turn_Phase) {
 	color: rl.Color
 
 	#partial switch turn {
-	case .Player_Turn:
+	case .Draft_Player_Pick:
+		label = "Your Pick"
+		color = rl.Color{80, 200, 80, 255}
+	case .Draft_Enemy_Pick:
+		label = "Enemy Pick"
+		color = rl.Color{220, 80, 80, 255}
+	case .Combat_Player_Turn:
 		label = "Your Turn"
 		color = rl.Color{80, 200, 80, 255}
 	case .Player_Roll_Result:
 		label = "Roll Result"
 		color = rl.Color{220, 200, 60, 255}
-	case .Enemy_Turn:
+	case .Combat_Enemy_Turn:
 		label = "Enemy Turn"
 		color = rl.Color{220, 80, 80, 255}
 	case .Enemy_Roll_Result:
 		label = "Enemy Roll"
 		color = rl.Color{220, 120, 80, 255}
+	case .Round_End:
+		label = "Round End"
+		color = rl.Color{180, 180, 100, 255}
 	}
 
 	text_w := rl.MeasureText(label, 20)
@@ -301,3 +334,23 @@ draw_dragged_die :: proc(die_type: Die_Type, mouse_x, mouse_y: i32) {
 	text_w := rl.MeasureText(label, 14)
 	rl.DrawText(label, x + (size - text_w) / 2, y + (size - 14) / 2, 14, rl.WHITE)
 }
+
+// Draw the Done button — small, unobtrusive
+draw_done_button :: proc() {
+	r := done_button_rect()
+	mouse_x := rl.GetMouseX()
+	mouse_y := rl.GetMouseY()
+	hovered := mouse_on_done_button(mouse_x, mouse_y)
+
+	bg := rl.Color{45, 45, 60, 255}
+	if hovered {
+		bg = rl.Color{65, 65, 90, 255}
+	}
+	rl.DrawRectangle(i32(r.x), i32(r.y), i32(r.width), i32(r.height), bg)
+	rl.DrawRectangleLines(i32(r.x), i32(r.y), i32(r.width), i32(r.height), rl.Color{100, 100, 120, 255})
+
+	label: cstring = "Done"
+	text_w := rl.MeasureText(label, 16)
+	rl.DrawText(label, i32(r.x) + (i32(r.width) - text_w) / 2, i32(r.y) + 6, 16, rl.Color{160, 160, 180, 255})
+}
+
