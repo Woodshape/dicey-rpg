@@ -11,11 +11,11 @@ test_warrior :: proc() -> game.Character {
 	ch := game.character_create("Warrior", .Common, {hp = 20, attack = 3, defense = 1})
 	ch.ability = game.Ability {
 		name        = "Flurry",
-		scaling     = .Match,
+		scaling     = .Hybrid,
 		min_matches = 2,
 		effect      = game.ability_flurry,
 		describe    = game.describe_flurry,
-		description = "{attack} dmg x {MATCHES} hits",
+		description = "{VALUE} dmg x {MATCHES} hits",
 	}
 	ch.resolve_ability = game.Ability {
 		name        = "Heroic Strike",
@@ -25,13 +25,13 @@ test_warrior :: proc() -> game.Character {
 		describe    = game.describe_resolve_warrior,
 		description = "10 dmg, ignores DEF",
 	}
-	ch.resolve_max = 5
+	ch.resolve_max = 10
 	return ch
 }
 
 // Build a goblin-like character for ability tests.
 test_goblin :: proc() -> game.Character {
-	ch := game.character_create("Goblin", .Common, {hp = 15, attack = 2, defense = 0})
+	ch := game.character_create("Goblin", .Common, {hp = 15, attack = 3, defense = 0})
 	ch.ability = game.Ability {
 		name        = "Fireball",
 		scaling     = .Hybrid,
@@ -41,21 +41,21 @@ test_goblin :: proc() -> game.Character {
 		description = "{MATCHES} x {VALUE} dmg",
 	}
 	ch.resolve_ability = game.Ability {
-		name        = "Goblin Rally",
+		name        = "Goblin Explosion",
 		scaling     = .None,
 		min_matches = 0,
-		effect      = game.ability_resolve_goblin,
-		describe    = game.describe_resolve_goblin,
-		description = "+10 HP",
+		effect      = game.ability_resolve_goblin_explosion,
+		describe    = game.describe_resolve_goblin_explosion,
+		description = "6 dmg to all enemies",
 	}
-	ch.resolve_max = 5
+	ch.resolve_max = 10
 	return ch
 }
 
 // --- Individual ability effects ---
 
 @(test)
-flurry_deals_one_per_match :: proc(t: ^testing.T) {
+flurry_deals_value_per_match :: proc(t: ^testing.T) {
 	attacker := test_warrior()
 	target := game.character_create("Target", .Common, {hp = 20, attack = 1, defense = 0})
 	roll := game.Roll_Result {
@@ -65,8 +65,8 @@ flurry_deals_one_per_match :: proc(t: ^testing.T) {
 
 	game.ability_flurry(nil, &attacker, &target, &roll)
 
-	// warrior ATK=3, target DEF=0: 3 hits of max(3 - 0, 0) = 3 each = 9 damage
-	testing.expect_value(t, target.stats.hp, 11)
+	// [VALUE]=5, target DEF=0: 3 hits of max(5 - 0, 0) = 5 each = 15 damage
+	testing.expect_value(t, target.stats.hp, 5)
 }
 
 @(test)
@@ -80,7 +80,7 @@ flurry_respects_defense :: proc(t: ^testing.T) {
 
 	game.ability_flurry(nil, &attacker, &target, &roll)
 
-	// max(1 - 5, 0) = 0 per hit, no damage
+	// [VALUE]=2, DEF=5: max(2 - 5, 0) = 0 per hit, no damage
 	testing.expect_value(t, target.stats.hp, 20)
 }
 
@@ -143,8 +143,8 @@ resolve_fires_ability_when_threshold_met :: proc(t: ^testing.T) {
 	game.handle_abilities(nil, &attacker, &target)
 
 	testing.expect(t, attacker.ability_fired, "Flurry should fire with 3 matches")
-	// warrior ATK=3, target DEF=0: 3 hits of max(3 - 0, 0) = 3 each = 9 damage
-	testing.expect_value(t, target.stats.hp, 41)
+	// [VALUE]=4, target DEF=0: 3 hits of max(4 - 0, 0) = 4 each = 12 damage
+	testing.expect_value(t, target.stats.hp, 38)
 }
 
 @(test)
@@ -215,13 +215,13 @@ resolve_accumulates_across_rolls :: proc(t: ^testing.T) {
 
 @(test)
 resolve_triggers_at_threshold :: proc(t: ^testing.T) {
-	attacker := test_warrior() // resolve_max = 5
+	attacker := test_warrior() // resolve_max = 10
 	target := game.character_create("Target", .Common, {hp = 50, attack = 1, defense = 0})
 
-	// Pre-charge to 4
-	attacker.resolve = 4
+	// Pre-charge to 9
+	attacker.resolve = 9
 	attacker.has_rolled = true
-	attacker.roll.unmatched_count = 1 // pushes to 5 = resolve_max
+	attacker.roll.unmatched_count = 1 // pushes to 10 = resolve_max
 
 	game.handle_abilities(nil, &attacker, &target)
 
@@ -236,13 +236,13 @@ resolve_does_not_trigger_below_threshold :: proc(t: ^testing.T) {
 	attacker := test_warrior()
 	target := game.character_create("Target", .Common, {hp = 50, attack = 1, defense = 0})
 
-	attacker.resolve = 3
+	attacker.resolve = 8
 	attacker.has_rolled = true
-	attacker.roll.unmatched_count = 1 // pushes to 4, below resolve_max=5
+	attacker.roll.unmatched_count = 1 // pushes to 9, below resolve_max=10
 
 	game.handle_abilities(nil, &attacker, &target)
 
 	testing.expect(t, !attacker.resolve_fired, "resolve should not fire below threshold")
-	testing.expect_value(t, attacker.resolve, 4)
+	testing.expect_value(t, attacker.resolve, 9)
 	testing.expect_value(t, target.stats.hp, 50)
 }

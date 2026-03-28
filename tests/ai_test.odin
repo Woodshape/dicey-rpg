@@ -138,6 +138,27 @@ ai_rolls_with_normal_dice :: proc(t: ^testing.T) {
 	testing.expect(t, should, "AI should roll when character is full with normal dice")
 }
 
+@(test)
+ai_rolls_skulls_when_stuck :: proc(t: ^testing.T) {
+	gs, _ := game.game_init()
+	// Fill character with 2 skulls + 1 normal (full, but only 1 normal die)
+	game.character_assign_die(&gs.enemy_party.characters[0], .Skull)
+	game.character_assign_die(&gs.enemy_party.characters[0], .Skull)
+	game.character_assign_die(&gs.enemy_party.characters[0], .D6)
+	// Kill the other enemy so only this character matters
+	gs.enemy_party.characters[1].state = .Dead
+	// Clear the board so no useful picks exist
+	for row in 0 ..< game.BOARD_SIZE {
+		for col in 0 ..< game.BOARD_SIZE {
+			gs.board.cells[row][col].occupied = false
+		}
+	}
+
+	should, ci := game.ai_should_roll(&gs)
+	testing.expect(t, should, "AI should roll skulls+1 normal when stuck to avoid deadlock")
+	testing.expect_value(t, ci, 0)
+}
+
 // --- AI pick ---
 
 @(test)

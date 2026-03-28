@@ -23,7 +23,7 @@ parse_character_file :: proc(t: ^testing.T) {
 
 	resolve_max, rm_ok := game.config_get_int(&cf, "", "resolve_max")
 	testing.expect(t, rm_ok, "root 'resolve_max' should exist")
-	testing.expect_value(t, resolve_max, 5)
+	testing.expect_value(t, resolve_max, 10)
 
 	// Stats section
 	hp, hp_ok := game.config_get_int(&cf, "stats", "hp")
@@ -112,7 +112,7 @@ load_warrior_stats :: proc(t: ^testing.T) {
 	testing.expect_value(t, ch.stats.attack, 3)
 	testing.expect_value(t, ch.stats.defense, 1)
 	testing.expect_value(t, ch.rarity, game.Character_Rarity.Common)
-	testing.expect_value(t, ch.resolve_max, 5)
+	testing.expect_value(t, ch.resolve_max, 10)
 	testing.expect_value(t, ch.state, game.Character_State.Alive)
 }
 
@@ -123,7 +123,7 @@ load_warrior_abilities :: proc(t: ^testing.T) {
 
 	testing.expect(t, ch.ability.effect != nil, "main ability effect should be set")
 	testing.expect(t, ch.ability.describe != nil, "main ability describe should be set")
-	testing.expect_value(t, ch.ability.scaling, game.Ability_Scaling.Match)
+	testing.expect_value(t, ch.ability.scaling, game.Ability_Scaling.Hybrid)
 	testing.expect_value(t, ch.ability.min_matches, 2)
 
 	testing.expect(t, ch.resolve_ability.effect != nil, "resolve effect should be set")
