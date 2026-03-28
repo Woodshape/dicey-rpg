@@ -38,10 +38,10 @@ Rounds repeat until one side is eliminated (all characters dead).
 ### Combat Phase
 
 1. Both sides can **freely assign** dice from hand to characters at any time (no action cost, as current).
-2. Sides **alternate turns**. On your combat turn, you can assign freely and either **roll** one character or **pass**.
+2. Sides **alternate turns**, same as the old system. On your turn you can assign freely and **roll** one character to end your turn, or **pass** to end the round.
 3. Roll resolution is unchanged: skull damage (per-hit loop), ability triggers, resolve meter.
-4. **Auto-pass:** If a side has no characters with assigned dice, it auto-passes.
-5. **Round ends** when both sides pass consecutively (neither has anything to roll).
+4. A roll ends your turn and passes to the other side (same as a pick did in the old system).
+5. A **pass** ends the round immediately — no waiting for the other side to also pass. This keeps the pacing snappy: if you have nothing to roll, you end the round.
 6. After the round ends, a new draft phase begins.
 
 ---
@@ -123,6 +123,18 @@ Configurable per encounter. Default: `SKULL_CHANCE = 10%`.
 After drafting, sides alternate combat turns. On each turn, the active side can assign freely and either roll one character or pass. This preserves the current turn-by-turn tactical feel — killing a target before their roll matters.
 
 Assignment is free (no action cost). Rolling consumes the character's assigned dice. When both sides pass consecutively, the round ends.
+
+### Design Space: Phase Structure Alternatives
+
+The current design (v1) uses a **hybrid** approach: strict alternating picks during draft, then the combat phase works like the old turn system (pick-or-roll is replaced by roll-or-pass, with free assignment).
+
+Other options explored:
+
+- **Merged phases (Option 1).** On your turn, you can pick from the pool OR roll — same as the old board system, just with a pool instead of a board. Pool refills when empty, triggering a new round. Simplest to understand, but loses the "draft all then fight" structure and the strategic tension of committing to a full draft before fighting.
+
+- **Strict split with strong UI (Option 2).** Keep draft and combat as completely separate phases, but invest heavily in visual clarity: big phase banners, dim the pool during combat, dim characters during draft, explicit "Pick a die!" / "Roll or Pass!" instructions. Preserves the batch design intent but requires more UI polish to feel intuitive.
+
+These are worth revisiting if the hybrid approach doesn't feel right after playtesting.
 
 ### Design Space: Simultaneous Rolls with Targeting
 

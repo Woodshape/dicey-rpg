@@ -28,7 +28,7 @@ Active dice occupy indices `0..count-1`. Slots beyond `count` must be zeroed (`D
 
 ### Discard System
 
-`hand_discard` destroys a die from the hand (it is not returned to the board). This is a free action — no turn cost. The `hand_can_discard` function is the extension point for future blocking status effects (e.g., Frozen dice that cannot be discarded).
+`hand_discard` destroys a die from the hand (it is not returned to the pool). This is a free action — no turn cost. The `hand_can_discard` function is the extension point for future blocking status effects (e.g., Frozen dice that cannot be discarded).
 
 ### Two-Side Layout
 
@@ -58,9 +58,9 @@ The `hand_draw_at` procedure takes `interactive: bool` to control whether drag/h
 ## How to Use
 
 ```odin
-// Pick a die from the board into the hand
+// Pick a die from the pool into the hand
 if !hand_is_full(&hand) {
-    die_type, ok := board_remove_die(&board, row, col)
+    die_type, ok := pool_remove_die(&pool, index)
     if ok { hand_add(&hand, die_type) }
 }
 

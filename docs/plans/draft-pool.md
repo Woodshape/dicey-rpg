@@ -1,7 +1,7 @@
 # Draft Pool — Implementation Plan
 
 **Design doc:** `docs/ideas/draft-pool.md`
-**Status:** Not Started
+**Status:** Done
 **Replaces:** Board grid system (Milestone 1 artifact)
 
 ---

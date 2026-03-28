@@ -5,26 +5,40 @@
 
 ## Responsibilities
 
-- Execute one action per enemy turn (pick, roll, or skip)
+- Execute enemy actions during both draft and combat phases
 - Assign compatible dice from enemy hand to enemy characters (free action)
-- Score board dice for optimal picks (type matching, denial, skull value)
-- Decide when to roll vs continue picking
+- Score pool dice for optimal picks (type matching, denial, skull value)
+- Decide when to roll vs wait for more picks
 - Discard unusable dice when deadlocked
 
 ## Architecture
 
-### Turn Flow
+### Draft Phase — `ai_draft_pick`
 
-`ai_take_turn(gs)` is the single entry point, called by `enemy_turn_update` in `combat.odin`. It executes exactly one action per call:
+`ai_draft_pick(gs)` is called during `Draft_Enemy_Pick`. It executes one pick per call:
 
 ```
 1. Assign any compatible dice from hand to characters (free)
-2. If a character should roll → roll, resolve, advance to Enemy_Roll_Result
-3. If a good die exists on the board → pick it, assign from hand again, advance to Player_Turn
-4. If no good die but hand isn't full → pick any die (prevents skipping)
-5. If hand is full and deadlocked → discard the least useful die
-6. Otherwise → skip turn
+2. Find the best die in the pool via ai_pick_best_pool_die
+3. If found → remove from pool, add to hand, assign from hand, log the action
+4. If not found and hand is full → discard least useful die, then pick index 0 as fallback
+5. If not found and pool is empty → advance to combat phase
+6. Advance phase: pool empty → Combat_Player_Turn or Combat_Enemy_Turn (based on first_pick);
+   otherwise → Draft_Player_Pick
 ```
+
+### Combat Phase — `ai_combat_turn`
+
+`ai_combat_turn(gs)` is called during `Combat_Enemy_Turn`. Each side rolls ALL of its characters before the other side goes. When nothing remains to roll, the round ends:
+
+```
+1. Assign any compatible dice from hand to characters (free)
+2. If any character should roll → roll it, resolve, advance to Enemy_Roll_Result
+3. If hand is full and no die is usable → discard the least useful die
+4. If nothing left to roll → advance to Round_End
+```
+
+There is no per-die pick step in the combat phase. All picking happened during the draft.
 
 ### Assignment from Hand
 
@@ -35,16 +49,15 @@
 
 ### Roll Decision
 
-`ai_should_roll(gs)` returns `(should_roll, char_index)`. Three tiers, evaluated per character:
-1. **Full + >= 2 normal** → roll (character is ready)
-2. **>= 2 normal + no useful picks** → roll (nothing better to do)
-3. **Full + no useful picks** → last-resort roll (even with < 2 normal dice or skulls-only; skull damage is better than deadlock)
+`ai_should_roll(gs)` returns `(should_roll, char_index)`. Two tiers, evaluated per character:
+1. **>= 2 normal dice** → roll (character has enough real dice to act)
+2. **Full (at max_dice) with any dice** → roll (skull damage is better than waiting)
 
-Never rolls characters with 0 assigned dice. Tier 3 prevents infinite skipping when the board has no useful dice and the hand/characters are fully committed.
+Never rolls characters with 0 assigned dice. The full-character check ensures the AI never deadlocks when every die it holds is a skull: a full character rolls regardless.
 
 ### Die Scoring
 
-`ai_score_die_for_party(die_type, enemy_party, player_types)` evaluates a board die:
+`ai_score_die_for_party(die_type, enemy_party, player_types)` evaluates a pool die:
 
 | Factor | Bonus | Rationale |
 |--------|-------|-----------|
@@ -86,32 +99,38 @@ Used by both `ai_score_die_for_party` (direct add) and `ai_assign_from_hand` (×
 
 | Procedure | Purpose |
 |-----------|---------|
-| `ai_take_turn(gs)` | Main entry point — one action per turn |
+| `ai_draft_pick(gs)` | Draft phase entry point — pick one die from pool, advance phase |
+| `ai_combat_turn(gs)` | Combat phase entry point — roll characters, advance to Round_End |
 | `ai_assign_from_hand(gs)` | Assign compatible hand dice to characters |
 | `ai_should_roll(gs)` | Decide whether to roll and which character |
-| `ai_pick_best_die(gs)` | Find highest-scoring pickable die on board |
+| `ai_pick_best_pool_die(gs)` | Find highest-scoring die in pool; returns `(index, bool)` |
 | `ai_score_die_for_party(die_type, party, player_types)` | Score a die against all characters |
 | `ai_scaling_fit(scaling, die_type)` | Score die fit for ability scaling axis (0–5) |
 | `ai_score_die(die_type, enemy_type, ...)` | Legacy single-character scorer |
-| `ai_pick_any_die(gs)` | Fallback: pick first available die |
 | `ai_hand_has_usable_die(party, hand)` | Any die in hand assignable? |
 | `ai_pick_discard(party, hand)` | Select least useful die to discard |
 
 ## How to Use
 
-The AI is invoked entirely through `ai_take_turn(gs)` during the `Enemy_Turn` phase. It reads and mutates `gs` directly — board, enemy hand, enemy party, combat log, and turn phase.
+The AI has two entry points, one per game phase:
+
+- `ai_draft_pick(gs)` is called from `combat.odin` during `Draft_Enemy_Pick`.
+- `ai_combat_turn(gs)` is called from `combat.odin` during `Combat_Enemy_Turn`.
+
+Both read and mutate `gs` directly — pool or hand, enemy party, combat log, and turn phase.
 
 ## Best Practices
 
-- The AI always tries to act. The fallback chain (best pick → any pick → discard → skip) ensures it doesn't get stuck in an infinite loop.
-- Assignment happens at the start of every turn AND after every pick. This maximizes the chance of clearing hand space.
-- Denial scoring uses the player's committed types, gathered at the start of `ai_pick_best_die`. This means the AI denies what the player is building, not what they might build.
-- The "no character can accept" check (returning 0) is the key guard against hand clogging.
+- All pool dice are valid candidates for picking — there is no `ai_pick_any_die` fallback because `ai_pick_best_pool_die` already scans the entire flat pool array.
+- Assignment happens at the start of every draft pick AND combat turn AND after every successful pick. This maximises the chance of clearing hand space.
+- Denial scoring uses the player's committed types gathered at the start of `ai_pick_best_pool_die`. The AI denies what the player is already building.
+- The "no character can accept" check (returning score 0) is the key guard against hand clogging.
+- The full-character roll check ensures the AI never stalls when holding only skull dice and a character is at capacity.
 
 ## What NOT to Do
 
-- Do not call `ai_take_turn` outside of `enemy_turn_update`. It mutates game state and advances the turn phase.
-- Do not assume the AI will always pick. It may roll, discard, or skip depending on the board and hand state.
+- Do not call `ai_draft_pick` outside of the `Draft_Enemy_Pick` phase, or `ai_combat_turn` outside of `Combat_Enemy_Turn`. Both mutate game state and advance the turn phase.
+- Do not assume the AI will always pick during the draft. If the hand is full it discards first; if the pool is empty it transitions phases.
 - Do not score dice without checking `character_can_assign_die` first — a die that can't be assigned has no value.
 
 ## Known Issues
@@ -132,4 +151,9 @@ See `docs/issues/ai.md`:
 
 **Roll decision:** `ai_rolls_when_character_full`, `ai_does_not_roll_empty_character`, `ai_does_not_roll_with_only_skulls`, `ai_rolls_with_normal_dice`, `ai_does_not_roll_full_with_only_skulls`, `ai_rolls_skulls_when_stuck`
 
-**Pick:** `ai_picks_from_board`, `ai_cannot_pick_with_full_hand`
+**Pick:** `ai_picks_from_pool`, `ai_cannot_pick_with_full_hand`
+
+Notes on specific tests:
+- `ai_does_not_roll_full_with_only_skulls` — despite its name, expects `true`. A character full of skulls rolls (skull damage > deadlock). The name reflects the old board-era behavior; the assertion was updated when the rule changed.
+- `ai_picks_from_pool` — replaced `ai_picks_from_board`. Calls `ai_pick_best_pool_die` and checks the returned index is within `gs.pool.remaining`.
+- `ai_cannot_pick_with_full_hand` — calls `ai_pick_best_pool_die` and expects `found == false`.
