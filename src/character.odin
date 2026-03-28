@@ -15,19 +15,20 @@ character_create :: proc(name: cstring, rarity: Character_Rarity, stats: Charact
 }
 
 // Apply skull dice damage: each skull die is a separate attack.
-// Looped per-hit so future per-hit triggers (passives, abilities) can hook in.
-// Returns total damage dealt (after defense).
+// Looped per-hit so per-hit triggers (Shield, passives) can hook in.
+// Returns total damage dealt (after defense and conditions).
 apply_skull_damage :: proc(attacker: ^Character, target: ^Character) -> int {
 	if attacker.roll.skull_count <= 0 {
 		return 0
 	}
 
-	damage_per_hit := max(attacker.stats.attack - target.stats.defense, 0)
 	total := 0
 
 	for _ in 0 ..< attacker.roll.skull_count {
-		target.stats.hp = max(target.stats.hp - damage_per_hit, 0)
-		total += damage_per_hit
+		dmg := max(attacker.stats.attack - character_effective_defense(target), 0)
+		dmg -= condition_absorb_damage(target, dmg)
+		target.stats.hp = max(target.stats.hp - dmg, 0)
+		total += dmg
 	}
 
 	return total

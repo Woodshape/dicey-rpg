@@ -35,6 +35,8 @@ combat_update :: proc(gs: ^Game_State, input: Input_State) {
 		}
 	}
 
+	prev_turn := gs.turn
+
 	#partial switch gs.turn {
 	case .Player_Turn:
 		player_turn_update(gs, input)
@@ -46,6 +48,15 @@ combat_update :: proc(gs: ^Game_State, input: Input_State) {
 		enemy_roll_result_update(gs, input)
 	case .Victory, .Defeat:
 		game_over_update(gs, input)
+	}
+
+	// Tick turn-based conditions once when a side's turn begins
+	if gs.turn != prev_turn {
+		if gs.turn == .Player_Turn {
+			tick_party_conditions(&gs.player_party)
+		} else if gs.turn == .Enemy_Turn {
+			tick_party_conditions(&gs.enemy_party)
+		}
 	}
 }
 
@@ -206,6 +217,16 @@ resolve_roll :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character) 
 	if target != nil && target.stats.hp <= 0 && target.state == .Alive {
 		target.state = .Dead
 		combat_log_add(&gs.log, rl.Color{255, 60, 60, 255}, "%s is defeated!", target.name)
+	}
+}
+
+// --- Condition Ticking ---
+
+// Tick turn-based conditions for all characters in a party.
+// Called once when a side's turn begins (at phase transition, not per-frame).
+tick_party_conditions :: proc(party: ^Party) {
+	for i in 0 ..< party.count {
+		condition_tick_turns(&party.characters[i])
 	}
 }
 

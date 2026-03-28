@@ -97,6 +97,13 @@ main :: proc() {
 	}
 }
 
+// Tick turn-based conditions for all characters in a party (sim version).
+tick_sim_conditions :: proc(party: ^game.Party) {
+	for i in 0 ..< party.count {
+		game.condition_tick_turns(&party.characters[i])
+	}
+}
+
 // --- Headless game loop ---
 
 // Snapshot all party HP into a fixed array.
@@ -180,12 +187,18 @@ run_game :: proc(gs: ^game.Game_State, stats: ^Game_Stats, rolls: ^Roll_Collecto
 
 			if gs.turn == .Player_Roll_Result {
 				collect_after_roll(stats, rolls, gs, true, player_hp, enemy_hp)
+			} else if gs.turn == .Enemy_Turn {
+				tick_sim_conditions(&gs.enemy_party)
 			}
 
 		case .Player_Roll_Result:
 			game.character_clear_roll(&gs.player_party.characters[gs.rolling_index])
 			gs.turn_timer = 0
-			gs.turn = game.check_win_lose(gs, .Enemy_Turn)
+			next := game.check_win_lose(gs, .Enemy_Turn)
+			if next == .Enemy_Turn {
+				tick_sim_conditions(&gs.enemy_party)
+			}
+			gs.turn = next
 
 		case .Enemy_Turn:
 			game.check_board_refill(gs)
@@ -198,12 +211,18 @@ run_game :: proc(gs: ^game.Game_State, stats: ^Game_Stats, rolls: ^Roll_Collecto
 
 			if gs.turn == .Enemy_Roll_Result {
 				collect_after_roll(stats, rolls, gs, false, enemy_hp, player_hp)
+			} else if gs.turn == .Player_Turn {
+				tick_sim_conditions(&gs.player_party)
 			}
 
 		case .Enemy_Roll_Result:
 			game.character_clear_roll(&gs.enemy_party.characters[gs.rolling_index])
 			gs.turn_timer = 0
-			gs.turn = game.check_win_lose(gs, .Player_Turn)
+			next := game.check_win_lose(gs, .Player_Turn)
+			if next == .Player_Turn {
+				tick_sim_conditions(&gs.player_party)
+			}
+			gs.turn = next
 
 		case .Victory:
 			stats.winner = .Player
