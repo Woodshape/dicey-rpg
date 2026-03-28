@@ -1,5 +1,7 @@
 package sim
 
+// TODO: add --validate mode that runs 1 game with full combat log output for rule validation
+
 import "core:fmt"
 import "core:math/rand"
 import "core:os"
