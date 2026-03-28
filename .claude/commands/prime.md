@@ -12,7 +12,7 @@ Read ALL design documents to understand the architecture and design decisions:
 
 - `docs/core-mechanics.md` — source of truth for game mechanics
 - `docs/codebase/types.md` — shared types, enums, constants
-- `docs/codebase/board.md` — grid, gradient, perimeter
+- `docs/codebase/pool.md` — draft pool, weight groups, round state
 - `docs/codebase/dice.md` — rolling, match detection
 - `docs/codebase/hand.md` — hand management
 - `docs/codebase/character.md` — assignment, pure type constraint
@@ -21,6 +21,8 @@ Read ALL design documents to understand the architecture and design decisions:
 - `docs/codebase/ability.md` — effects, resolution, templates
 - `docs/codebase/game.md` — Game_State, drag-and-drop, draw
 - `docs/codebase/combat-log.md` — ring buffer, file output
+- `docs/codebase/condition.md` — status effects, Shield, Hex
+- `docs/codebase/config.md` — .cfg parser, character/encounter loading
 
 ## Step 3: Read open issues, TODOs, and ideas
 
