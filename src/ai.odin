@@ -133,16 +133,19 @@ ai_should_roll :: proc(gs: ^Game_State) -> (bool, int) {
 			}
 		}
 
-		// Never roll with fewer than 2 normal dice — no ability can fire
-		if normal_count < 2 {continue}
-
-		// Roll if character is full
-		if ch.assigned_count >= ch.max_dice {
+		// Roll if character is full with at least 2 normal dice
+		if normal_count >= 2 && ch.assigned_count >= ch.max_dice {
 			return true, ci
 		}
 
 		// Roll if at least 2 normal dice and nothing useful to pick
-		if !has_useful_pick {
+		if normal_count >= 2 && !has_useful_pick {
+			return true, ci
+		}
+
+		// Last resort: roll with any assigned dice (even skulls-only or 1 normal)
+		// when full and no useful picks exist. Skull damage is better than deadlock.
+		if ch.assigned_count >= ch.max_dice && !has_useful_pick {
 			return true, ci
 		}
 	}
