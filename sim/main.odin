@@ -308,10 +308,6 @@ run_replay :: proc(path: string, skull_chance: int) {
 	}
 
 	// Write a parallel log so we can diff replay vs original
-	// TODO: replay log is missing all decision lines (PICK, ASSIGN, ROLL, DISCARD, DONE, ROUND).
-	// replay_draft_player_pick, replay_combat_player_turn, and replay_consume_free_actions must
-	// each call the corresponding trace_* procs after executing each action so game_log_replay.txt
-	// is fully symmetric with game_log.txt and the two files can be diffed line-for-line.
 	game.trace_init(&gs.trace, reader.seed, reader.encounter, "game_log_replay.txt")
 	defer game.trace_close(&gs.trace)
 
@@ -404,6 +400,7 @@ run_replay :: proc(path: string, skull_chance: int) {
 							ai_fallback = true
 						} else if r, is_round := action.(Trace_Round); is_round {
 							trace_next(&reader)
+							// round_end_update already calls trace_round — no duplicate needed
 							fmt.printfln("  [Round %d]", r.number)
 							if r.number != gs.round.round_number {
 								fmt.eprintfln(
@@ -526,6 +523,7 @@ replay_draft_player_pick :: proc(gs: ^game.Game_State, reader: ^Trace_Reader) ->
 		}
 		game.character_assign_die(&gs.player_party.characters[pick.char_index], pick.die_type)
 	}
+	game.trace_pick(&gs.trace, actual_idx, pick.die_type, pick.to_hand, pick.char_index)
 
 	// Advance turn phase (mirrors draft_player_pick_update)
 	if game.pool_is_empty(&gs.pool) {
@@ -568,12 +566,14 @@ replay_combat_player_turn :: proc(gs: ^game.Game_State, reader: ^Trace_Reader) -
 		}
 		attacker.assigned_count = a.dice_count
 		target := game.get_target(&gs.enemy_party, ci)
+		game.trace_roll(&gs.trace, ci, attacker)
 		game.character_roll(attacker)
 		game.resolve_roll(gs, attacker, target)
 		gs.rolling_index = ci
 		gs.turn = .Player_Roll_Result
 
 	case Trace_Done:
+		game.trace_done(&gs.trace)
 		gs.turn = .Combat_Enemy_Turn
 
 	case:
@@ -601,6 +601,7 @@ replay_consume_free_actions :: proc(gs: ^game.Game_State, reader: ^Trace_Reader)
 					if gs.hand.dice[i] == a.die_type && game.character_can_assign_die(ch, a.die_type) {
 						game.hand_remove(&gs.hand, i)
 						game.character_assign_die(ch, a.die_type)
+						game.trace_assign(&gs.trace, i, a.die_type, a.char_index)
 						break
 					}
 				}
@@ -609,6 +610,7 @@ replay_consume_free_actions :: proc(gs: ^game.Game_State, reader: ^Trace_Reader)
 			trace_next(reader)
 			for i in 0 ..< gs.hand.count {
 				if gs.hand.dice[i] == a.die_type {
+					game.trace_discard(&gs.trace, i, a.die_type)
 					game.hand_discard(&gs.hand, i)
 					break
 				}
