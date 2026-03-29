@@ -48,7 +48,6 @@ game_init :: proc(encounter: string = "tutorial", prev_log: ^Combat_Log = nil, s
 	if prev_log != nil {
 		gs.log = prev_log^
 	}
-	combat_log_new_game(&gs.log)
 	combat_log_add(&gs.log, rl.Color{140, 140, 160, 255}, "Seed: %d", seed)
 
 	player_party, enemy_party, ok := config_load_encounter(encounter)
@@ -161,9 +160,11 @@ try_drop :: proc(gs: ^Game_State, mouse_x, mouse_y: i32) -> bool {
 	case .Hand:
 		// Hand to character is a free Assign — check all player characters
 		ci, _ := mouse_to_party_char_slot(&gs.player_party, CHAR_PANEL_X, mouse_x, mouse_y)
-		if ci >= 0 && character_can_assign_die(&gs.player_party.characters[ci], gs.drag.die_type) {
+		ch := ci >= 0 ? &gs.player_party.characters[ci] : nil
+		if ch != nil && !ch.has_acted && character_can_assign_die(ch, gs.drag.die_type) {
+			trace_assign(&gs.trace, gs.drag.index, gs.drag.die_type, ci)
 			hand_remove(&gs.hand, gs.drag.index)
-			character_assign_die(&gs.player_party.characters[ci], gs.drag.die_type)
+			character_assign_die(ch, gs.drag.die_type)
 		}
 
 	case .Character:

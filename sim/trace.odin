@@ -35,20 +35,28 @@ Trace_Discard :: struct {
 
 Trace_Done :: struct {}
 
+Trace_Assign :: struct {
+	hand_index: int,
+	die_type:   game.Die_Type,
+	char_index: int,
+}
+
 Trace_Action :: union {
 	Trace_Round,
 	Trace_Pick,
 	Trace_Roll,
 	Trace_Discard,
 	Trace_Done,
+	Trace_Assign,
 }
 
 // Loaded trace ready for sequential replay.
 Trace_Reader :: struct {
-	actions:   [dynamic]Trace_Action,
-	pos:       int,
-	seed:      u64,    // from SEED header
-	encounter: string, // from ENCOUNTER header (owned)
+	actions:     [dynamic]Trace_Action,
+	pos:         int,
+	seed:        u64,            // from SEED header
+	encounter:   string,         // from ENCOUNTER header (owned)
+	baseline_hp: map[string]int, // final HP per character name from HP event lines (owned keys)
 }
 
 // Load and parse a trace file. Returns false on any error.
@@ -61,6 +69,7 @@ trace_reader_load :: proc(path: string) -> (reader: Trace_Reader, ok: bool) {
 	defer delete(data)
 
 	reader.actions = make([dynamic]Trace_Action)
+	reader.baseline_hp = make(map[string]int)
 
 	line_num := 0
 	text := string(data)
@@ -206,6 +215,54 @@ trace_reader_load :: proc(path: string) -> (reader: Trace_Reader, ok: bool) {
 			}
 			append(&reader.actions, Trace_Done{})
 
+		case "ASSIGN":
+			// ASSIGN <hand_idx> <die_type> char <ci>
+			if len(parts) != 5 {
+				fmt.eprintfln("trace: line %d: malformed ASSIGN", line_num)
+				return
+			}
+			hand_idx, hi_ok := strconv.parse_int(parts[1])
+			if !hi_ok {
+				fmt.eprintfln("trace: line %d: bad ASSIGN hand_index: %s", line_num, parts[1])
+				return
+			}
+			die_type, dt_ok := trace_parse_die_type(parts[2])
+			if !dt_ok {
+				fmt.eprintfln("trace: line %d: unknown die type: %s", line_num, parts[2])
+				return
+			}
+			if parts[3] != "char" {
+				fmt.eprintfln("trace: line %d: expected 'char' in ASSIGN, got: %s", line_num, parts[3])
+				return
+			}
+			ci, ci_ok := strconv.parse_int(parts[4])
+			if !ci_ok {
+				fmt.eprintfln("trace: line %d: bad ASSIGN char_index: %s", line_num, parts[4])
+				return
+			}
+			append(&reader.actions, Trace_Assign{hand_index = hand_idx, die_type = die_type, char_index = ci})
+
+		case "HP":
+			// Event line — HP <tag> <name> <hp>
+			// Keyed by tag (e.g. "p0", "e1") which is unique unlike names.
+			// Multiple HP lines per character are expected; last one wins.
+			if len(parts) >= 4 {
+				hp_val, hp_ok := strconv.parse_int(parts[3])
+				if hp_ok {
+					key := parts[1] // tag
+					if key in reader.baseline_hp {
+						reader.baseline_hp[key] = hp_val
+					} else {
+						reader.baseline_hp[strings.clone(key)] = hp_val
+					}
+				}
+			}
+
+		case "VALUES", "SKULL", "MATCH", "ABILITY", "RESOLVE", "CHARGE", "PASSIVE",
+		     "DEAD", "COND", "EPICK", "EROLL", "EDONE":
+			// Event lines — diagnostics only, not used for replay
+			continue
+
 		case:
 			fmt.eprintfln("trace: line %d: unknown keyword: %s", line_num, parts[0])
 			return
@@ -220,6 +277,10 @@ trace_reader_load :: proc(path: string) -> (reader: Trace_Reader, ok: bool) {
 trace_reader_destroy :: proc(reader: ^Trace_Reader) {
 	delete(reader.encounter)
 	delete(reader.actions)
+	for k in reader.baseline_hp {
+		delete(k)
+	}
+	delete(reader.baseline_hp)
 }
 
 // Peek at the next action without consuming it. Returns nil union variant if exhausted.

@@ -274,7 +274,8 @@ Character :: struct {
 	assigned:        [MAX_CHARACTER_DICE]Die_Type,
 	assigned_count:  int,
 	// Roll state
-	has_rolled:      bool,
+	has_rolled:      bool,  // true while roll results are displayed (cleared after display timer)
+	has_acted:       bool,  // true once the character has rolled this combat phase (cleared at round end)
 	roll:            Roll_Result,
 	// Conditions (status effects)
 	conditions:      [MAX_CONDITIONS]Condition,
@@ -333,11 +334,9 @@ Log_Entry :: struct {
 }
 
 Combat_Log :: struct {
-	entries:      [MAX_LOG_ENTRIES]Log_Entry,
-	count:        int,
-	head:         int, // ring buffer write position
-	game_number:  int, // increments on each Play Again
-	file_enabled: bool, // only true when running the actual game (not tests)
+	entries: [MAX_LOG_ENTRIES]Log_Entry,
+	count:   int,
+	head:    int, // ring buffer write position
 }
 
 // Decision trace — machine-readable record of player decisions for replay.

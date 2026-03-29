@@ -167,7 +167,7 @@ roll_button_rect_at :: proc(panel_x, panel_y: i32) -> rl.Rectangle {
 mouse_on_party_roll_button :: proc(party: ^Party, panel_x: i32, mouse_x, mouse_y: i32) -> int {
 	for ci in 0 ..< party.count {
 		ch := &party.characters[ci]
-		if !character_is_alive(ch) || ch.assigned_count <= 0 || ch.has_rolled { continue }
+		if !character_is_alive(ch) || ch.assigned_count <= 0 || ch.has_acted { continue }
 		py := char_panel_y(ci)
 		r := roll_button_rect_at(panel_x, py)
 		if f32(mouse_x) >= r.x && f32(mouse_x) < r.x + r.width &&

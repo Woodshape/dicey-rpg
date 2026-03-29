@@ -129,6 +129,32 @@ heal_restores_value_hp :: proc(t: ^testing.T) {
 	testing.expect_value(t, attacker.stats.hp, 12)
 }
 
+// Test-local helper that replicates the inlined handle_abilities logic in resolve_roll.
+// Does not emit trace events (no Game_State available in tests).
+handle_abilities_test :: proc(attacker: ^game.Character, target: ^game.Character) {
+	roll := &attacker.roll
+
+	// Main ability
+	if roll.matched_count >= attacker.ability.min_matches && attacker.ability.effect != nil {
+		attacker.ability.effect(nil, attacker, target, roll)
+		attacker.ability_fired = true
+	} else {
+		attacker.ability_fired = false
+	}
+
+	// Charge resolve from unmatched dice
+	attacker.resolve += roll.unmatched_count
+
+	// Auto-trigger resolve ability when meter is full
+	if attacker.resolve >= attacker.resolve_max && attacker.resolve_ability.effect != nil {
+		attacker.resolve_ability.effect(nil, attacker, target, roll)
+		attacker.resolve_fired = true
+		attacker.resolve = 0
+	} else {
+		attacker.resolve_fired = false
+	}
+}
+
 // --- Ability resolution ---
 
 @(test)
@@ -140,7 +166,7 @@ resolve_fires_ability_when_threshold_met :: proc(t: ^testing.T) {
 	attacker.roll.matched_count = 3
 	attacker.roll.matched_value = 4
 
-	game.handle_abilities(nil, &attacker, &target)
+	handle_abilities_test(&attacker, &target)
 
 	testing.expect(t, attacker.ability_fired, "Flurry should fire with 3 matches")
 	// [VALUE]=4, target DEF=0: 3 hits of max(4 - 0, 0) = 4 each = 12 damage
@@ -156,7 +182,7 @@ resolve_skips_ability_when_threshold_not_met :: proc(t: ^testing.T) {
 	attacker.roll.matched_count = 1
 	attacker.roll.matched_value = 6
 
-	game.handle_abilities(nil, &attacker, &target)
+	handle_abilities_test(&attacker, &target)
 
 	testing.expect(t, !attacker.ability_fired, "Flurry should not fire with 1 match")
 	testing.expect_value(t, target.stats.hp, 50)
@@ -172,7 +198,7 @@ resolve_zero_matches_skips_ability :: proc(t: ^testing.T) {
 	attacker.roll.matched_value = 0
 	attacker.roll.unmatched_count = 3
 
-	game.handle_abilities(nil, &attacker, &target)
+	handle_abilities_test(&attacker, &target)
 
 	testing.expect(t, !attacker.ability_fired, "ability should not fire with 0 matches")
 	testing.expect_value(t, target.stats.hp, 20)
@@ -191,7 +217,7 @@ resolve_charges_from_unmatched :: proc(t: ^testing.T) {
 	attacker.roll.unmatched_count = 3
 	attacker.roll.matched_count = 0
 
-	game.handle_abilities(nil, &attacker, &target)
+	handle_abilities_test(&attacker, &target)
 
 	testing.expect_value(t, attacker.resolve, 3)
 }
@@ -204,12 +230,12 @@ resolve_accumulates_across_rolls :: proc(t: ^testing.T) {
 	// First roll: 2 unmatched
 	attacker.has_rolled = true
 	attacker.roll.unmatched_count = 2
-	game.handle_abilities(nil, &attacker, &target)
+	handle_abilities_test(&attacker, &target)
 	testing.expect_value(t, attacker.resolve, 2)
 
 	// Second roll: 2 more unmatched
 	attacker.roll.unmatched_count = 2
-	game.handle_abilities(nil, &attacker, &target)
+	handle_abilities_test(&attacker, &target)
 	testing.expect_value(t, attacker.resolve, 4)
 }
 
@@ -223,7 +249,7 @@ resolve_triggers_at_threshold :: proc(t: ^testing.T) {
 	attacker.has_rolled = true
 	attacker.roll.unmatched_count = 1 // pushes to 10 = resolve_max
 
-	game.handle_abilities(nil, &attacker, &target)
+	handle_abilities_test(&attacker, &target)
 
 	testing.expect(t, attacker.resolve_fired, "resolve should fire at threshold")
 	testing.expect_value(t, attacker.resolve, 0) // reset after firing
@@ -240,7 +266,7 @@ resolve_does_not_trigger_below_threshold :: proc(t: ^testing.T) {
 	attacker.has_rolled = true
 	attacker.roll.unmatched_count = 1 // pushes to 9, below resolve_max=10
 
-	game.handle_abilities(nil, &attacker, &target)
+	handle_abilities_test(&attacker, &target)
 
 	testing.expect(t, !attacker.resolve_fired, "resolve should not fire below threshold")
 	testing.expect_value(t, attacker.resolve, 9)

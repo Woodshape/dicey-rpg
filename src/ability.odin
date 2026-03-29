@@ -94,7 +94,8 @@ ability_shield :: proc(
 
 	if best != nil {
 		// value = absorption pool = [VALUE] from the roll
-		condition_apply(best, .Shield, roll.matched_value, .On_Hit_Taken, 1)
+		ok := condition_apply(best, .Shield, roll.matched_value, .On_Hit_Taken, 1)
+		if ok { trace_cond(&gs.trace, find_char_tag(gs, best), best, &best.conditions[best.condition_count - 1]) }
 	}
 }
 
@@ -105,7 +106,8 @@ ability_hex :: proc(
 	target: ^Character,
 	roll: ^Roll_Result,
 ) {
-	condition_apply(target, .Hex, 1, .Turns, 3)
+	ok := condition_apply(target, .Hex, 1, .Turns, 3)
+	if ok { trace_cond(&gs.trace, find_char_tag(gs, target), target, &target.conditions[target.condition_count - 1]) }
 }
 
 // --- Ability descriptions ---
@@ -337,35 +339,6 @@ passive_curse_weaver :: proc(gs: ^Game_State, owner: ^Character, context_char: ^
 	dmg -= condition_absorb_damage(context_char, dmg)
 	context_char.stats.hp = max(context_char.stats.hp - dmg, 0)
 	owner.passive_fired = true
-}
-
-// --- Ability resolution ---
-
-// Resolve abilities after a roll. Checks the main ability's min_matches threshold
-// and calls the effect if met. Charges resolve from unmatched dice.
-// Auto-triggers resolve ability when meter is full.
-handle_abilities :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character) {
-	roll := &attacker.roll
-
-	// Main ability
-	if roll.matched_count >= attacker.ability.min_matches && attacker.ability.effect != nil {
-		attacker.ability.effect(gs, attacker, target, roll)
-		attacker.ability_fired = true
-	} else {
-		attacker.ability_fired = false
-	}
-
-	// Charge resolve from unmatched dice
-	attacker.resolve += roll.unmatched_count
-
-	// Auto-trigger resolve ability when meter is full
-	if attacker.resolve >= attacker.resolve_max && attacker.resolve_ability.effect != nil {
-		attacker.resolve_ability.effect(gs, attacker, target, roll)
-		attacker.resolve_fired = true
-		attacker.resolve = 0
-	} else {
-		attacker.resolve_fired = false
-	}
 }
 
 // --- Character templates ---

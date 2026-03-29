@@ -17,7 +17,6 @@ Sim_Config :: struct {
 	seed:      u64,
 	csv_path:  string,
 	no_skulls: bool,
-	combat:    bool,   // single game with full combat log
 	replay:    string, // path to a decision trace file for replay mode
 }
 
@@ -33,12 +32,6 @@ main :: proc() {
 			fmt.eprintfln("Failed to load encounter: %s", config.encounter)
 			os.exit(1)
 		}
-	}
-
-	// --- Combat mode: single game with full combat log ---
-	if config.combat {
-		run_combat(config, skull_chance)
-		return
 	}
 
 	// --- Replay mode: drive player decisions from a trace file ---
@@ -109,38 +102,6 @@ main :: proc() {
 		} else {
 			fmt.eprintfln("Failed to write CSV: %s", config.csv_path)
 		}
-	}
-}
-
-// Run a single game with full combat log output to stdout.
-run_combat :: proc(config: Sim_Config, skull_chance: int) {
-	rand.reset(config.seed)
-
-	// Enable file output before game_init so the seed line is captured
-	clog: game.Combat_Log
-	game.combat_log_init_file(&clog)
-
-	gs, ok := game.game_init(config.encounter, &clog, skull_chance, seed = config.seed)
-	if !ok {
-		fmt.eprintfln("Failed to init game")
-		os.exit(1)
-	}
-
-	// Run the game
-	stats := Game_Stats{seed = config.seed}
-	rolls := new(Roll_Collector)
-	defer free(rolls)
-	run_game(&gs, &stats, rolls)
-
-	// Print the full combat log to stdout
-	game.combat_log_print(&gs.log)
-
-	// Print outcome
-	fmt.println()
-	switch stats.winner {
-	case .Player: fmt.printfln("Result: VICTORY in %d turns", stats.turns)
-	case .Enemy:  fmt.printfln("Result: DEFEAT in %d turns", stats.turns)
-	case .Draw:   fmt.printfln("Result: DRAW (turn limit %d)", stats.turns)
 	}
 }
 
@@ -346,8 +307,17 @@ run_replay :: proc(path: string, skull_chance: int) {
 		os.exit(1)
 	}
 
+	// Write a parallel log so we can diff replay vs original
+	// TODO: replay log is missing all decision lines (PICK, ASSIGN, ROLL, DISCARD, DONE, ROUND).
+	// replay_draft_player_pick, replay_combat_player_turn, and replay_consume_free_actions must
+	// each call the corresponding trace_* procs after executing each action so game_log_replay.txt
+	// is fully symmetric with game_log.txt and the two files can be diffed line-for-line.
+	game.trace_init(&gs.trace, reader.seed, reader.encounter, "game_log_replay.txt")
+	defer game.trace_close(&gs.trace)
+
 	// Consume the ROUND 1 marker that opens the trace
 	replay_expect_round(&reader, 1)
+	game.trace_round(&gs.trace, 1)
 	fmt.printfln("  [Round 1]")
 
 	turn_count := 0
@@ -453,15 +423,18 @@ run_replay :: proc(path: string, skull_chance: int) {
 
 		case .Victory:
 			fmt.printfln("Result: VICTORY in %d turns", turn_count)
+			print_replay_diff(&gs, &reader)
 			return
 
 		case .Defeat:
 			fmt.printfln("Result: DEFEAT in %d turns", turn_count)
+			print_replay_diff(&gs, &reader)
 			return
 		}
 
 		if turn_count > MAX_SIM_TURNS {
 			fmt.printfln("Result: DRAW (turn limit %d)", turn_count)
+			print_replay_diff(&gs, &reader)
 			return
 		}
 	}
@@ -473,7 +446,7 @@ run_replay :: proc(path: string, skull_chance: int) {
 @(private)
 replay_draft_player_pick :: proc(gs: ^game.Game_State, reader: ^Trace_Reader) -> (exhausted: bool) {
 	// Process any free discards
-	replay_consume_discards(gs, reader)
+	replay_consume_free_actions(gs, reader)
 
 	// Skip stale DONE/ROLL actions. These appear when the original game had characters
 	// with assigned dice that the player skipped (DONE) or rolled, but in the replay
@@ -569,7 +542,7 @@ replay_draft_player_pick :: proc(gs: ^game.Game_State, reader: ^Trace_Reader) ->
 @(private)
 replay_combat_player_turn :: proc(gs: ^game.Game_State, reader: ^Trace_Reader) -> (exhausted: bool) {
 	// Process any free discards
-	replay_consume_discards(gs, reader)
+	replay_consume_free_actions(gs, reader)
 
 	action, ok := trace_next(reader)
 	if !ok {
@@ -610,35 +583,80 @@ replay_combat_player_turn :: proc(gs: ^game.Game_State, reader: ^Trace_Reader) -
 	return false
 }
 
-// Consume DISCARD actions from the trace and execute them on the player hand.
-// Searches by die type (not index) because hand→char assignments between picks
-// are not recorded in the trace and can shift hand slot indices.
-// Skips silently if the die is no longer in hand (moved to a character).
+// Consume free actions (ASSIGN, DISCARD) from the trace until the next PICK, ROLL, DONE, or ROUND.
+// Searches by die type rather than slot index — earlier drift can shift indices.
 @(private)
-replay_consume_discards :: proc(gs: ^game.Game_State, reader: ^Trace_Reader) {
+replay_consume_free_actions :: proc(gs: ^game.Game_State, reader: ^Trace_Reader) {
 	for {
 		action, has_action := trace_peek(reader)
 		if !has_action {
 			return
 		}
-		d, is_discard := action.(Trace_Discard)
-		if !is_discard {
+		#partial switch a in action {
+		case Trace_Assign:
+			trace_next(reader)
+			if a.char_index >= 0 && a.char_index < gs.player_party.count {
+				ch := &gs.player_party.characters[a.char_index]
+				for i in 0 ..< gs.hand.count {
+					if gs.hand.dice[i] == a.die_type && game.character_can_assign_die(ch, a.die_type) {
+						game.hand_remove(&gs.hand, i)
+						game.character_assign_die(ch, a.die_type)
+						break
+					}
+				}
+			}
+		case Trace_Discard:
+			trace_next(reader)
+			for i in 0 ..< gs.hand.count {
+				if gs.hand.dice[i] == a.die_type {
+					game.hand_discard(&gs.hand, i)
+					break
+				}
+			}
+			// If not found: die was moved to a character — silently skip
+		case:
 			return
 		}
-		trace_next(reader)
+	}
+}
 
-		// Search for the die type anywhere in the hand
-		found_slot := -1
-		for i in 0 ..< gs.hand.count {
-			if gs.hand.dice[i] == d.die_type {
-				found_slot = i
-				break
-			}
+// Print one row of the replay diff table. tag is the stable key ("p0", "e1"), name for display.
+@(private)
+print_diff_row :: proc(tag: string, name: string, baseline: map[string]int, replay_hp: int) {
+	if orig, ok := baseline[tag]; ok {
+		d := replay_hp - orig
+		if d > 0 {
+			fmt.printfln("  %-16s  %-10d  %-8d  +%d", name, orig, replay_hp, d)
+		} else if d < 0 {
+			fmt.printfln("  %-16s  %-10d  %-8d  %d", name, orig, replay_hp, d)
+		} else {
+			fmt.printfln("  %-16s  %-10d  %-8d  =", name, orig, replay_hp)
 		}
-		if found_slot >= 0 {
-			game.hand_discard(&gs.hand, found_slot)
-		}
-		// If not found: die was moved to a character — silently skip the discard
+	} else {
+		fmt.printfln("  %-16s  %-10s  %-8d  N/A", name, "N/A", replay_hp)
+	}
+}
+
+// Compare final HP from the replay against the original run's HP event lines.
+// Skips silently if no HP events were recorded (no damage taken).
+@(private)
+print_replay_diff :: proc(gs: ^game.Game_State, reader: ^Trace_Reader) {
+	if len(reader.baseline_hp) == 0 {
+		return
+	}
+	fmt.println()
+	fmt.println("--- Replay Diff (final HP) ---")
+	fmt.printfln("  %-16s  %-10s  %-8s  %s", "Character", "Original", "Replay", "Diff")
+	fmt.printfln("  %-16s  %-10s  %-8s  %s", "---", "---", "---", "---")
+	fmt.println("  [Player]")
+	for i in 0 ..< gs.player_party.count {
+		ch := &gs.player_party.characters[i]
+		print_diff_row(fmt.tprintf("p%d", i), string(ch.name), reader.baseline_hp, ch.stats.hp)
+	}
+	fmt.println("  [Enemy]")
+	for i in 0 ..< gs.enemy_party.count {
+		ch := &gs.enemy_party.characters[i]
+		print_diff_row(fmt.tprintf("e%d", i), string(ch.name), reader.baseline_hp, ch.stats.hp)
 	}
 }
 
@@ -689,8 +707,6 @@ parse_args :: proc() -> Sim_Config {
 			config.csv_path = arg[len("--csv="):]
 		} else if arg == "--no-skulls" {
 			config.no_skulls = true
-		} else if arg == "--combat" {
-			config.combat = true
 		} else if strings.has_prefix(arg, "--replay=") {
 			config.replay = arg[len("--replay="):]
 		} else {
@@ -710,6 +726,5 @@ print_usage :: proc() {
 	fmt.eprintln("  --seed=N          RNG seed (default: current time)")
 	fmt.eprintln("  --csv=PATH        CSV output path (default: sim_results.csv)")
 	fmt.eprintln("  --no-skulls       Disable skull dice in the pool")
-	fmt.eprintln("  --combat          Run 1 game with full combat log (use --seed for replay)")
-	fmt.eprintln("  --replay=PATH     Replay a decision trace (decision_trace.txt)")
+	fmt.eprintln("  --replay=PATH     Replay a decision trace (game_log.txt)")
 }

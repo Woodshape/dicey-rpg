@@ -59,6 +59,7 @@ character_roll :: proc(character: ^Character) {
 
 	character.roll = result
 	character.has_rolled = true
+	character.has_acted = true
 }
 
 // Clear roll state and consume assigned dice.

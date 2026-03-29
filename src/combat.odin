@@ -146,9 +146,12 @@ notify_ally_damaged :: proc(gs: ^Game_State, damaged: ^Character) {
 // Logs everything to the combat log.
 resolve_roll :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character) {
 	roll := &attacker.roll
+	atag := find_char_tag(gs, attacker)
+	ttag := find_char_tag(gs, target)
 
 	// Log rolled values for auditability
 	log_rolled_values(gs, attacker, roll)
+	trace_values(&gs.trace, atag, attacker)
 
 	// Fire On_Roll passives first (e.g. Iron Skin applies DEF before any damage)
 	fire_on_roll_passive(gs, attacker, target)
@@ -185,6 +188,10 @@ resolve_roll :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character) 
 		if target.stats.hp < hp_before {
 			notify_ally_damaged(gs, target)
 		}
+		if roll.skull_count > 0 && target != nil && dmg > 0 {
+			trace_skull(&gs.trace, atag, attacker, ttag, target, roll.skull_count, dmg)
+			trace_hp(&gs.trace, ttag, target)
+		}
 	}
 
 	// Snapshot resolve and target HP before ability resolution
@@ -192,9 +199,41 @@ resolve_roll :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character) 
 	attacker_hp_before := attacker.stats.hp
 	target_hp_before := target != nil ? target.stats.hp : 0
 
-	// Ability + resolve
-	if target != nil {
-		handle_abilities(gs, attacker, target)
+	// --- Main ability ---
+	if roll.matched_count >= attacker.ability.min_matches && attacker.ability.effect != nil {
+		ability_target_hp_before := target != nil ? target.stats.hp : 0
+		ability_attacker_hp_before := attacker.stats.hp
+		attacker.ability.effect(gs, attacker, target, roll)
+		attacker.ability_fired = true
+		ability_dmg  := target != nil ? ability_target_hp_before - target.stats.hp : 0
+		ability_heal := attacker.stats.hp - ability_attacker_hp_before
+		trace_ability(&gs.trace, atag, attacker, ttag, target, ability_dmg, ability_heal)
+		if target != nil && ability_dmg > 0 { trace_hp(&gs.trace, ttag, target) }
+		if ability_heal > 0 { trace_hp(&gs.trace, atag, attacker) }
+	} else {
+		attacker.ability_fired = false
+	}
+
+	// --- Charge resolve from unmatched dice ---
+	attacker.resolve += roll.unmatched_count
+	if roll.unmatched_count > 0 {
+		trace_charge(&gs.trace, atag, attacker, roll.unmatched_count)
+	}
+
+	// --- Resolve ability ---
+	if attacker.resolve >= attacker.resolve_max && attacker.resolve_ability.effect != nil {
+		resolve_target_hp_before := target != nil ? target.stats.hp : 0
+		resolve_attacker_hp_before := attacker.stats.hp
+		attacker.resolve_ability.effect(gs, attacker, target, roll)
+		attacker.resolve_fired = true
+		attacker.resolve = 0
+		resolve_dmg  := target != nil ? resolve_target_hp_before - target.stats.hp : 0
+		resolve_heal := attacker.stats.hp - resolve_attacker_hp_before
+		trace_resolve_ability(&gs.trace, atag, attacker, ttag, target, resolve_dmg, resolve_heal)
+		if target != nil && resolve_dmg > 0 { trace_hp(&gs.trace, ttag, target) }
+		if resolve_heal > 0 { trace_hp(&gs.trace, atag, attacker) }
+	} else {
+		attacker.resolve_fired = false
 	}
 
 	// Notify On_Ally_Damaged passives after ability/resolve damage
@@ -274,6 +313,8 @@ resolve_roll :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character) 
 		)
 	}
 
+	trace_match(&gs.trace, atag, attacker)
+
 	// Log resolve ability with target and HP
 	if attacker.resolve_fired {
 		desc: cstring = attacker.resolve_ability.name
@@ -312,12 +353,15 @@ resolve_roll :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character) 
 			attacker.name,
 			attacker.passive.name,
 		)
+		trace_passive(&gs.trace, atag, attacker)
 	}
 
 	// Mark dead and log
 	if target != nil && target.stats.hp <= 0 && target.state == .Alive {
 		target.state = .Dead
 		combat_log_add(&gs.log, rl.Color{255, 60, 60, 255}, "%s is defeated!", target.name)
+		trace_hp(&gs.trace, ttag, target)
+		trace_dead(&gs.trace, ttag, target)
 	}
 }
 
@@ -564,6 +608,14 @@ round_end_update :: proc(gs: ^Game_State) {
 		return
 	}
 
+	// Clear per-round has_acted flag for all characters
+	for i in 0 ..< gs.player_party.count {
+		gs.player_party.characters[i].has_acted = false
+	}
+	for i in 0 ..< gs.enemy_party.count {
+		gs.enemy_party.characters[i].has_acted = false
+	}
+
 	// Advance round state and generate new pool
 	round_state_advance(&gs.round)
 	gs.pool = pool_generate(&gs.round)
@@ -613,7 +665,7 @@ can_pick :: proc(pool: ^Draft_Pool, hand: ^Hand) -> bool {
 }
 
 can_roll :: proc(character: ^Character) -> bool {
-	return character.assigned_count > 0 && !character.has_rolled
+	return character.assigned_count > 0 && !character.has_acted
 }
 
 // Done button — lets the player skip remaining rolls during combat phase
