@@ -96,6 +96,33 @@ Takes the same parameters as `Ability_Effect` but returns a formatted cstring. U
 | Resolve: Goblin Explosion | — | Deal 6 damage to all enemies. Respects DEF and Shield. |
 | Resolve: Shadow Bolt | — | Deal 15 damage ignoring defense. Single target, respects Shield. |
 
+## Passive Abilities
+
+Passives are always-on effects that fire at specific trigger points. Each character has one `Passive` (defined in `.cfg` files, wired via `PASSIVE_EFFECTS` lookup table in `config.odin`).
+
+### Trigger Model
+
+| Trigger | Call Site | When |
+|---------|-----------|------|
+| `On_Roll` | `fire_on_roll_passive` in `resolve_roll` | Before skull/ability damage, every roll |
+| `On_Ally_Damaged` | `notify_ally_damaged` in `resolve_roll` | After any damage to an ally (skull or ability) |
+
+### Current Passives
+
+| Passive | Character | Trigger | Effect |
+|---------|-----------|---------|--------|
+| Tenacity | Warrior | On_Roll | Heal 1 HP on miss (no match, has normal dice). |
+| Empathy | Healer | On_Ally_Damaged | +1 resolve when an ally takes damage. Caps at resolve_max. |
+| Scavenger | Goblin | On_Roll | Deal 2 flat damage (ignores DEF) on a miss (matched_count == 0, has normal dice). |
+| Curse Weaver | Shaman | On_Roll | Deal 1 damage per active condition on target (ignores DEF). |
+
+### How to Add a New Passive
+
+1. **Write the effect procedure** in `ability.odin` with `Passive_Effect` signature.
+2. **Register in `PASSIVE_EFFECTS`** in `config.odin` with `(name, trigger, proc)`.
+3. **Set in `.cfg` file**: `[passive]` section with `name`, `effect`, `description`.
+4. **Write tests** in `tests/passive_test.odin`.
+
 ## How to Add a New Ability
 
 1. **Write the effect procedure** in `ability.odin`:
@@ -146,3 +173,15 @@ Takes the same parameters as `Ability_Effect` but returns a formatted cstring. U
 **Resolution:** `resolve_fires_ability_when_threshold_met`, `resolve_skips_ability_when_threshold_not_met`, `resolve_zero_matches_skips_ability`
 
 **Resolve meter:** `resolve_charges_from_unmatched`, `resolve_accumulates_across_rolls`, `resolve_triggers_at_threshold`, `resolve_does_not_trigger_below_threshold`
+
+`tests/passive_test.odin` — 15 tests:
+
+**Tenacity:** `tenacity_heals_on_miss`, `tenacity_does_not_heal_on_match`, `tenacity_does_not_heal_on_skulls_only`
+
+**Empathy:** `empathy_charges_resolve_on_ally_damage`, `empathy_does_not_charge_for_self_damage`, `empathy_does_not_exceed_resolve_max`
+
+**Scavenger:** `scavenger_deals_damage_on_miss`, `scavenger_does_not_fire_on_match`, `scavenger_does_not_fire_on_skulls_only`
+
+**Curse Weaver:** `curse_weaver_deals_damage_per_condition`, `curse_weaver_no_damage_without_conditions`
+
+**Integration:** `fire_on_roll_passive_sets_fired_flag`, `fire_on_roll_passive_skips_non_roll_trigger`, `passive_loads_from_config`, `passive_empathy_loads_correct_trigger`

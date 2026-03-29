@@ -113,6 +113,19 @@ Drives the combat state machine in `combat.odin`. Each round begins with a draft
 - `Ability` struct: `name`, `scaling`, `min_matches`, `min_value` (minimum [VALUE] to trigger), `effect`, `description` (renamed from `static_describe`).
 - `Ability_Describe` has the full signature: `proc(gs: ^Game_State, attacker: ^Character, target: ^Character, roll: ^Roll_Result) -> cstring`.
 
+### Passive / Passive_Trigger
+
+```odin
+Passive_Trigger :: enum u8 { None, On_Roll, On_Ally_Damaged }
+Passive_Effect :: #type proc(gs: ^Game_State, owner: ^Character, context_char: ^Character, roll: ^Roll_Result)
+Passive :: struct { name, trigger, effect, description }
+```
+
+- `Passive_Trigger` determines when the passive fires. `On_Roll` fires in `resolve_roll` before damage; `On_Ally_Damaged` fires via `notify_ally_damaged` when a teammate takes damage.
+- Characters hold a single `passive: Passive` field.
+- `passive_fired: bool` tracks whether the passive fired this roll (for UI/logging).
+- Passives must NOT create per-ability Condition_Kinds — see `docs/ideas/passives.md` for the design rule.
+
 ### Condition_Kind / Condition_Expiry / Condition
 
 ```odin
@@ -129,6 +142,7 @@ Condition :: struct {
 - `interval` / `timer` support periodic effects (e.g., future Poison/Regen). Currently unused.
 - Characters hold `conditions: [MAX_CONDITIONS]Condition` and `condition_count: int`.
 - Lookup table: `CONDITION_NAMES` — indexed by `Condition_Kind`, sentinel is `"??"`.
+- Conditions are shared, reusable effects — not per-ability state. See `docs/ideas/status-effects.md`.
 
 ### Input_State
 

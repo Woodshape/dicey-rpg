@@ -4,7 +4,18 @@
 
 The condition system is implemented (`src/condition.odin`). `Condition` struct with kind, value, expiry model (Turns/On_Hit_Taken), interval/timer for periodic effects. Characters hold up to `MAX_CONDITIONS` (4) active conditions. Shield and Hex are live; periodic effects (Poison, Regen) have the hook point (`condition_fire_periodic`) but no implementations yet. See `docs/codebase/condition.md` for full details.
 
-Remaining design questions for future conditions:
+### Condition Design Rule
+
+Conditions are **shared, reusable game mechanics** — effects that multiple abilities and passives can apply, and that other systems can interact with (Curse Weaver counts conditions, Shield absorbs from any damage source, Hex stacks from multiple casters).
+
+**Do NOT create per-ability Condition_Kinds.** If a passive or ability needs a temporary stat buff that only it uses, the effect should be applied directly (heal HP, deal damage) or use a stat modifier field on Character — not a new Condition_Kind. The test: "would a second ability ever apply this same condition?" If not, it shouldn't be a condition.
+
+Good conditions: Shield, Hex, Poison, Burn, Freeze, Stun — shared effects with clear mechanics.
+Bad conditions: Iron_Skin_Buff, Battle_Rage_Buff, Scavenger_Mark — per-ability state that nothing else interacts with.
+
+See also `docs/ideas/passives.md` for the passives-vs-conditions design rule.
+
+### Remaining design questions for future conditions:
 
 ## Paralyze
 
