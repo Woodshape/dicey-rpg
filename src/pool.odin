@@ -181,8 +181,8 @@ pool_draw :: proc(pool: ^Draft_Pool, drag: ^Drag_State) {
 
 		// Ghost the die being dragged
 		if is_dragged {
-			rl.DrawRectangle(x, y, POOL_CELL_SIZE, POOL_CELL_SIZE, rl.Color{60, 60, 70, 120})
-			rl.DrawRectangleLines(x, y, POOL_CELL_SIZE, POOL_CELL_SIZE, rl.Color{255, 255, 255, 40})
+			draw_die_shape(die_type, x, y, POOL_CELL_SIZE, rl.Color{60, 60, 70, 120})
+			draw_die_outline(die_type, x, y, POOL_CELL_SIZE, rl.Color{255, 255, 255, 40})
 			continue
 		}
 
@@ -190,14 +190,14 @@ pool_draw :: proc(pool: ^Draft_Pool, drag: ^Drag_State) {
 
 		// Cell background
 		color := DIE_TYPE_COLORS[die_type]
-		rl.DrawRectangle(x, y, POOL_CELL_SIZE, POOL_CELL_SIZE, color)
+		draw_die_shape(die_type, x, y, POOL_CELL_SIZE, color)
 
 		// Hover highlight
 		if is_hovered {
-			rl.DrawRectangle(x, y, POOL_CELL_SIZE, POOL_CELL_SIZE, rl.Color{255, 255, 255, 50})
-			rl.DrawRectangleLines(x, y, POOL_CELL_SIZE, POOL_CELL_SIZE, rl.WHITE)
+			draw_die_shape(die_type, x, y, POOL_CELL_SIZE, rl.Color{255, 255, 255, 50})
+			draw_die_outline(die_type, x, y, POOL_CELL_SIZE, rl.WHITE)
 		} else {
-			rl.DrawRectangleLines(x, y, POOL_CELL_SIZE, POOL_CELL_SIZE, rl.Color{255, 255, 255, 80})
+			draw_die_outline(die_type, x, y, POOL_CELL_SIZE, rl.Color{255, 255, 255, 80})
 		}
 
 		// Die type label

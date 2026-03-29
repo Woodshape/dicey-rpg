@@ -321,6 +321,98 @@ draw_game_over :: proc(turn: Turn_Phase) {
 	rl.DrawText(btn_label, i32(r.x) + (i32(r.width) - btn_w) / 2, i32(r.y) + 10, 20, rl.RAYWHITE)
 }
 
+// --- Die shape rendering ---
+// All dice are drawn as Platonic solid silhouettes instead of plain rectangles.
+// d4=triangle, d6=square, d8=diamond, d10=kite, d12=pentagon, Skull=circle.
+
+// Draw a filled die shape based on the die type's Platonic solid silhouette.
+// Shape is centered within the bounding box (x, y, size, size).
+draw_die_shape :: proc(die_type: Die_Type, x, y, size: i32, color: rl.Color) {
+	cx := f32(x) + f32(size) / 2
+	cy := f32(y) + f32(size) / 2
+	r := f32(size) / 2 - 2
+
+	#partial switch die_type {
+	case .D4:
+		// Tetrahedron — equilateral triangle, point up
+		// Shift center down so triangle fills bounding box better
+		rl.DrawPoly({cx, cy + r * 0.25}, 3, r, -90, color)
+	case .D6:
+		// Cube face — axis-aligned square
+		rl.DrawRectangle(x + 2, y + 2, size - 4, size - 4, color)
+	case .D8:
+		// Octahedron — tall diamond with horizontal midline
+		w := r * 0.85
+		h := r
+		top := rl.Vector2{cx, cy - h}
+		left := rl.Vector2{cx - w, cy}
+		right := rl.Vector2{cx + w, cy}
+		bottom := rl.Vector2{cx, cy + h}
+		rl.DrawTriangle(top, left, right, color)
+		rl.DrawTriangle(right, left, bottom, color)
+		rl.DrawLineV(left, right, rl.Color{0, 0, 0, 40})
+	case .D10:
+		// Pentagonal trapezohedron — kite (wider top, pointed bottom)
+		top := rl.Vector2{cx, cy - r}
+		left := rl.Vector2{cx - r * 0.9, cy - r * 0.1}
+		right := rl.Vector2{cx + r * 0.9, cy - r * 0.1}
+		bottom := rl.Vector2{cx, cy + r}
+		rl.DrawTriangle(top, left, right, color)
+		rl.DrawTriangle(right, left, bottom, color)
+		rl.DrawLineV(left, right, rl.Color{0, 0, 0, 40})
+	case .D12:
+		// Dodecahedron — pentagon, point up
+		rl.DrawPoly({cx, cy}, 5, r, -90, color)
+	case .Skull:
+		// Circle — visually distinct from all geometric shapes
+		rl.DrawCircle(i32(cx), i32(cy), r, color)
+	case:
+		// None / fallback
+		rl.DrawRectangle(x, y, size, size, color)
+	}
+}
+
+// Draw the outline of a die shape.
+draw_die_outline :: proc(die_type: Die_Type, x, y, size: i32, color: rl.Color, thick: f32 = 1) {
+	cx := f32(x) + f32(size) / 2
+	cy := f32(y) + f32(size) / 2
+	r := f32(size) / 2 - 2
+	inset := rl.Rectangle{f32(x) + 2, f32(y) + 2, f32(size) - 4, f32(size) - 4}
+
+	#partial switch die_type {
+	case .D4:
+		rl.DrawPolyLinesEx({cx, cy + r * 0.25}, 3, r, -90, thick, color)
+	case .D6:
+		rl.DrawRectangleLinesEx(inset, thick, color)
+	case .D8:
+		w := r * 0.85
+		h := r
+		top := rl.Vector2{cx, cy - h}
+		left := rl.Vector2{cx - w, cy}
+		right := rl.Vector2{cx + w, cy}
+		bottom := rl.Vector2{cx, cy + h}
+		rl.DrawLineEx(top, right, thick, color)
+		rl.DrawLineEx(right, bottom, thick, color)
+		rl.DrawLineEx(bottom, left, thick, color)
+		rl.DrawLineEx(left, top, thick, color)
+	case .D10:
+		top := rl.Vector2{cx, cy - r}
+		left := rl.Vector2{cx - r * 0.9, cy - r * 0.1}
+		right := rl.Vector2{cx + r * 0.9, cy - r * 0.1}
+		bottom := rl.Vector2{cx, cy + r}
+		rl.DrawLineEx(top, right, thick, color)
+		rl.DrawLineEx(right, bottom, thick, color)
+		rl.DrawLineEx(bottom, left, thick, color)
+		rl.DrawLineEx(left, top, thick, color)
+	case .D12:
+		rl.DrawPolyLinesEx({cx, cy}, 5, r, -90, thick, color)
+	case .Skull:
+		rl.DrawRing({cx, cy}, r - thick, r, 0, 360, 36, color)
+	case:
+		rl.DrawRectangleLines(x, y, size, size, color)
+	}
+}
+
 // Draw the die being dragged at the cursor position
 draw_dragged_die :: proc(die_type: Die_Type, mouse_x, mouse_y: i32) {
 	size :: HAND_SLOT_SIZE
@@ -328,8 +420,8 @@ draw_dragged_die :: proc(die_type: Die_Type, mouse_x, mouse_y: i32) {
 	y := mouse_y - size / 2
 
 	color := DIE_TYPE_COLORS[die_type]
-	rl.DrawRectangle(x, y, size, size, color)
-	rl.DrawRectangleLines(x, y, size, size, rl.WHITE)
+	draw_die_shape(die_type, x, y, size, color)
+	draw_die_outline(die_type, x, y, size, rl.WHITE)
 
 	label := DIE_TYPE_NAMES[die_type]
 	text_w := rl.MeasureText(label, 14)

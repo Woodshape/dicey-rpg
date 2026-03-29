@@ -248,12 +248,12 @@ draw_assigned_dice_at :: proc(character: ^Character, panel_x, panel_y: i32, drag
 
 			if is_dragged {
 				// Ghost the slot being dragged
-				rl.DrawRectangle(x, y, CHAR_SLOT_SIZE, CHAR_SLOT_SIZE, rl.Color{60, 60, 70, 120})
-				rl.DrawRectangleLines(x, y, CHAR_SLOT_SIZE, CHAR_SLOT_SIZE, rl.Color{255, 255, 255, 40})
+				draw_die_shape(character.assigned[i], x, y, CHAR_SLOT_SIZE, rl.Color{60, 60, 70, 120})
+				draw_die_outline(character.assigned[i], x, y, CHAR_SLOT_SIZE, rl.Color{255, 255, 255, 40})
 			} else {
 				die_type := character.assigned[i]
 				color := DIE_TYPE_COLORS[die_type]
-				rl.DrawRectangle(x, y, CHAR_SLOT_SIZE, CHAR_SLOT_SIZE, color)
+				draw_die_shape(die_type, x, y, CHAR_SLOT_SIZE, color)
 
 				label := DIE_TYPE_NAMES[die_type]
 				text_w := rl.MeasureText(label, 12)
@@ -261,8 +261,8 @@ draw_assigned_dice_at :: proc(character: ^Character, panel_x, panel_y: i32, drag
 
 				// Hover highlight (only when not dragging, interactive side only)
 				if interactive && i == hover_slot && !drag.active {
-					rl.DrawRectangle(x, y, CHAR_SLOT_SIZE, CHAR_SLOT_SIZE, rl.Color{255, 255, 255, 40})
-					rl.DrawRectangleLines(x, y, CHAR_SLOT_SIZE, CHAR_SLOT_SIZE, rl.WHITE)
+					draw_die_shape(die_type, x, y, CHAR_SLOT_SIZE, rl.Color{255, 255, 255, 40})
+					draw_die_outline(die_type, x, y, CHAR_SLOT_SIZE, rl.WHITE)
 				}
 			}
 		} else {
@@ -288,24 +288,20 @@ draw_rolled_dice_at :: proc(character: ^Character, panel_x, panel_y: i32, intera
 		die_type := character.assigned[i]
 
 		if roll.skulls[i] > 0 {
-			// Skull die — distinct look, dark red border
-			rl.DrawRectangle(x, y, CHAR_SLOT_SIZE, CHAR_SLOT_SIZE, DIE_TYPE_COLORS[.Skull])
-			rl.DrawRectangleLines(x, y, CHAR_SLOT_SIZE, CHAR_SLOT_SIZE, rl.Color{200, 60, 60, 255})
-			rl.DrawRectangleLines(x + 1, y + 1, CHAR_SLOT_SIZE - 2, CHAR_SLOT_SIZE - 2, rl.Color{200, 60, 60, 255})
-			skull_w := rl.MeasureText("Skl", 14)
-			rl.DrawText("Skl", x + (CHAR_SLOT_SIZE - skull_w) / 2, y + (CHAR_SLOT_SIZE - 14) / 2, 14, rl.Color{60, 0, 0, 255})
+			// Skull die — circle with dark red border
+			draw_die_shape(.Skull, x, y, CHAR_SLOT_SIZE, DIE_TYPE_COLORS[.Skull])
+			draw_die_outline(.Skull, x, y, CHAR_SLOT_SIZE, rl.Color{200, 60, 60, 255}, 2)
 		} else if roll.matched[i] {
 			// Matched die — bright with gold border
-			rl.DrawRectangle(x, y, CHAR_SLOT_SIZE, CHAR_SLOT_SIZE, DIE_TYPE_COLORS[die_type])
-			rl.DrawRectangleLines(x, y, CHAR_SLOT_SIZE, CHAR_SLOT_SIZE, rl.YELLOW)
-			rl.DrawRectangleLines(x + 1, y + 1, CHAR_SLOT_SIZE - 2, CHAR_SLOT_SIZE - 2, rl.YELLOW)
+			draw_die_shape(die_type, x, y, CHAR_SLOT_SIZE, DIE_TYPE_COLORS[die_type])
+			draw_die_outline(die_type, x, y, CHAR_SLOT_SIZE, rl.YELLOW, 2)
 			val_str := fmt.ctprintf("%d", roll.values[i])
 			text_w := rl.MeasureText(val_str, 18)
 			rl.DrawText(val_str, x + (CHAR_SLOT_SIZE - text_w) / 2, y + (CHAR_SLOT_SIZE - 18) / 2, 18, rl.WHITE)
 		} else {
 			// Unmatched die — dimmed
-			rl.DrawRectangle(x, y, CHAR_SLOT_SIZE, CHAR_SLOT_SIZE, DIE_TYPE_COLORS_DIM[die_type])
-			rl.DrawRectangleLines(x, y, CHAR_SLOT_SIZE, CHAR_SLOT_SIZE, rl.Color{255, 255, 255, 40})
+			draw_die_shape(die_type, x, y, CHAR_SLOT_SIZE, DIE_TYPE_COLORS_DIM[die_type])
+			draw_die_outline(die_type, x, y, CHAR_SLOT_SIZE, rl.Color{255, 255, 255, 40})
 			val_str := fmt.ctprintf("%d", roll.values[i])
 			text_w := rl.MeasureText(val_str, 18)
 			rl.DrawText(val_str, x + (CHAR_SLOT_SIZE - text_w) / 2, y + (CHAR_SLOT_SIZE - 18) / 2, 18, rl.Color{180, 180, 180, 255})

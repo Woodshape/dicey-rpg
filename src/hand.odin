@@ -131,13 +131,13 @@ hand_draw_at :: proc(hand: ^Hand, center_x: i32, drag: ^Drag_State, interactive:
 
 			if is_dragged {
 				// Ghost the slot being dragged
-				rl.DrawRectangle(x, y, HAND_SLOT_SIZE, HAND_SLOT_SIZE, rl.Color{60, 60, 70, 120})
-				rl.DrawRectangleLines(x, y, HAND_SLOT_SIZE, HAND_SLOT_SIZE, rl.Color{255, 255, 255, 40})
+				draw_die_shape(hand.dice[i], x, y, HAND_SLOT_SIZE, rl.Color{60, 60, 70, 120})
+				draw_die_outline(hand.dice[i], x, y, HAND_SLOT_SIZE, rl.Color{255, 255, 255, 40})
 			} else {
 				// Normal filled slot
 				die_type := hand.dice[i]
 				color := DIE_TYPE_COLORS[die_type]
-				rl.DrawRectangle(x, y, HAND_SLOT_SIZE, HAND_SLOT_SIZE, color)
+				draw_die_shape(die_type, x, y, HAND_SLOT_SIZE, color)
 
 				label := DIE_TYPE_NAMES[die_type]
 				text_w := rl.MeasureText(label, 14)
@@ -145,8 +145,8 @@ hand_draw_at :: proc(hand: ^Hand, center_x: i32, drag: ^Drag_State, interactive:
 
 				// Hover highlight (only when not dragging, interactive only)
 				if interactive && i == hover_slot && !drag.active {
-					rl.DrawRectangle(x, y, HAND_SLOT_SIZE, HAND_SLOT_SIZE, rl.Color{255, 255, 255, 40})
-					rl.DrawRectangleLines(x, y, HAND_SLOT_SIZE, HAND_SLOT_SIZE, rl.WHITE)
+					draw_die_shape(die_type, x, y, HAND_SLOT_SIZE, rl.Color{255, 255, 255, 40})
+					draw_die_outline(die_type, x, y, HAND_SLOT_SIZE, rl.WHITE)
 				}
 			}
 		} else {
