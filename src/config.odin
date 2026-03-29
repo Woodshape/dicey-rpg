@@ -291,8 +291,41 @@ RESOLVE_DESCRIPTIONS := [?]Describe_Entry {
 	{"resolve_shaman_nuke", describe_resolve_shaman_nuke},
 }
 
-// Passive effects (reserved — no entries yet)
-// PASSIVE_EFFECTS := [?]Effect_Entry{}
+// Passive effect lookup tables
+Passive_Entry :: struct {
+	name:    string,
+	trigger: Passive_Trigger,
+	effect:  Passive_Effect,
+}
+
+PASSIVE_EFFECTS := [?]Passive_Entry {
+	{"tenacity", .On_Roll, passive_tenacity},
+	{"empathy", .On_Ally_Damaged, passive_empathy},
+	{"scavenger", .On_Roll, passive_scavenger},
+	{"curse_weaver", .On_Roll, passive_curse_weaver},
+}
+
+lookup_passive :: proc(name: string) -> (Passive_Entry, bool) {
+	for &entry in PASSIVE_EFFECTS {
+		if entry.name == name {
+			return entry, true
+		}
+	}
+	return {}, false
+}
+
+// Parse a passive trigger string into the enum value.
+parse_trigger :: proc(s: string) -> (Passive_Trigger, bool) {
+	switch s {
+	case "none":
+		return .None, true
+	case "on_roll":
+		return .On_Roll, true
+	case "on_ally_damaged":
+		return .On_Ally_Damaged, true
+	}
+	return .None, false
+}
 
 lookup_effect :: proc(name: string, table: []Effect_Entry) -> (Ability_Effect, bool) {
 	for &entry in table {
@@ -413,15 +446,42 @@ load_ability_section :: proc(
 	return
 }
 
-// Load a passive ability section — simpler than main/resolve (fewer fields).
-load_passive_section :: proc(cf: ^Config_File) -> (ability: Ability, ok: bool) {
+// Load a passive ability section from config.
+load_passive_section :: proc(cf: ^Config_File) -> (passive: Passive, ok: bool) {
 
 	name_str := config_get_string(cf, "passive", "name") or_return
-	ability.name = strings.clone_to_cstring(name_str)
+	passive.name = strings.clone_to_cstring(name_str)
 
 	effect_str := config_get_string(cf, "passive", "effect") or_return
-	// Passive system not wired yet — accept "none" and any other name silently
-	_ = effect_str
+
+	// "none" is valid — means no passive
+	if effect_str == "none" {
+		passive.effect = nil
+		passive.trigger = .None
+	} else {
+		entry, found := lookup_passive(effect_str)
+		if !found {
+			// Format valid passive names for error message
+			parts: [16]string
+			count := min(len(PASSIVE_EFFECTS), 16)
+			for i in 0 ..< count {
+				parts[i] = PASSIVE_EFFECTS[i].name
+			}
+			valid := strings.join(parts[:count], ", ", context.temp_allocator)
+			fmt.eprintfln(
+				"config error: %s: [passive] unknown effect '%s' — valid: %s",
+				cf.path, effect_str, valid,
+			)
+			return
+		}
+		passive.effect = entry.effect
+		passive.trigger = entry.trigger
+	}
+
+	desc_str, desc_ok := config_get_string(cf, "passive", "description")
+	if desc_ok {
+		passive.description = strings.clone_to_cstring(desc_str)
+	}
 
 	ok = true
 	return
@@ -467,8 +527,8 @@ config_load_character :: proc(name: string) -> (ch: Character, ok: bool) {
 	ch.ability = load_ability_section(&cf, "ability", ABILITY_EFFECTS[:], ABILITY_DESCRIPTIONS[:], 2) or_return
 	ch.resolve_ability = load_ability_section(&cf, "resolve_ability", RESOLVE_EFFECTS[:], RESOLVE_DESCRIPTIONS[:], 0) or_return
 
-	// Passive (parsed but not wired into runtime)
-	load_passive_section(&cf) or_return
+	// Passive
+	ch.passive = load_passive_section(&cf) or_return
 
 	ok = true
 	return

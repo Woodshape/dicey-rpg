@@ -116,6 +116,32 @@ check_win_lose :: proc(gs: ^Game_State, default_next: Turn_Phase) -> Turn_Phase 
 
 // --- Roll Resolution (with logging) ---
 
+// --- Passive trigger helpers ---
+
+// Fire On_Roll passives for the attacker. Called at the start of resolve_roll.
+// The passive effect proc is responsible for setting owner.passive_fired = true
+// only when it actually does something (not when it returns early).
+fire_on_roll_passive :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character) {
+	attacker.passive_fired = false
+	if attacker.passive.trigger != .On_Roll || attacker.passive.effect == nil {return}
+	attacker.passive.effect(gs, attacker, target, &attacker.roll)
+}
+
+// Notify On_Ally_Damaged passives for all alive allies of the damaged character.
+// Called after any damage is applied to a character (skull, ability, resolve).
+notify_ally_damaged :: proc(gs: ^Game_State, damaged: ^Character) {
+	if damaged == nil {return}
+	party := attacker_party(gs, damaged)
+	if party == nil {return}
+	for i in 0 ..< party.count {
+		ally := &party.characters[i]
+		if ally == damaged {continue}
+		if !character_is_alive(ally) {continue}
+		if ally.passive.trigger != .On_Ally_Damaged || ally.passive.effect == nil {continue}
+		ally.passive.effect(gs, ally, damaged, nil)
+	}
+}
+
 // Resolve a character's roll: skull damage, abilities, resolve meter.
 // Logs everything to the combat log.
 resolve_roll :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character) {
@@ -123,6 +149,9 @@ resolve_roll :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character) 
 
 	// Log rolled values for auditability
 	log_rolled_values(gs, attacker, roll)
+
+	// Fire On_Roll passives first (e.g. Iron Skin applies DEF before any damage)
+	fire_on_roll_passive(gs, attacker, target)
 
 	// Skull damage
 	if roll.skull_count > 0 && target != nil {
@@ -152,16 +181,25 @@ resolve_roll :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character) 
 				)
 			}
 		}
+		// Notify On_Ally_Damaged passives after skull damage
+		if target.stats.hp < hp_before {
+			notify_ally_damaged(gs, target)
+		}
 	}
 
 	// Snapshot resolve and target HP before ability resolution
 	resolve_before := attacker.resolve
-	target_hp_before := target != nil ? target.stats.hp : 0
 	attacker_hp_before := attacker.stats.hp
+	target_hp_before := target != nil ? target.stats.hp : 0
 
 	// Ability + resolve
 	if target != nil {
 		handle_abilities(gs, attacker, target)
+	}
+
+	// Notify On_Ally_Damaged passives after ability/resolve damage
+	if target != nil && target.stats.hp < target_hp_before {
+		notify_ally_damaged(gs, target)
 	}
 
 	// Log match info
@@ -263,6 +301,17 @@ resolve_roll :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character) 
 				desc,
 			)
 		}
+	}
+
+	// Log passive if it fired
+	if attacker.passive_fired {
+		combat_log_add(
+			&gs.log,
+			rl.Color{160, 200, 160, 255},
+			"%s: %s",
+			attacker.name,
+			attacker.passive.name,
+		)
 	}
 
 	// Mark dead and log

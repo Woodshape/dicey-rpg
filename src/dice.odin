@@ -72,6 +72,7 @@ character_clear_roll :: proc(character: ^Character) {
 	// Clear ability resolution state
 	character.ability_fired = false
 	character.resolve_fired = false
+	character.passive_fired = false
 }
 
 // Detect matches from rolled values. Returns [MATCHES], [VALUE], and per-die flags.

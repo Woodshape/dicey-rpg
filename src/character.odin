@@ -491,11 +491,18 @@ draw_character_detail :: proc(ch: ^Character) {
 	stats_w := rl.MeasureText(stats_str, 14)
 	rl.DrawText(stats_str, card_x + (card_w - stats_w) / 2, stats_y, 14, rl.Color{180, 220, 180, 255})
 
-	// Passive (placeholder — not yet wired)
-	// TODO: wire passive ability system
-	passive_str: cstring = "Passive: (none)"
+	// Passive ability
+	passive_str: cstring
+	passive_color: rl.Color
+	if ch.passive.effect != nil {
+		passive_str = fmt.ctprintf("Passive: %s — %s", ch.passive.name, ch.passive.description)
+		passive_color = rl.Color{160, 200, 160, 255}
+	} else {
+		passive_str = "Passive: (none)"
+		passive_color = rl.Color{120, 120, 120, 255}
+	}
 	passive_w := rl.MeasureText(passive_str, 13)
-	rl.DrawText(passive_str, card_x + (card_w - passive_w) / 2, stats_y + 22, 13, rl.Color{120, 120, 120, 255})
+	rl.DrawText(passive_str, card_x + (card_w - passive_w) / 2, stats_y + 22, 13, passive_color)
 
 	// Dismiss hint
 	hint: cstring = "Click anywhere to dismiss"

@@ -291,6 +291,54 @@ ability_resolve_shaman_nuke :: proc(
 	target.stats.hp = max(target.stats.hp - dmg, 0)
 }
 
+// --- Passive ability effects ---
+// Same signature as Passive_Effect. Called at trigger-specific points in the game loop.
+// For On_Roll: owner=self, context_char=target, roll=self's roll.
+// For On_Ally_Damaged: owner=passive owner, context_char=ally who took damage, roll=nil.
+
+// Tenacity (Warrior): after rolling, if no match, heal 1 HP.
+// Mirrors Scavenger (chip damage on miss) with chip sustain — Warrior outlasts opponents
+// through sheer stubbornness. Only fires when normal dice miss (not skulls-only).
+passive_tenacity :: proc(gs: ^Game_State, owner: ^Character, context_char: ^Character, roll: ^Roll_Result) {
+	if roll == nil {return}
+	if roll.matched_count > 0 {return}
+	if roll.unmatched_count == 0 {return}
+	owner.stats.hp += 1
+	owner.passive_fired = true
+}
+
+// Empathy (Healer): when any ally takes damage, gain +1 resolve.
+// Trigger: On_Ally_Damaged. context_char = the ally who took damage (not the attacker).
+passive_empathy :: proc(gs: ^Game_State, owner: ^Character, context_char: ^Character, roll: ^Roll_Result) {
+	// Don't charge if owner is dead or resolve is already full
+	if !character_is_alive(owner) {return}
+	if owner.resolve >= owner.resolve_max {return}
+	owner.resolve = min(owner.resolve + 1, owner.resolve_max)
+	owner.passive_fired = true
+}
+
+// Scavenger (Goblin): after rolling, if no match, deal 2 flat damage (ignores DEF).
+passive_scavenger :: proc(gs: ^Game_State, owner: ^Character, context_char: ^Character, roll: ^Roll_Result) {
+	if roll == nil || context_char == nil {return}
+	if roll.matched_count > 0 {return}
+	// Only fire if there were normal dice rolled (not skulls-only)
+	if roll.unmatched_count == 0 {return}
+	dmg := 2
+	dmg -= condition_absorb_damage(context_char, dmg)
+	context_char.stats.hp = max(context_char.stats.hp - dmg, 0)
+	owner.passive_fired = true
+}
+
+// Curse Weaver (Shaman): after rolling, deal 1 damage per active condition on target (ignores DEF).
+passive_curse_weaver :: proc(gs: ^Game_State, owner: ^Character, context_char: ^Character, roll: ^Roll_Result) {
+	if context_char == nil {return}
+	if context_char.condition_count <= 0 {return}
+	dmg := context_char.condition_count
+	dmg -= condition_absorb_damage(context_char, dmg)
+	context_char.stats.hp = max(context_char.stats.hp - dmg, 0)
+	owner.passive_fired = true
+}
+
 // --- Ability resolution ---
 
 // Resolve abilities after a roll. Checks the main ability's min_matches threshold

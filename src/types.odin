@@ -180,9 +180,9 @@ Character_Stats :: struct {
 
 // Conditions (status effects on characters)
 Condition_Kind :: enum u8 {
-	None,    // sentinel
-	Shield,  // blocks next hit entirely
-	Hex,     // reduces DEF by value
+	None,   // sentinel
+	Shield, // absorbs incoming damage (value = remaining pool)
+	Hex,    // reduces DEF by value
 }
 
 Condition_Expiry :: enum u8 {
@@ -231,6 +231,28 @@ Ability_Effect :: #type proc(gs: ^Game_State, attacker: ^Character, target: ^Cha
 // and combat log. Uses ctprintf internally — the returned cstring is temporary (one frame).
 Ability_Describe :: #type proc(gs: ^Game_State, attacker: ^Character, target: ^Character, roll: ^Roll_Result) -> cstring
 
+// --- Passive ability system ---
+
+// When the passive fires. Each trigger has a specific call site in the game loop.
+Passive_Trigger :: enum u8 {
+	None,            // no passive (sentinel)
+	On_Roll,         // after character_roll, before ability resolution
+	On_Ally_Damaged, // when any alive ally takes damage (called per damage event)
+}
+
+// Passive effect: same signature as Ability_Effect.
+// For On_Roll: attacker=self, target=opponent, roll=self's roll result.
+// For On_Ally_Damaged: attacker=passive owner, target=ally who took damage, roll=nil.
+Passive_Effect :: #type proc(gs: ^Game_State, owner: ^Character, context_char: ^Character, roll: ^Roll_Result)
+
+// Passive ability definition.
+Passive :: struct {
+	name:        cstring,
+	trigger:     Passive_Trigger,
+	effect:      Passive_Effect,
+	description: cstring, // static description for inspect UI
+}
+
 Ability :: struct {
 	name:        cstring,
 	scaling:     Ability_Scaling,
@@ -259,12 +281,13 @@ Character :: struct {
 	// Abilities (1 main + 1 resolve + 1 passive)
 	ability:         Ability,
 	resolve_ability: Ability,
-	// passive: Ability,  // TODO: wire passive system
+	passive:         Passive,
 	resolve:         int,
 	resolve_max:     int,
 	// Roll resolution results (for UI)
 	ability_fired:   bool,
 	resolve_fired:   bool,
+	passive_fired:   bool,
 }
 
 // Returns true if the character is alive and can act or be targeted.
