@@ -19,8 +19,9 @@ src/                    -- all game source (single package: "game")
   condition.odin        -- condition/status effect system: apply, remove, tick, absorb
   config.odin           -- .cfg parser, lookup tables, character/encounter loading
 sim/                    -- combat simulator (separate binary, imports game package)
-  main.odin             -- CLI parsing, headless game loop, party-swap AI driver
+  main.odin             -- CLI parsing, headless game loop, party-swap AI driver, --replay mode
   stats.odin            -- per-game/per-roll stat collection, aggregation, CSV output
+  trace.odin            -- trace file parser (Trace_Reader, action types, trace_reader_load)
 tests/                  -- test package (separate from game)
   pool_test.odin        -- pool generation, weight groups, cycling, round state
   hand_test.odin        -- hand capacity, removal, vacated slot tests

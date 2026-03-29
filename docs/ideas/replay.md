@@ -2,27 +2,22 @@
 
 ## Combat Log Replay for Balance Iteration
 
-Point the simulator at a real combat log to replay the exact decision sequence with modified stats/abilities. Enables rapid balance iteration: change a number, re-run the same game, see the different outcome.
+Point the simulator at a real game's decision trace to replay the exact decision sequence with modified stats/abilities. Enables rapid balance iteration: change a number, re-run the same game, see the different outcome.
 
-## Architecture Options
+## Settled Decisions
 
-### Option A: Parse existing combat log
+- **Option B (machine-readable trace)** — a `decision_trace.txt` file with space-separated tokens, one action per line. Decoupled from the human-readable combat log.
+- **Replaces `combat_log.txt`** as the persistent session record. The in-game scrolling log stays for player feedback but no longer writes to disk. In-game log can be simplified later to strip debug info.
+- **Pool index + die type** recorded together for machine precision + human readability.
+- **Final assignment state** in ROLL lines (not individual ASSIGN actions) — self-verifying on replay.
+- **Seed-based RNG replay** — same seed = same rolls. Balance changes affect what the rolls *do*, not what was rolled.
+- **Fail hard** on invalid decisions during replay — no silent skipping.
 
-- Parse `combat_log.txt` back into pick/assign/roll/discard decisions
-- Pro: no changes to the logging system
-- Con: fragile — any log format change breaks the parser. Human-readable text is awkward to parse reliably (e.g., character names with spaces, ability descriptions with special characters)
+See `docs/plans/replay.md` for the full implementation plan.
 
-### Option B: Machine-readable decision trace
+## Future Extensions
 
-- Add a second log stream alongside the human log: one structured action per line
-- Format: `PICK player d6 hand`, `ROLL player 0`, `ASSIGN player 0 1`, `DISCARD player 2`
-- Pro: trivial to parse, decoupled from display formatting
-- Con: requires adding the trace logger to all decision points
-
-### Open Questions
-
-- Should roll RNG replay from seed (same rolls regardless of balance changes) or from the trace (recorded roll values)?
-  - **From seed:** changing stats doesn't change what you rolled, only what the rolls do. Shows "what if this same roll hit harder?"
-  - **From trace:** recorded exact values. Shows the identical game regardless of seed logic changes.
-  - Both modes are useful. Seed-based is simpler to implement first.
-- How to handle decision validity after balance changes? E.g., if a character's rarity changes from Common (3 slots) to Rare (4 slots), the original 3-die assignment is still valid but suboptimal. If it changes to a smaller value, the assignment may become invalid — need a fallback.
+- **Diff output:** After replay, show per-character damage/HP comparison against the original.
+- **Partial replay:** Replay up to round N, then hand control to AI or the player.
+- **Multiple trace comparison:** Run the same trace against multiple balance configs and compare outcomes side by side.
+- **Trace from simulator:** Record AI-vs-AI decisions in the simulator so sim games are also replayable (useful for debugging specific AI edge cases).

@@ -279,6 +279,28 @@ Each milestone is independently testable. Later milestones build on earlier ones
 
 ---
 
+### Milestone 13: Decision Trace & Replay
+
+**Goal:** Record player decisions to a text file during live play, then replay those decisions in the simulator against modified configs to measure balance impact.
+
+- [x] `src/game.odin`: `Trace_Log` struct added to `Game_State`
+- [x] `src/game.odin` / `src/combat.odin`: `trace_init`, `trace_write`, `trace_close`, `trace_round` procs
+- [x] `src/combat.odin`: PICK, ROLL, DISCARD, DONE actions written to trace at each player decision point
+- [x] `src/main.odin`: trace initialised on startup, closed on exit
+- [x] `src/combat_log.odin`: file output removed (ring buffer only); simulator `--combat` mode still writes `combat_log.txt`
+- [x] `sim/trace.odin`: full trace file parser — `Trace_Reader`, `Trace_Action` union, `trace_reader_load`, `trace_peek`, `trace_next`, `trace_parse_die_type`
+- [x] `sim/main.odin`: `--replay=<file>` flag, `run_replay` proc drives player side from trace while enemy remains AI-driven
+- [x] Replay handles untraced hand→char assignments via force-assign from ROLL line (ground truth)
+- [x] Replay handles stale DONE/ROLL actions (auto-advance fires when chars have no assigned dice)
+- [x] Replay handles pool order drift: searches by die type, falls back to closest-value die if type unavailable
+- [x] Replay falls back to full AI when trace is exhausted (game continues beyond original session)
+
+**Known limitation:** Hand→char drag moves are not traced, causing state drift in longer replays. Rounds 1–7 typically replicate faithfully; divergence accumulates from combat RNG differences.
+
+**Status:** Done
+
+---
+
 ## MVP Definition
 
 The MVP is complete when:

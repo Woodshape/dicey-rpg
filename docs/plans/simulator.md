@@ -312,6 +312,53 @@ Below each character's summary line, expanded stats show:
 
 ---
 
+---
+
+## Decision Trace Replay (`--replay`)
+
+Replay a decision trace produced by the live game to measure how balance config changes affect the same player strategy.
+
+### Usage
+
+```bash
+./build/dicey-sim --replay=decision_trace.txt
+```
+
+### Trace Format
+
+The live game writes `decision_trace.txt` on startup. Each line is one action:
+
+```
+SEED <u64>
+ENCOUNTER <name>
+ROUND <n>
+PICK <pool_idx> <die_type> hand
+PICK <pool_idx> <die_type> char <ci>
+ROLL <ci> [<die> ...]
+DISCARD <hand_idx> <die_type>
+DONE
+```
+
+Parser lives in `sim/trace.odin` — `Trace_Reader`, `Trace_Action` union, `trace_reader_load`, `trace_peek`, `trace_next`.
+
+### Replay Semantics
+
+- **Player side**: driven by trace actions.
+- **Enemy side**: AI-driven (no enemy picks in trace).
+- **PICK**: find the requested die type anywhere in the pool (not exact index — pool order can drift due to RNG divergence). If the type is unavailable, substitute the closest-value die and print a note.
+- **ROLL**: force-assign the dice listed in the trace, overriding current assignment. This is the ground truth for what the player rolled, accounting for untraced hand→char drag moves.
+- **DISCARD**: find the die type anywhere in the hand (not exact index). If absent, it was moved to a character — skip silently.
+- **DONE**: advance to enemy turn.
+- **Trace exhaustion**: when the trace is consumed (original session ended), the player side switches to full AI. The game completes normally.
+
+### Known Limitation
+
+Hand→char drag moves are not recorded in the trace. State drift accumulates over rounds as untraced moves cause the hand and character assignments to diverge between original and replay. Rounds 1–7 typically replicate faithfully; later rounds may see die-type substitutions.
+
+A future `ASSIGN`/`UNASSIGN` trace entry would close this gap.
+
+---
+
 ## Future Extensions
 
 - **Strategy profiles** — swap `ai_take_turn` per side with different AI strategies (skull rush, match builder, value seeker, denier). See `docs/ideas/ai.md`.
