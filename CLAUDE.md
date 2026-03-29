@@ -18,6 +18,7 @@ src/                    -- all game source (single package: "game")
   ability.odin          -- ability effects, resolution, describe procs
   condition.odin        -- condition/status effect system: apply, remove, tick, absorb
   config.odin           -- .cfg parser, lookup tables, character/encounter loading
+  trace.odin            -- unified game log writer (game_log.txt): decisions + event lines
 sim/                    -- combat simulator (separate binary, imports game package)
   main.odin             -- CLI parsing, headless game loop, party-swap AI driver, --replay mode
   stats.odin            -- per-game/per-roll stat collection, aggregation, CSV output
@@ -53,9 +54,10 @@ docs/
     ai.md                    -- die scoring, roll decisions, discard logic
     ability.md               -- effects, resolution, lookup tables, how to extend
     game.md                  -- Game_State, drag-and-drop, draw pipeline
-    combat-log.md            -- ring buffer, file output
+    combat-log.md            -- ring buffer (in-game only, no file output)
     condition.md             -- status effects: Shield, Hex, ticking, absorption
     config.md                -- .cfg format, character/encounter loading, validation
+    trace.md                 -- unified game log (game_log.txt): decisions + events
   plans/                     -- implementation plans and milestone history
     implementation-plan.md   -- milestone-based implementation plan (history)
     draft-pool.md            -- draft pool implementation plan (board replacement)
