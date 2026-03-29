@@ -13,13 +13,17 @@ main :: proc() {
 	seed := u64(time.time_to_unix(time.now()))
 	rand.reset(seed)
 
-	clog: Combat_Log
-	combat_log_init_file(&clog)
-	gs, ok := game_init("tutorial", &clog, seed = seed)
+	encounter :: "tutorial"
+	gs, ok := game_init(encounter, seed = seed)
 	if !ok {
 		rl.TraceLog(.ERROR, "Failed to load encounter — check config files")
 		return
 	}
+
+	// Initialize decision trace (writes header + ROUND 1)
+	trace_init(&gs.trace, seed, encounter)
+	trace_round(&gs.trace, 1)
+	defer trace_close(&gs.trace)
 
 	for !rl.WindowShouldClose() && gs.running {
 		game_update(&gs)

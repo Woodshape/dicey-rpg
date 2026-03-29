@@ -1,5 +1,6 @@
 package game
 
+import "core:os"
 import rl "vendor:raylib"
 
 // Window
@@ -337,6 +338,13 @@ Combat_Log :: struct {
 	head:         int, // ring buffer write position
 	game_number:  int, // increments on each Play Again
 	file_enabled: bool, // only true when running the actual game (not tests)
+}
+
+// Decision trace — machine-readable record of player decisions for replay.
+// Written during live games, read by the simulator in --replay mode.
+Trace_Log :: struct {
+	file_enabled: bool,
+	file_handle:  os.Handle,
 }
 
 // Input state — collected once per frame, threaded through update procs.

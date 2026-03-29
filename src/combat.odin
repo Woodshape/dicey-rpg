@@ -433,6 +433,7 @@ draft_player_pick_update :: proc(gs: ^Game_State, input: Input_State) {
 		slot := mouse_to_hand_slot(input.mouse_x, input.mouse_y)
 		if slot >= 0 && slot < gs.hand.count && hand_can_discard(&gs.hand, slot) {
 			die_type := gs.hand.dice[slot]
+			trace_discard(&gs.trace, slot, die_type)
 			hand_discard(&gs.hand, slot)
 			combat_log_write(&gs.log, "You discard %s", DIE_TYPE_NAMES[die_type])
 		}
@@ -482,6 +483,7 @@ combat_player_turn_update :: proc(gs: ^Game_State, input: Input_State) {
 		slot := mouse_to_hand_slot(input.mouse_x, input.mouse_y)
 		if slot >= 0 && slot < gs.hand.count && hand_can_discard(&gs.hand, slot) {
 			die_type := gs.hand.dice[slot]
+			trace_discard(&gs.trace, slot, die_type)
 			hand_discard(&gs.hand, slot)
 			combat_log_write(&gs.log, "You discard %s", DIE_TYPE_NAMES[die_type])
 		}
@@ -492,6 +494,7 @@ combat_player_turn_update :: proc(gs: ^Game_State, input: Input_State) {
 		roll_ci := mouse_on_party_roll_button(&gs.player_party, CHAR_PANEL_X, input.mouse_x, input.mouse_y)
 		if roll_ci >= 0 {
 			attacker := &gs.player_party.characters[roll_ci]
+			trace_roll(&gs.trace, roll_ci, attacker)
 			target := get_target(&gs.enemy_party, roll_ci)
 			character_roll(attacker)
 			resolve_roll(gs, attacker, target)
@@ -502,6 +505,7 @@ combat_player_turn_update :: proc(gs: ^Game_State, input: Input_State) {
 
 		// Done button — skip remaining rolls, advance to enemy
 		if mouse_on_done_button(input.mouse_x, input.mouse_y) {
+			trace_done(&gs.trace)
 			gs.turn = .Combat_Enemy_Turn
 			return
 		}
@@ -563,6 +567,7 @@ round_end_update :: proc(gs: ^Game_State) {
 	// Advance round state and generate new pool
 	round_state_advance(&gs.round)
 	gs.pool = pool_generate(&gs.round)
+	trace_round(&gs.trace, gs.round.round_number)
 	combat_log_add(&gs.log, rl.Color{180, 180, 100, 255}, "--- Round %d ---", gs.round.round_number)
 
 	// Alternate first pick
