@@ -25,13 +25,9 @@
 - Abilities that temporarily raise or lower stats (e.g., an Attack buff lasting 2 turns).
 - Would make skull dice dynamically stronger/weaker depending on active buffs — adds timing strategy around when to roll skull-heavy characters.
 
-## Data-Driven Characters (Post-MVP)
+## Data-Driven Characters — Done
 
-- Character definitions move from Odin code to YAML files.
-- New characters that reuse existing ability effects would be pure data — no recompilation.
-- Ability effect procedures stay in Odin; YAML references them by name via a lookup table.
-- Hot reload on Play Again — re-reads YAML so balance changes take effect without restarting.
-- Enables: the combat simulator, encounter design, difficulty scaling, character unlocks.
+Implemented in Milestone 9 using `.cfg` files (not YAML). Character definitions in `data/characters/*.cfg`, encounter compositions in `data/encounters/*.cfg`. Effect procs stay in Odin; lookup tables map config strings to procs. Hot reload on Play Again. See `docs/codebase/config.md`.
 
 ## Class Design Extensions
 

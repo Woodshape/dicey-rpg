@@ -97,6 +97,7 @@ pool = pool_generate(&round)
 - Always check `pool_is_empty` or the return value of `pool_remove_die` before accessing pool dice.
 - Pool regeneration happens in `round_end_update` (combat.odin). Don't regenerate from within pool logic.
 - The pool renders centred horizontally in the upper third of the screen. Dice recentre as they're removed.
+- Pool dice use `draw_die_shape`/`draw_die_outline` (from `game.odin`) for Platonic solid silhouettes — not plain rectangles.
 
 ## What NOT to Do
 

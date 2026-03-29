@@ -2,11 +2,9 @@
 
 ## Status Effect Architecture
 
-- No status effect system currently exists. Paralyze (Milestone 8) will be the first.
-- Needs a general representation: `Status_Effect` struct with type, remaining duration, and any associated value.
-- Characters need a slot (or list) to hold active status effects.
-- Resolution order: when do effects tick down? Start of turn, end of turn, or on roll?
-- Stack behaviour: can multiple instances of the same effect accumulate, or is it binary?
+The condition system is implemented (`src/condition.odin`). `Condition` struct with kind, value, expiry model (Turns/On_Hit_Taken), interval/timer for periodic effects. Characters hold up to `MAX_CONDITIONS` (4) active conditions. Shield and Hex are live; periodic effects (Poison, Regen) have the hook point (`condition_fire_periodic`) but no implementations yet. See `docs/codebase/condition.md` for full details.
+
+Remaining design questions for future conditions:
 
 ## Paralyze
 

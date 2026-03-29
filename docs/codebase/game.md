@@ -97,6 +97,21 @@ Called on left mouse button release. Returns `true` if a Pick action was consume
 
 On an invalid drop (e.g., wrong target, full hand), the drag silently cancels.
 
+### Die Shape Rendering
+
+All dice are drawn as Platonic solid silhouettes via `draw_die_shape` and `draw_die_outline`. These are shared across all rendering sites (pool, hand, character panels, drag cursor).
+
+| Die Type | Shape | Method |
+|----------|-------|--------|
+| d4 | Triangle (point up) | `DrawPoly` 3 sides, shifted down to fill box |
+| d6 | Square | `DrawRectangle` (axis-aligned) |
+| d8 | Diamond (tall rhombus) | Two `DrawTriangle` calls + horizontal interior midline |
+| d10 | Kite (wide top, pointed bottom) | Two `DrawTriangle` calls + horizontal interior waist line |
+| d12 | Pentagon (point up) | `DrawPoly` 5 sides |
+| Skull | Circle | `DrawCircle` fill, `DrawRing` outline |
+
+**Winding order:** `DrawTriangle` requires counter-clockwise vertex order in screen coordinates (y-down). For a shape with top/left/right/bottom vertices: upper triangle = `(top, left, right)`, lower triangle = `(right, left, bottom)`.
+
 ### Drawing Pipeline
 
 `game_draw(gs)` renders in this order:
@@ -146,6 +161,8 @@ On an invalid drop (e.g., wrong target, full hand), the drag silently cancels.
 | `draw_turn_indicator(turn)` | Phase label at top of screen |
 | `draw_done_button()` | Done button rendered during Combat_Player_Turn |
 | `draw_game_over(turn)` | Victory/Defeat overlay with Play Again button |
+| `draw_die_shape(die_type, x, y, size, color)` | Filled Platonic solid silhouette for a die type |
+| `draw_die_outline(die_type, x, y, size, color, thick)` | Outline of a die shape (default thick=1) |
 | `draw_dragged_die(die_type, mx, my)` | Die following cursor |
 
 ## How to Extend
