@@ -64,11 +64,11 @@ attacker_party :: proc(gs: ^Game_State, attacker: ^Character) -> ^Party
 
 ### Resolution Pipeline
 
-`resolve_abilities(gs, attacker, target)` is called from `resolve_roll` in `combat.odin`:
+The resolution pipeline is inlined directly in `resolve_roll` in `combat.odin` (not a separate proc). Steps, in order:
 
-1. **Main ability:** if `matched_count >= min_matches` and `effect != nil` → call effect, set `ability_fired = true`
-2. **Charge resolve:** add `unmatched_count` to `attacker.resolve`
-3. **Resolve ability:** if `resolve >= resolve_max` and `effect != nil` → call effect, set `resolve_fired = true`, reset `resolve = 0`
+1. **Main ability:** if `matched_count >= min_matches` and `effect != nil` → snapshot target HP, call effect, set `ability_fired = true`, write `ABILITY` trace line with HP delta
+2. **Charge resolve:** add `unmatched_count` to `attacker.resolve`, write `CHARGE` trace line
+3. **Resolve ability:** if `resolve >= resolve_max` and `effect != nil` → snapshot HP, call effect, set `resolve_fired = true`, reset `resolve = 0`, write `RESOLVE` trace line
 
 The order matters: the main ability fires first (it may change game state), then resolve charges, then the resolve ability fires if the threshold is met (even from this roll's charge).
 
@@ -159,7 +159,7 @@ Passives are always-on effects that fire at specific trigger points. Each charac
 
 ## What NOT to Do
 
-- Do not call `resolve_abilities` directly. It's called by `resolve_roll` in `combat.odin` which handles the full resolution pipeline including logging.
+- Do not extract the resolution pipeline out of `resolve_roll` into a separate proc without also moving the intermediate HP snapshot logic and trace calls — they are coupled.
 - Do not read `attacker.roll` inside an effect proc — use the `roll` parameter instead. They point to the same data, but using the parameter makes the contract explicit.
 - Do not assume `target` is non-nil. In `resolve_abilities`, the target is checked before calling, but future changes should be defensive.
 - Do not add new abilities without a corresponding describe procedure. The UI expects it.

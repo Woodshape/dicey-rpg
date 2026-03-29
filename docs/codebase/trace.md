@@ -1,0 +1,120 @@
+# Trace — Unified Game Log
+
+**File:** `src/trace.odin`
+**Output:** `game_log.txt`
+
+## Responsibilities
+
+- Write every player decision (PICK, ROLL, DISCARD, DONE, ASSIGN) to `game_log.txt` for replay
+- Write every outcome event (VALUES, SKULL, MATCH, ABILITY, RESOLVE, CHARGE, HP, etc.) to `game_log.txt` for diagnostics
+- Provide the only persistent out-of-game record of a session
+
+This replaces the old `combat_log.txt` file output. The in-game ring buffer (`Combat_Log`) remains for the player but no longer writes to disk.
+
+## Architecture
+
+### Trace_Log Struct
+
+`Trace_Log` lives on `Game_State`. It holds the file handle and an `enabled` flag.
+
+```odin
+Trace_Log :: struct {
+    file_handle:  os.Handle,
+    file_enabled: bool,
+}
+```
+
+### Lifecycle
+
+- `trace_init(trace, seed, encounter)` — called once at startup. Opens `game_log.txt` (truncates if it exists), writes `SEED` and `ENCOUNTER` header lines, sets `file_enabled = true`.
+- `trace_close(trace)` — called on exit. Closes the file handle.
+- `trace_round(trace, n)` — called at the start of each round to write a `ROUND N` marker.
+
+### Two Line Classes
+
+Every line in `game_log.txt` is one of two classes:
+
+**Decision lines** — drive replay in `sim/main.odin`:
+```
+SEED <u64>
+ENCOUNTER <name>
+ROUND <n>
+PICK <pool_idx> <die_type> hand
+PICK <pool_idx> <die_type> char <ci>
+ASSIGN <hand_idx> <die_type> char <ci>
+ROLL <ci> <die1> <die2> ...
+DISCARD <hand_idx> <die_type>
+DONE
+```
+
+`ASSIGN` records hand→character drag moves (free action, no turn cost). These are the moves that were previously untraced and caused state drift in replays. `ROLL` still records the final assigned dice as ground truth — the replay uses `ASSIGN` lines to build up the assignment incrementally and only falls back to force-assigning from `ROLL` for traces that pre-date this format.
+
+**Event lines** — diagnostics only; `HP` lines are also parsed for diff output:
+```
+VALUES <name> <v1> <v2> ...        (normal dice values only, skulls omitted)
+SKULL <attacker> <count> <dmg> <target>
+MATCH <name> <matched_count> <matched_value>
+HP <name> <hp>                      (also parsed: last HP per character used for replay diff)
+DEAD <name>
+ABILITY <attacker> <ability> <DMG|HEAL|NONE> <amount> <target>
+RESOLVE <attacker> <ability> <DMG|HEAL|NONE> <amount> <target>
+CHARGE <name> +<amount> <resolve>/<resolve_max>
+PASSIVE <name> <passive_name>
+COND <name> <kind> <value> <remaining>
+EPICK <pool_idx> <die_type> <dest>  (enemy pick — char name or "hand")
+EROLL <name> <die1> <die2> ...      (enemy roll — assigned dice)
+EDONE                                (enemy done)
+```
+
+Ability and passive names with spaces have spaces replaced by underscores in event lines.
+
+### Call Sites
+
+Decision procs are called from `combat.odin` and `game.odin` at player action points.
+Event procs are called from `combat.odin` (inside `resolve_roll`) and `ai.odin` (enemy actions).
+
+| Proc | Called from | When |
+|------|-------------|------|
+| `trace_init` | `main.odin` | Application start |
+| `trace_close` | `main.odin` | Application exit |
+| `trace_round` | `combat.odin` | Round transition |
+| `trace_pick` | `combat.odin` | Player picks from pool |
+| `trace_assign` | `game.odin` | Player drags hand die to character |
+| `trace_roll` | `combat.odin` | Player rolls a character |
+| `trace_discard` | `combat.odin` | Player discards from hand |
+| `trace_done` | `combat.odin` | Player presses Done |
+| `trace_values` | `combat.odin` | After rolling, before resolution |
+| `trace_skull` | `combat.odin` | After skull damage applied |
+| `trace_match` | `combat.odin` | After match detection |
+| `trace_hp` | `combat.odin` | After HP changes |
+| `trace_dead` | `combat.odin` | When a character dies |
+| `trace_ability` | `combat.odin` | After main ability fires |
+| `trace_resolve_ability` | `combat.odin` | After resolve ability fires |
+| `trace_charge` | `combat.odin` | After resolve meter charges |
+| `trace_passive` | `combat.odin` | After passive fires |
+| `trace_cond` | `ability.odin` | After a condition is applied |
+| `trace_epick` | `ai.odin` | After enemy picks from pool |
+| `trace_eroll` | `ai.odin` | Before enemy rolls a character |
+| `trace_edone` | `ai.odin` | When enemy is done rolling |
+
+## Replay
+
+`sim/trace.odin` parses `game_log.txt` into a `Trace_Reader`:
+- Decision lines (`PICK`, `ASSIGN`, `ROLL`, `DISCARD`, `DONE`, `ROUND`) are parsed into the `[dynamic]Trace_Action` array.
+- `HP` event lines are parsed into `Trace_Reader.baseline_hp` (a `map[string]int`, last HP per character name) for diff output.
+- All other event lines are explicitly recognised and skipped. Unknown keywords cause a parse error (no silent skipping).
+
+`sim/main.odin` drives replay via `--replay=game_log.txt`. Player decisions come from the trace; the enemy side remains AI-driven. After the game ends, a diff table compares each character's final HP in the replay against the original run's last HP event.
+
+## Best Practices
+
+- The trace is append-free — only one file is ever open, opened with `O_TRUNC` at startup.
+- Trace procs are no-ops when `file_enabled = false` (e.g., during tests).
+- Event line values are snapshots: HP after the event, resolve after charging.
+- Ability names use underscores (not spaces) so the parser can split on spaces.
+
+## What NOT to Do
+
+- Do not call `trace_init` in tests — it creates a file on disk.
+- Do not add new keywords without also adding them to the `case` list in `sim/trace.odin` (prevents replay parse errors when event lines encounter unknown keywords).
+- Do not use `trace_write` directly for new event types — add a dedicated proc for type safety and discoverability.

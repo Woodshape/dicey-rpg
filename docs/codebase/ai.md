@@ -20,7 +20,7 @@
 ```
 1. Assign any compatible dice from hand to characters (free)
 2. Find the best die in the pool via ai_pick_best_pool_die
-3. If found → remove from pool, add to hand, assign from hand, log the action
+3. If found → remove from pool, add to hand, assign from hand, log + trace_epick
 4. If not found and hand is full → discard least useful die, then pick index 0 as fallback
 5. If not found and pool is empty → advance to combat phase
 6. Advance phase: pool empty → Combat_Player_Turn or Combat_Enemy_Turn (based on first_pick);
@@ -33,9 +33,9 @@
 
 ```
 1. Assign any compatible dice from hand to characters (free)
-2. If any character should roll → roll it, resolve, advance to Enemy_Roll_Result
+2. If any character should roll → trace_eroll, roll it, resolve, advance to Enemy_Roll_Result
 3. If hand is full and no die is usable → discard the least useful die
-4. If nothing left to roll → advance to Round_End
+4. If nothing left to roll → trace_edone, advance to Round_End
 ```
 
 There is no per-die pick step in the combat phase. All picking happened during the draft.

@@ -287,7 +287,12 @@ Each milestone is independently testable. Later milestones build on earlier ones
 - [x] `src/game.odin` / `src/combat.odin`: `trace_init`, `trace_write`, `trace_close`, `trace_round` procs
 - [x] `src/combat.odin`: PICK, ROLL, DISCARD, DONE actions written to trace at each player decision point
 - [x] `src/main.odin`: trace initialised on startup, closed on exit
-- [x] `src/combat_log.odin`: file output removed (ring buffer only); simulator `--combat` mode still writes `combat_log.txt`
+- [x] `src/combat_log.odin`: file output removed entirely (ring buffer only)
+- [x] `src/trace.odin`: unified game log (`game_log.txt`) with 13 new event procs (VALUES, SKULL, MATCH, ABILITY, RESOLVE, CHARGE, HP, DEAD, PASSIVE, COND, EPICK, EROLL, EDONE)
+- [x] `src/combat.odin`: ability pipeline inlined in `resolve_roll` with intermediate HP snapshots for trace events
+- [x] `src/ai.odin`: enemy actions traced via EPICK, EROLL, EDONE
+- [x] `src/ability.odin`: `handle_abilities` proc removed (inlined); COND trace calls added in shield/hex effects
+- [x] `sim/main.odin`: `--combat` mode removed; `sim/trace.odin` updated with explicit `case` for all 13 event keywords
 - [x] `sim/trace.odin`: full trace file parser — `Trace_Reader`, `Trace_Action` union, `trace_reader_load`, `trace_peek`, `trace_next`, `trace_parse_die_type`
 - [x] `sim/main.odin`: `--replay=<file>` flag, `run_replay` proc drives player side from trace while enemy remains AI-driven
 - [x] Replay handles untraced hand→char assignments via force-assign from ROLL line (ground truth)
