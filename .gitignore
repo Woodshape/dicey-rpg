@@ -23,5 +23,6 @@ Thumbs.db
 .claude/logs/
 debug_build
 game_log.txt
+game_log_replay.txt
 combat_log.txt
 sim_results.csv
