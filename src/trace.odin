@@ -61,25 +61,25 @@ trace_round :: proc(trace: ^Trace_Log, round_number: int) {
 	trace_write(trace, "ROUND %d", round_number)
 }
 
-// Record a PICK action: pool_index, die_type, destination.
-// dest_kind: "hand" or "char", dest_index: character index (only for "char").
-trace_pick :: proc(trace: ^Trace_Log, pool_index: int, die_type: Die_Type, to_hand: bool, char_index: int = 0) {
+// Record a PICK action: side tag, pool_index, die_type, destination.
+// side: "p" or "e". dest_kind: "hand" or "char", dest_index: character index (only for "char").
+trace_pick :: proc(trace: ^Trace_Log, side: string, pool_index: int, die_type: Die_Type, to_hand: bool, char_index: int = 0) {
 	name := DIE_TYPE_NAMES[die_type]
 	if to_hand {
-		trace_write(trace, "PICK %d %s hand", pool_index, name)
+		trace_write(trace, "PICK %s %d %s hand", side, pool_index, name)
 	} else {
-		trace_write(trace, "PICK %d %s char %d", pool_index, name, char_index)
+		trace_write(trace, "PICK %s %d %s char %d", side, pool_index, name, char_index)
 	}
 }
 
-// Record a ROLL action: character index + assigned dice as ground truth.
-trace_roll :: proc(trace: ^Trace_Log, char_index: int, character: ^Character) {
+// Record a ROLL action: side tag, character index + assigned dice as ground truth.
+trace_roll :: proc(trace: ^Trace_Log, side: string, char_index: int, character: ^Character) {
 	if !trace.file_enabled {return}
 
 	// Build the dice list string
 	buf: [128]u8
 	pos := 0
-	result := fmt.bprintf(buf[:], "ROLL %d", char_index)
+	result := fmt.bprintf(buf[:], "ROLL %s %d", side, char_index)
 	pos = len(result)
 
 	for i in 0 ..< character.assigned_count {
@@ -93,19 +93,19 @@ trace_roll :: proc(trace: ^Trace_Log, char_index: int, character: ^Character) {
 	os.write_string(trace.file_handle, "\n")
 }
 
-// Record a DISCARD action.
-trace_discard :: proc(trace: ^Trace_Log, hand_index: int, die_type: Die_Type) {
-	trace_write(trace, "DISCARD %d %s", hand_index, DIE_TYPE_NAMES[die_type])
+// Record a DISCARD action: side tag, hand_index, die_type.
+trace_discard :: proc(trace: ^Trace_Log, side: string, hand_index: int, die_type: Die_Type) {
+	trace_write(trace, "DISCARD %s %d %s", side, hand_index, DIE_TYPE_NAMES[die_type])
 }
 
-// Record an ASSIGN action: a hand die was moved to a character slot (free action).
-trace_assign :: proc(trace: ^Trace_Log, hand_index: int, die_type: Die_Type, char_index: int) {
-	trace_write(trace, "ASSIGN %d %s char %d", hand_index, DIE_TYPE_NAMES[die_type], char_index)
+// Record an ASSIGN action: side tag, hand die moved to a character slot (free action).
+trace_assign :: proc(trace: ^Trace_Log, side: string, hand_index: int, die_type: Die_Type, char_index: int) {
+	trace_write(trace, "ASSIGN %s %d %s char %d", side, hand_index, DIE_TYPE_NAMES[die_type], char_index)
 }
 
-// Record a DONE action (player skips remaining rolls).
-trace_done :: proc(trace: ^Trace_Log) {
-	trace_write(trace, "DONE")
+// Record a DONE action: side tag (side finishes rolling).
+trace_done :: proc(trace: ^Trace_Log, side: string) {
+	trace_write(trace, "DONE %s", side)
 }
 
 // --- Event trace procs (diagnostics only, not used for replay) ---
@@ -287,33 +287,3 @@ trace_cond :: proc(trace: ^Trace_Log, tag: string, ch: ^Character, cond: ^Condit
 	)
 }
 
-// EPICK <pool_idx> <die_type> <dest>
-// dest is "hand" or "<tag> <char_name>" (e.g. "e0 Goblin")
-trace_epick :: proc(trace: ^Trace_Log, pool_idx: int, die_type: Die_Type, dest: string) {
-	trace_write(trace, "EPICK %d %s %s", pool_idx, DIE_TYPE_NAMES[die_type], dest)
-}
-
-// EROLL <tag> <name> <die1> <die2> ...  (enemy assigned dice before roll)
-trace_eroll :: proc(trace: ^Trace_Log, tag: string, attacker: ^Character) {
-	if !trace.file_enabled {return}
-
-	buf: [512]u8
-	pos := 0
-
-	result := fmt.bprintf(buf[:], "EROLL %s %s", tag, attacker.name)
-	pos = len(result)
-
-	for i in 0 ..< attacker.assigned_count {
-		name := DIE_TYPE_NAMES[attacker.assigned[i]]
-		space := fmt.bprintf(buf[pos:], " %s", name)
-		pos += len(space)
-	}
-
-	os.write(trace.file_handle, buf[:pos])
-	os.write_string(trace.file_handle, "\n")
-}
-
-// EDONE
-trace_edone :: proc(trace: ^Trace_Log) {
-	trace_write(trace, "EDONE")
-}

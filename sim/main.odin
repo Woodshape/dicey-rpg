@@ -18,6 +18,7 @@ Sim_Config :: struct {
 	csv_path:  string,
 	no_skulls: bool,
 	replay:    string, // path to a decision trace file for replay mode
+	trace:     bool,  // write game_log.txt for the first game (requires --rounds=1)
 }
 
 main :: proc() {
@@ -78,7 +79,13 @@ main :: proc() {
 			init_char_stats_meta(&game_stats.enemy_chars[i], &gs.enemy_party.characters[i])
 		}
 
+		if config.trace && round == 0 {
+			game.trace_init(&gs.trace, game_seed, config.encounter)
+		}
 		run_game(&gs, &game_stats, rolls)
+		if config.trace && round == 0 {
+			game.trace_close(&gs.trace)
+		}
 
 		all_stats[round] = game_stats
 		aggregate_add(&agg, &game_stats)
@@ -523,7 +530,7 @@ replay_draft_player_pick :: proc(gs: ^game.Game_State, reader: ^Trace_Reader) ->
 		}
 		game.character_assign_die(&gs.player_party.characters[pick.char_index], pick.die_type)
 	}
-	game.trace_pick(&gs.trace, actual_idx, pick.die_type, pick.to_hand, pick.char_index)
+	game.trace_pick(&gs.trace, "p", actual_idx, pick.die_type, pick.to_hand, pick.char_index)
 
 	// Advance turn phase (mirrors draft_player_pick_update)
 	if game.pool_is_empty(&gs.pool) {
@@ -566,14 +573,14 @@ replay_combat_player_turn :: proc(gs: ^game.Game_State, reader: ^Trace_Reader) -
 		}
 		attacker.assigned_count = a.dice_count
 		target := game.get_target(&gs.enemy_party, ci)
-		game.trace_roll(&gs.trace, ci, attacker)
+		game.trace_roll(&gs.trace, "p", ci, attacker)
 		game.character_roll(attacker)
 		game.resolve_roll(gs, attacker, target)
 		gs.rolling_index = ci
 		gs.turn = .Player_Roll_Result
 
 	case Trace_Done:
-		game.trace_done(&gs.trace)
+		game.trace_done(&gs.trace, "p")
 		gs.turn = .Combat_Enemy_Turn
 
 	case:
@@ -601,7 +608,7 @@ replay_consume_free_actions :: proc(gs: ^game.Game_State, reader: ^Trace_Reader)
 					if gs.hand.dice[i] == a.die_type && game.character_can_assign_die(ch, a.die_type) {
 						game.hand_remove(&gs.hand, i)
 						game.character_assign_die(ch, a.die_type)
-						game.trace_assign(&gs.trace, i, a.die_type, a.char_index)
+						game.trace_assign(&gs.trace, "p", i, a.die_type, a.char_index)
 						break
 					}
 				}
@@ -610,7 +617,7 @@ replay_consume_free_actions :: proc(gs: ^game.Game_State, reader: ^Trace_Reader)
 			trace_next(reader)
 			for i in 0 ..< gs.hand.count {
 				if gs.hand.dice[i] == a.die_type {
-					game.trace_discard(&gs.trace, i, a.die_type)
+					game.trace_discard(&gs.trace, "p", i, a.die_type)
 					game.hand_discard(&gs.hand, i)
 					break
 				}
@@ -709,6 +716,8 @@ parse_args :: proc() -> Sim_Config {
 			config.csv_path = arg[len("--csv="):]
 		} else if arg == "--no-skulls" {
 			config.no_skulls = true
+		} else if arg == "--trace" {
+			config.trace = true
 		} else if strings.has_prefix(arg, "--replay=") {
 			config.replay = arg[len("--replay="):]
 		} else {
@@ -728,5 +737,6 @@ print_usage :: proc() {
 	fmt.eprintln("  --seed=N          RNG seed (default: current time)")
 	fmt.eprintln("  --csv=PATH        CSV output path (default: sim_results.csv)")
 	fmt.eprintln("  --no-skulls       Disable skull dice in the pool")
+	fmt.eprintln("  --trace           Write game_log.txt for the first simulated game")
 	fmt.eprintln("  --replay=PATH     Replay a decision trace (game_log.txt)")
 }

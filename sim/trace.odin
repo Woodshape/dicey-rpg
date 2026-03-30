@@ -16,6 +16,7 @@ Trace_Round :: struct {
 }
 
 Trace_Pick :: struct {
+	side:       string, // "p" or "e"
 	pool_index: int,
 	die_type:   game.Die_Type,
 	to_hand:    bool,
@@ -23,19 +24,24 @@ Trace_Pick :: struct {
 }
 
 Trace_Roll :: struct {
+	side:       string, // "p" or "e"
 	char_index: int,
 	dice:       [game.MAX_CHARACTER_DICE]game.Die_Type,
 	dice_count: int,
 }
 
 Trace_Discard :: struct {
+	side:       string, // "p" or "e"
 	hand_index: int,
 	die_type:   game.Die_Type,
 }
 
-Trace_Done :: struct {}
+Trace_Done :: struct {
+	side: string, // "p" or "e"
+}
 
 Trace_Assign :: struct {
+	side:       string, // "p" or "e"
 	hand_index: int,
 	die_type:   game.Die_Type,
 	char_index: int,
@@ -123,60 +129,63 @@ trace_reader_load :: proc(path: string) -> (reader: Trace_Reader, ok: bool) {
 			append(&reader.actions, Trace_Round{number = n})
 
 		case "PICK":
-			// PICK <pool_idx> <die_type> hand
-			// PICK <pool_idx> <die_type> char <ci>
-			if len(parts) < 4 {
+			// PICK <side> <pool_idx> <die_type> hand
+			// PICK <side> <pool_idx> <die_type> char <ci>
+			if len(parts) < 5 {
 				fmt.eprintfln("trace: line %d: malformed PICK", line_num)
 				return
 			}
-			pool_idx, idx_ok := strconv.parse_int(parts[1])
+			side := parts[1]
+			pool_idx, idx_ok := strconv.parse_int(parts[2])
 			if !idx_ok {
-				fmt.eprintfln("trace: line %d: bad PICK pool_index: %s", line_num, parts[1])
+				fmt.eprintfln("trace: line %d: bad PICK pool_index: %s", line_num, parts[2])
 				return
 			}
-			die_type, dt_ok := trace_parse_die_type(parts[2])
+			die_type, dt_ok := trace_parse_die_type(parts[3])
 			if !dt_ok {
-				fmt.eprintfln("trace: line %d: unknown die type: %s", line_num, parts[2])
+				fmt.eprintfln("trace: line %d: unknown die type: %s", line_num, parts[3])
 				return
 			}
-			pick := Trace_Pick{pool_index = pool_idx, die_type = die_type}
-			switch parts[3] {
+			pick := Trace_Pick{side = side, pool_index = pool_idx, die_type = die_type}
+			switch parts[4] {
 			case "hand":
-				if len(parts) != 4 {
+				if len(parts) != 5 {
 					fmt.eprintfln("trace: line %d: malformed PICK hand", line_num)
 					return
 				}
 				pick.to_hand = true
 			case "char":
-				if len(parts) != 5 {
+				if len(parts) != 6 {
 					fmt.eprintfln("trace: line %d: malformed PICK char", line_num)
 					return
 				}
-				ci, ci_ok := strconv.parse_int(parts[4])
+				ci, ci_ok := strconv.parse_int(parts[5])
 				if !ci_ok {
-					fmt.eprintfln("trace: line %d: bad PICK char_index: %s", line_num, parts[4])
+					fmt.eprintfln("trace: line %d: bad PICK char_index: %s", line_num, parts[5])
 					return
 				}
 				pick.char_index = ci
 			case:
-				fmt.eprintfln("trace: line %d: unknown PICK destination: %s", line_num, parts[3])
+				fmt.eprintfln("trace: line %d: unknown PICK destination: %s", line_num, parts[4])
 				return
 			}
+			if side == "e" {continue} // enemy decisions are AI-driven in replay
 			append(&reader.actions, pick)
 
 		case "ROLL":
-			// ROLL <ci> [<die> ...]
-			if len(parts) < 2 {
+			// ROLL <side> <ci> [<die> ...]
+			if len(parts) < 3 {
 				fmt.eprintfln("trace: line %d: malformed ROLL", line_num)
 				return
 			}
-			ci, ci_ok := strconv.parse_int(parts[1])
+			side := parts[1]
+			ci, ci_ok := strconv.parse_int(parts[2])
 			if !ci_ok {
-				fmt.eprintfln("trace: line %d: bad ROLL char_index: %s", line_num, parts[1])
+				fmt.eprintfln("trace: line %d: bad ROLL char_index: %s", line_num, parts[2])
 				return
 			}
-			roll := Trace_Roll{char_index = ci}
-			for i in 2 ..< len(parts) {
+			roll := Trace_Roll{side = side, char_index = ci}
+			for i in 3 ..< len(parts) {
 				if roll.dice_count >= game.MAX_CHARACTER_DICE {
 					fmt.eprintfln("trace: line %d: too many dice in ROLL", line_num)
 					return
@@ -189,58 +198,67 @@ trace_reader_load :: proc(path: string) -> (reader: Trace_Reader, ok: bool) {
 				roll.dice[roll.dice_count] = dt
 				roll.dice_count += 1
 			}
+			if side == "e" {continue}
 			append(&reader.actions, roll)
 
 		case "DISCARD":
-			if len(parts) != 3 {
+			// DISCARD <side> <hand_idx> <die_type>
+			if len(parts) != 4 {
 				fmt.eprintfln("trace: line %d: malformed DISCARD", line_num)
 				return
 			}
-			hand_idx, hi_ok := strconv.parse_int(parts[1])
+			side := parts[1]
+			hand_idx, hi_ok := strconv.parse_int(parts[2])
 			if !hi_ok {
-				fmt.eprintfln("trace: line %d: bad DISCARD hand_index: %s", line_num, parts[1])
+				fmt.eprintfln("trace: line %d: bad DISCARD hand_index: %s", line_num, parts[2])
 				return
 			}
-			die_type, dt_ok := trace_parse_die_type(parts[2])
+			die_type, dt_ok := trace_parse_die_type(parts[3])
 			if !dt_ok {
-				fmt.eprintfln("trace: line %d: unknown die type: %s", line_num, parts[2])
+				fmt.eprintfln("trace: line %d: unknown die type: %s", line_num, parts[3])
 				return
 			}
-			append(&reader.actions, Trace_Discard{hand_index = hand_idx, die_type = die_type})
+			if side == "e" {continue}
+			append(&reader.actions, Trace_Discard{side = side, hand_index = hand_idx, die_type = die_type})
 
 		case "DONE":
-			if len(parts) != 1 {
+			// DONE <side>
+			if len(parts) != 2 {
 				fmt.eprintfln("trace: line %d: malformed DONE", line_num)
 				return
 			}
-			append(&reader.actions, Trace_Done{})
+			side := parts[1]
+			if side == "e" {continue}
+			append(&reader.actions, Trace_Done{side = side})
 
 		case "ASSIGN":
-			// ASSIGN <hand_idx> <die_type> char <ci>
-			if len(parts) != 5 {
+			// ASSIGN <side> <hand_idx> <die_type> char <ci>
+			if len(parts) != 6 {
 				fmt.eprintfln("trace: line %d: malformed ASSIGN", line_num)
 				return
 			}
-			hand_idx, hi_ok := strconv.parse_int(parts[1])
+			side := parts[1]
+			hand_idx, hi_ok := strconv.parse_int(parts[2])
 			if !hi_ok {
-				fmt.eprintfln("trace: line %d: bad ASSIGN hand_index: %s", line_num, parts[1])
+				fmt.eprintfln("trace: line %d: bad ASSIGN hand_index: %s", line_num, parts[2])
 				return
 			}
-			die_type, dt_ok := trace_parse_die_type(parts[2])
+			die_type, dt_ok := trace_parse_die_type(parts[3])
 			if !dt_ok {
-				fmt.eprintfln("trace: line %d: unknown die type: %s", line_num, parts[2])
+				fmt.eprintfln("trace: line %d: unknown die type: %s", line_num, parts[3])
 				return
 			}
-			if parts[3] != "char" {
-				fmt.eprintfln("trace: line %d: expected 'char' in ASSIGN, got: %s", line_num, parts[3])
+			if parts[4] != "char" {
+				fmt.eprintfln("trace: line %d: expected 'char' in ASSIGN, got: %s", line_num, parts[4])
 				return
 			}
-			ci, ci_ok := strconv.parse_int(parts[4])
+			ci, ci_ok := strconv.parse_int(parts[5])
 			if !ci_ok {
-				fmt.eprintfln("trace: line %d: bad ASSIGN char_index: %s", line_num, parts[4])
+				fmt.eprintfln("trace: line %d: bad ASSIGN char_index: %s", line_num, parts[5])
 				return
 			}
-			append(&reader.actions, Trace_Assign{hand_index = hand_idx, die_type = die_type, char_index = ci})
+			if side == "e" {continue}
+			append(&reader.actions, Trace_Assign{side = side, hand_index = hand_idx, die_type = die_type, char_index = ci})
 
 		case "HP":
 			// Event line — HP <tag> <name> <hp>
@@ -259,7 +277,7 @@ trace_reader_load :: proc(path: string) -> (reader: Trace_Reader, ok: bool) {
 			}
 
 		case "VALUES", "SKULL", "MATCH", "ABILITY", "RESOLVE", "CHARGE", "PASSIVE",
-		     "DEAD", "COND", "EPICK", "EROLL", "EDONE":
+		     "DEAD", "COND":
 			// Event lines — diagnostics only, not used for replay
 			continue
 

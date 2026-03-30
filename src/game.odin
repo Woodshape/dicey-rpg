@@ -140,7 +140,7 @@ try_drop :: proc(gs: ^Game_State, mouse_x, mouse_y: i32) -> bool {
 		hand_slot := mouse_to_hand_slot(mouse_x, mouse_y)
 		in_hand := hand_slot >= 0 || mouse_in_hand_region(mouse_x, mouse_y)
 		if in_hand && !hand_is_full(&gs.hand) {
-			trace_pick(&gs.trace, gs.drag.pool_index, gs.drag.die_type, true)
+			trace_pick(&gs.trace, "p", gs.drag.pool_index, gs.drag.die_type, true)
 			pool_remove_die(&gs.pool, gs.drag.pool_index)
 			hand_add(&gs.hand, gs.drag.die_type)
 			combat_log_write(&gs.log, "You pick %s -> hand", DIE_TYPE_NAMES[gs.drag.die_type])
@@ -150,7 +150,7 @@ try_drop :: proc(gs: ^Game_State, mouse_x, mouse_y: i32) -> bool {
 		// Pool to character (Pick action — ends draft turn)
 		ci, _ := mouse_to_party_char_slot(&gs.player_party, CHAR_PANEL_X, mouse_x, mouse_y)
 		if ci >= 0 && character_can_assign_die(&gs.player_party.characters[ci], gs.drag.die_type) {
-			trace_pick(&gs.trace, gs.drag.pool_index, gs.drag.die_type, false, ci)
+			trace_pick(&gs.trace, "p", gs.drag.pool_index, gs.drag.die_type, false, ci)
 			pool_remove_die(&gs.pool, gs.drag.pool_index)
 			character_assign_die(&gs.player_party.characters[ci], gs.drag.die_type)
 			combat_log_write(&gs.log, "You pick %s -> %s", DIE_TYPE_NAMES[gs.drag.die_type], gs.player_party.characters[ci].name)
@@ -162,7 +162,7 @@ try_drop :: proc(gs: ^Game_State, mouse_x, mouse_y: i32) -> bool {
 		ci, _ := mouse_to_party_char_slot(&gs.player_party, CHAR_PANEL_X, mouse_x, mouse_y)
 		ch := ci >= 0 ? &gs.player_party.characters[ci] : nil
 		if ch != nil && !ch.has_acted && character_can_assign_die(ch, gs.drag.die_type) {
-			trace_assign(&gs.trace, gs.drag.index, gs.drag.die_type, ci)
+			trace_assign(&gs.trace, "p", gs.drag.index, gs.drag.die_type, ci)
 			hand_remove(&gs.hand, gs.drag.index)
 			character_assign_die(ch, gs.drag.die_type)
 		}

@@ -152,6 +152,7 @@ resolve_roll :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character) 
 	// Log rolled values for auditability
 	log_rolled_values(gs, attacker, roll)
 	trace_values(&gs.trace, atag, attacker)
+	trace_match(&gs.trace, atag, attacker)
 
 	// Fire On_Roll passives first (e.g. Iron Skin applies DEF before any damage)
 	fire_on_roll_passive(gs, attacker, target)
@@ -312,8 +313,6 @@ resolve_roll :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character) 
 			attacker.resolve_max,
 		)
 	}
-
-	trace_match(&gs.trace, atag, attacker)
 
 	// Log resolve ability with target and HP
 	if attacker.resolve_fired {
@@ -477,7 +476,7 @@ draft_player_pick_update :: proc(gs: ^Game_State, input: Input_State) {
 		slot := mouse_to_hand_slot(input.mouse_x, input.mouse_y)
 		if slot >= 0 && slot < gs.hand.count && hand_can_discard(&gs.hand, slot) {
 			die_type := gs.hand.dice[slot]
-			trace_discard(&gs.trace, slot, die_type)
+			trace_discard(&gs.trace, "p", slot, die_type)
 			hand_discard(&gs.hand, slot)
 			combat_log_write(&gs.log, "You discard %s", DIE_TYPE_NAMES[die_type])
 		}
@@ -527,7 +526,7 @@ combat_player_turn_update :: proc(gs: ^Game_State, input: Input_State) {
 		slot := mouse_to_hand_slot(input.mouse_x, input.mouse_y)
 		if slot >= 0 && slot < gs.hand.count && hand_can_discard(&gs.hand, slot) {
 			die_type := gs.hand.dice[slot]
-			trace_discard(&gs.trace, slot, die_type)
+			trace_discard(&gs.trace, "p", slot, die_type)
 			hand_discard(&gs.hand, slot)
 			combat_log_write(&gs.log, "You discard %s", DIE_TYPE_NAMES[die_type])
 		}
@@ -538,7 +537,7 @@ combat_player_turn_update :: proc(gs: ^Game_State, input: Input_State) {
 		roll_ci := mouse_on_party_roll_button(&gs.player_party, CHAR_PANEL_X, input.mouse_x, input.mouse_y)
 		if roll_ci >= 0 {
 			attacker := &gs.player_party.characters[roll_ci]
-			trace_roll(&gs.trace, roll_ci, attacker)
+			trace_roll(&gs.trace, "p", roll_ci, attacker)
 			target := get_target(&gs.enemy_party, roll_ci)
 			character_roll(attacker)
 			resolve_roll(gs, attacker, target)
@@ -549,7 +548,7 @@ combat_player_turn_update :: proc(gs: ^Game_State, input: Input_State) {
 
 		// Done button — skip remaining rolls, advance to enemy
 		if mouse_on_done_button(input.mouse_x, input.mouse_y) {
-			trace_done(&gs.trace)
+			trace_done(&gs.trace, "p")
 			gs.turn = .Combat_Enemy_Turn
 			return
 		}

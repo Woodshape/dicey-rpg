@@ -1,7 +1,5 @@
 package game
 
-import "core:fmt"
-
 // --- Draft Phase AI ---
 
 // AI picks the best die from the pool during Draft_Enemy_Pick.
@@ -32,7 +30,7 @@ ai_draft_pick :: proc(gs: ^Game_State) {
 					hand_add(&gs.enemy_hand, die_type)
 					ai_assign_from_hand(gs)
 					combat_log_write(&gs.log, "Enemy picks %s -> hand", DIE_TYPE_NAMES[die_type])
-					trace_epick(&gs.trace, 0, die_type, "hand")
+					trace_pick(&gs.trace, "e", 0, die_type, true)
 				}
 			}
 		}
@@ -43,23 +41,27 @@ ai_draft_pick :: proc(gs: ^Game_State) {
 			hand_before := gs.enemy_hand.count
 			ai_assign_from_hand(gs)
 			if gs.enemy_hand.count < hand_before {
-				// Find which enemy character received the die and build tag+name dest
+				// Find which enemy character received the die
 				dest_log: cstring = "hand"
-				dest_trace: string = "hand"
+				dest_ci := -1
 				for ci in 0 ..< gs.enemy_party.count {
 					ch := &gs.enemy_party.characters[ci]
-					if !character_is_alive(ch) { continue }
+					if !character_is_alive(ch) {continue}
 					if ch.assigned_count > 0 && ch.assigned[ch.assigned_count - 1] == die_type {
 						dest_log = ch.name
-						dest_trace = fmt.tprintf("e%d %s", ci, ch.name)
+						dest_ci = ci
 						break
 					}
 				}
 				combat_log_write(&gs.log, "Enemy picks %s -> %s", DIE_TYPE_NAMES[die_type], dest_log)
-				trace_epick(&gs.trace, idx, die_type, dest_trace)
+				if dest_ci >= 0 {
+					trace_pick(&gs.trace, "e", idx, die_type, false, dest_ci)
+				} else {
+					trace_pick(&gs.trace, "e", idx, die_type, true)
+				}
 			} else {
 				combat_log_write(&gs.log, "Enemy picks %s -> hand", DIE_TYPE_NAMES[die_type])
-				trace_epick(&gs.trace, idx, die_type, "hand")
+				trace_pick(&gs.trace, "e", idx, die_type, true)
 			}
 		}
 	}
@@ -89,7 +91,7 @@ ai_combat_turn :: proc(gs: ^Game_State) {
 	if should_roll {
 		attacker := &gs.enemy_party.characters[roll_ci]
 		target := get_target(&gs.player_party, roll_ci)
-		trace_eroll(&gs.trace, fmt.tprintf("e%d", roll_ci), attacker)
+		trace_roll(&gs.trace, "e", roll_ci, attacker)
 		character_roll(attacker)
 		resolve_roll(gs, attacker, target)
 		gs.rolling_index = roll_ci
@@ -109,7 +111,7 @@ ai_combat_turn :: proc(gs: ^Game_State) {
 	}
 
 	// Nothing left to roll — end the round
-	trace_edone(&gs.trace)
+	trace_done(&gs.trace, "e")
 	gs.turn = .Round_End
 }
 
