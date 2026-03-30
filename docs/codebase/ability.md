@@ -62,6 +62,25 @@ attacker_party :: proc(gs: ^Game_State, attacker: ^Character) -> ^Party
 | `.Value` | Scales with `roll.matched_value` | d10/d12 (high face values) |
 | `.Hybrid` | Uses both axes (e.g., `matched_count * matched_value`) | d6/d8 (balanced) |
 
+### Enhanced Mode
+
+Each ability can have an **enhanced mode** that activates when `[VALUE] >= value_threshold`. The threshold is configured per-ability in `.cfg` files (`value_threshold` field, default 0 = no enhanced mode). The behavior change is unique to each ability — it's code in the proc, not a generic bonus.
+
+Check: `ability_is_enhanced(&ability, matched_value)` in `dice.odin`.
+
+| Ability | Normal | Enhanced ([V] >= threshold) |
+|---------|--------|---------------------------|
+| Flurry | [V] dmg × [M] hits, reduced by DEF | Same but **ignores DEF** (PIERCING) |
+| Fireball | [M] × [V] dmg, reduced by DEF | Same but **ignores DEF** (PIERCING) |
+| Smite | [V] dmg, reduced by DEF | Same but **ignores DEF** (PIERCING) |
+| Heal | Restore [V] HP to self | Also heals **lowest-HP ally** (PARTY HEAL) |
+| Shield | Shield lowest-HP ally for [V] | Shields **all alive allies** (PARTY SHIELD) |
+| Hex | -1 DEF for 3 turns | **-2 DEF** for 3 turns (DEEP HEX) |
+
+Describe procs append a keyword tag when enhanced (e.g. `"9 dmg x 3 hits (PIERCING)"`).
+
+Only reachable by d8+ dice (threshold=8 default). d4 (max [V]=4) and d6 (max [V]=6) can never trigger enhanced mode. This is the primary mechanical reward for drafting big dice.
+
 ### Resolution Pipeline
 
 The resolution pipeline is inlined directly in `resolve_roll` in `combat.odin` (not a separate proc). Steps, in order:

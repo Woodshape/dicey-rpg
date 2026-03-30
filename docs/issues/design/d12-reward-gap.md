@@ -14,14 +14,37 @@ The gamble of committing to d12s doesn't feel rewarding enough relative to the s
 
 Players (and AI) have weak incentive to draft big dice. The "Paladin fantasy" — committing to d12s for devastating single blows — underdelivers. Small dice are almost always the rational choice because consistency dominates.
 
-## Possible Fixes
+## Fix Applied: Enhanced Mode (2026-03-30)
 
-- **Non-linear [VALUE] scaling in abilities:** e.g. `[V]²/4` instead of `[V]` — makes high values disproportionately powerful
-- **[VALUE] threshold bonuses:** abilities deal bonus damage when [V] >= 8 or >= 10 — rewards high rolls
-- **Per-die-type ability variants:** value-scaling abilities could have higher base multipliers than match-scaling ones
-- **d12 match bonus:** give d12 a small inherent bonus when it does match (e.g. +2 [VALUE]) to widen the gap
+Abilities now have an **enhanced mode** that activates when `[VALUE] >= value_threshold`. The threshold is per-ability in `.cfg` files. The behavior change is qualitative — not a flat damage bonus, but a fundamentally different effect.
+
+| Ability | Normal | Enhanced ([V] >= 8) |
+|---------|--------|---------------------|
+| Flurry | [V] dmg × [M] hits, reduced by DEF | **Ignores DEF** (PIERCING) |
+| Fireball | [M] × [V] dmg, reduced by DEF | **Ignores DEF** (PIERCING) |
+| Smite | [V] dmg, reduced by DEF | **Ignores DEF** (PIERCING) |
+| Heal | Restore [V] HP to self | Also heals **lowest-HP ally** (PARTY HEAL) |
+| Shield | Shield lowest-HP ally for [V] | Shields **all alive allies** (PARTY SHIELD) |
+| Hex | -1 DEF for 3 turns | **-2 DEF** for 3 turns (DEEP HEX) |
+
+### Why this works
+
+- d4 (max [V]=4) and d6 (max [V]=6) can **never** trigger enhanced mode at threshold=8
+- d8 triggers occasionally (when [V]=8, probability depends on match group)
+- d10/d12 trigger frequently — this is their payoff for low match rates
+- The behavioral change (ignoring DEF, party-wide effects) is qualitatively different, not just "more damage" — it creates moments where big dice feel dramatically more powerful
+
+### Design
+
+- `value_threshold` on the `Ability` struct, configurable per-ability in `.cfg` files
+- `ability_is_enhanced()` helper in `dice.odin` — simple threshold check
+- Each ability proc branches on enhanced and implements its own behavior change
+- Describe procs append a keyword tag: PIERCING, PARTY HEAL, PARTY SHIELD, DEEP HEX
+
+Replaces the earlier flat value bonus system (+N damage at threshold), which was too subtle to matter in practice.
 
 ## Related
 
 - `docs/ideas/match-economy.md` — observation 1
 - `docs/ideas/characters.md` — class design (Paladin favors [VALUE])
+- `docs/codebase/ability.md` — Enhanced Mode section
