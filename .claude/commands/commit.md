@@ -35,11 +35,40 @@ For each bucket that has changes:
 
 ## Step 3: Draft commit messages
 
+Each commit message has two parts: a **subject line** and a **body**.
+
+### Subject line
+
 Follow the project's existing commit style:
 - **Lowercase**, terse, no conventional-commits prefix (no `feat:`, `fix:`, etc.)
 - Describe what changed in a few words — like a changelog entry, not a paragraph
 - For docs-only commits, prefix with `docs/` followed by the topic (e.g. `docs/ condition system`, `docs/ update plans`)
 - For code commits, describe the change directly (e.g. `shield absorption blocks damage before HP`, `ai picks highest-value die when tied`)
+
+### Body (detailed description)
+
+After a blank line, add a body that makes the commit grep-able and useful as a searchable changelog. Include:
+
+- **What changed:** which modules/systems were touched and what was added, removed, or modified
+- **Why:** the motivation — what problem this solves, what mechanic it implements, or what bug it fixes
+- **Key details:** specific procedures, structs, or constants that were added/changed — enough that `git log --grep="shield"` or `git log --grep="ai scoring"` finds the right commit
+- **Files touched:** list the changed files (one per line, prefixed with `-`)
+
+Keep it factual and concise — a few lines, not an essay. Example:
+
+```
+shield absorption blocks damage before HP
+
+Shield condition now absorbs incoming damage before it reaches character HP.
+Absorption reduces shield stacks first; excess damage passes through.
+
+- What: add absorb_damage to condition.odin, wire into resolve_attack in combat.odin
+- Why: shields were decorative — they applied but never blocked anything
+- Files:
+  - src/condition.odin
+  - src/combat.odin
+  - tests/condition_test.odin
+```
 
 Draft one message per bucket. If only one bucket has changes, there's only one commit.
 
@@ -48,7 +77,20 @@ Draft one message per bucket. If only one bucket has changes, there's only one c
 For each bucket (code first, then docs if both exist):
 
 1. `git add` only the files in that bucket — list them explicitly, never use `git add -A` or `git add .`
-2. `git commit -m "<message>"` using the drafted message — pass via HEREDOC for clean formatting
+2. `git commit` using the drafted message — pass subject + body via HEREDOC to preserve the multi-line format:
+   ```bash
+   git commit -m "$(cat <<'EOF'
+   subject line here
+
+   Body paragraph here.
+
+   - What: ...
+   - Why: ...
+   - Files:
+     - src/foo.odin
+   EOF
+   )"
+   ```
 3. Run `git status` after to confirm it worked
 
 If only one bucket has changes, make one commit. If both, make two commits in sequence (code first, docs second).
