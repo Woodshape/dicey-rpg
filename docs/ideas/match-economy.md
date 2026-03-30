@@ -68,10 +68,67 @@ Increase picks per character per round. Options:
 - Con: Persistence + weight group cycling is complex to balance
 - Con: Separate skull slots changes the skull/ability tradeoff design intent
 
-## Dependencies
+## Resolution
 
-- A without B: AI waits longer but still only gets 1.5 picks/round → minimal improvement
+**Option A was implemented** (2026-03-30). `ai_should_roll` now requires `assigned_count >= max_dice` instead of `normal_count >= 2`. Results with 1000-round sim across all rarities:
+
+| Metric | Common (3) | Rare (4) | Epic (5) | Legendary (6) |
+|--------|-----------|----------|----------|----------------|
+| Ability fire rate | 28% | 48% | 66% | 79% |
+| 0-match rolls | 72% | 52% | 34% | 21% |
+| Avg [M] | 0.6 | 1.1 | 1.7 | 2.4 |
+| Dmg/roll (Warrior) | 2.1 | 2.5 | 2.7 | 2.6 |
+| Dmg/roll (Goblin) | 3.8 | 4.7 | 5.3 | 5.6 |
+| Avg turns | 45.6 | 41.1 | 38.0 | 37.7 |
+
+Option A alone was sufficient — the dependency prediction ("useless alone") was wrong. Banking dice across rounds works because dice persist on characters between rounds. Characters accumulate 3 dice over ~2 rounds instead of rolling 2 dice every round.
+
+Options B and D remain viable for future tuning but are not needed to solve the original problem.
+
+## Post-Fix Observations
+
+### 1. [VALUE] is flat — die size tradeoff works but could be sharper
+
+Avg [V] barely changes across rarities (~5.7 at Common, ~5.4 at Legendary). The hybrid formula `[M]×[V]` at Legendary:
+
+- d4: avg [M]=4.6, avg [V]=2.8 → expected ≈ 12.9/matched roll, fires **100%**
+- d12: avg [M]=2.1, avg [V]=8.0 → expected ≈ 16.8/matched roll, fires **76%**
+
+d12 does ~30% more damage when it hits, d4 fires 32% more often. Effective throughput is nearly identical — the risk/reward tradeoff is working as designed. But the gap could be wider for d12 to feel more rewarding.
+
+### 2. Resolve system degrades at high rarity
+
+Resolve fires drop from ~0.9/game (Common) to ~0.3/game (Legendary). Fewer rolls per game + higher match rates = fewer unmatched dice. At Legendary, resolve is nearly irrelevant — designed as a consolation for bad rolls, but at high rarity there aren't enough bad rolls to fuel it.
+
+### 3. Skull economy shifts with rarity
+
+Skull damage is relatively stable across rarities (Warrior: 6.3→4.4/game) but ability damage drops much faster (7.3→3.6/game). At Common, skulls are ~50% of total damage. At Legendary, ~70%. Skulls become proportionally more important as rarity increases — counterintuitive, since you'd expect abilities to dominate with more dice.
+
+This is because skulls always deal damage (no match needed) and don't benefit from more dice. They're a fixed tax on character slots that becomes more expensive as slots become more valuable for matching.
+
+### 4. Win rate converges at higher rarity
+
+Player win rate drops from 80% (Common) to ~76% (Rare+) and flatlines. Healer survival improves (37.8%→58.7%) because Shield fires more often. The structural asymmetry (Healer sustain vs zero enemy sustain) is still the dominant factor but less pronounced when both sides have reliable abilities.
+
+### 5. Core die system is validated
+
+The fundamental [MATCHES]/[VALUE] two-axis design works:
+- Small dice → high [M], low [V] → consistent, reliable
+- Big dice → low [M], high [V] → risky, spikey
+- Hybrid formula rewards both axes without either dominating
+- Rarity meaningfully gates [M] ceiling — exactly as the design doc intended
+- Match probability curves match the design doc's theoretical tables
+
+The remaining issues are in systems built on top of the die system (resolve scaling, skull slot competition, team composition asymmetry) — not in the dice math itself.
+
+### 6. "Total damage per game" is a misleading stat
+
+The simulator's DMG stat showed total damage *decreasing* with rarity (Warrior: 12.7 at Common → 6.2 at Legendary). This was a statistical artifact — games are shorter and enemy HP is fixed, so total damage is bounded by HP pools. The sim now reports damage per roll and damage per turn, which correctly show per-roll damage *increasing* with rarity.
+
+## Dependencies (Original Assessment)
+
+- A without B: AI waits longer but still only gets 1.5 picks/round → **proved wrong: banking across rounds works**
 - B without A: More picks available but AI rolls at 2 anyway → no improvement
 - A + B together: AI waits + more supply = characters reach 3+ dice → significant improvement
-- C alone: Works independently, biggest single-lever change
+- C alone: Works independently, biggest single-lever change — **rejected (removes core tension)**
 - D: Independent structural changes, each works alone but complex
