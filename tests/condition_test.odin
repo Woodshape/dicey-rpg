@@ -17,9 +17,12 @@ condition_apply_adds_to_character :: proc(t: ^testing.T) {
 @(test)
 condition_apply_fails_when_full :: proc(t: ^testing.T) {
 	ch := game.character_create("Test", .Common, {hp = 20, attack = 3, defense = 1})
-	for _ in 0 ..< game.MAX_CONDITIONS {
-		game.condition_apply(&ch, .Shield, 0, .On_Hit_Taken, 1)
+	// Manually fill all condition slots with distinct entries to simulate a full array.
+	ch.condition_count = game.MAX_CONDITIONS
+	for i in 0 ..< game.MAX_CONDITIONS {
+		ch.conditions[i] = game.Condition{kind = .Shield, value = i + 1, expiry = .On_Hit_Taken, remaining = 1}
 	}
+	// Applying a different kind should fail when array is full.
 	ok := game.condition_apply(&ch, .Hex, 1, .Turns, 3)
 	testing.expect(t, !ok, "should fail when condition array is full")
 	testing.expect_value(t, ch.condition_count, game.MAX_CONDITIONS)
@@ -30,14 +33,13 @@ condition_remove_shifts_remaining :: proc(t: ^testing.T) {
 	ch := game.character_create("Test", .Common, {hp = 20, attack = 3, defense = 1})
 	game.condition_apply(&ch, .Shield, 5, .On_Hit_Taken, 1)
 	game.condition_apply(&ch, .Hex, 1, .Turns, 3)
-	game.condition_apply(&ch, .Shield, 8, .On_Hit_Taken, 2)
-
-	game.condition_remove(&ch, 0) // remove first Shield
 	testing.expect_value(t, ch.condition_count, 2)
+
+	game.condition_remove(&ch, 0) // remove Shield
+	testing.expect_value(t, ch.condition_count, 1)
 	testing.expect_value(t, ch.conditions[0].kind, game.Condition_Kind.Hex)
-	testing.expect_value(t, ch.conditions[1].kind, game.Condition_Kind.Shield)
 	// Vacated slot should be zeroed
-	testing.expect_value(t, ch.conditions[2].kind, game.Condition_Kind.None)
+	testing.expect_value(t, ch.conditions[1].kind, game.Condition_Kind.None)
 }
 
 // --- Shield ---
@@ -78,6 +80,18 @@ shield_reduces_skull_damage :: proc(t: ^testing.T) {
 	testing.expect_value(t, target.condition_count, 0) // Shield consumed
 }
 
+@(test)
+condition_apply_refreshes_existing :: proc(t: ^testing.T) {
+	ch := game.character_create("Test", .Common, {hp = 20, attack = 3, defense = 1})
+	game.condition_apply(&ch, .Shield, 5, .On_Hit_Taken, 1)
+	testing.expect_value(t, ch.condition_count, 1)
+
+	// Re-applying same kind refreshes, doesn't add a second slot.
+	game.condition_apply(&ch, .Shield, 8, .On_Hit_Taken, 1)
+	testing.expect_value(t, ch.condition_count, 1)
+	testing.expect_value(t, ch.conditions[0].value, 8) // refreshed to new value
+}
+
 // --- Hex ---
 
 @(test)
@@ -90,22 +104,24 @@ hex_reduces_effective_defense :: proc(t: ^testing.T) {
 }
 
 @(test)
-hex_stacks :: proc(t: ^testing.T) {
+hex_refreshes_instead_of_stacking :: proc(t: ^testing.T) {
 	ch := game.character_create("Test", .Common, {hp = 20, attack = 3, defense = 3})
 	game.condition_apply(&ch, .Hex, 1, .Turns, 3)
 	game.condition_apply(&ch, .Hex, 1, .Turns, 3)
 
+	// Second apply refreshes the existing Hex — only one condition slot used.
+	testing.expect_value(t, ch.condition_count, 1)
 	def := game.character_effective_defense(&ch)
-	testing.expect_value(t, def, 1) // 3 - 1 - 1 = 1
+	testing.expect_value(t, def, 2) // 3 - 1 = 2
 }
 
 @(test)
-hex_clamps_defense_to_zero :: proc(t: ^testing.T) {
+hex_allows_negative_defense :: proc(t: ^testing.T) {
 	ch := game.character_create("Test", .Common, {hp = 20, attack = 3, defense = 0})
 	game.condition_apply(&ch, .Hex, 1, .Turns, 3)
 
 	def := game.character_effective_defense(&ch)
-	testing.expect_value(t, def, 0) // clamped, not negative
+	testing.expect_value(t, def, -1) // Hex pushes DEF below zero
 }
 
 // --- Turn ticking ---

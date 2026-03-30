@@ -4,6 +4,16 @@ package game
 // interval=0 means passive/reactive (no periodic trigger). interval>0 means the
 // periodic effect fires every `interval` ticks of the owner's turn.
 condition_apply :: proc(ch: ^Character, kind: Condition_Kind, value: int, expiry: Condition_Expiry, remaining: int, interval: int = 0) -> bool {
+	// Refresh existing condition of the same kind instead of stacking duplicates.
+	for i in 0 ..< ch.condition_count {
+		if ch.conditions[i].kind == kind {
+			ch.conditions[i].value     = value
+			ch.conditions[i].remaining = remaining
+			ch.conditions[i].interval  = interval
+			ch.conditions[i].timer     = 0
+			return true
+		}
+	}
 	if ch.condition_count >= MAX_CONDITIONS {
 		return false
 	}
@@ -96,14 +106,18 @@ condition_absorb_damage :: proc(ch: ^Character, incoming: int) -> int {
 }
 
 // Compute effective defense: base DEF minus all Hex reductions, clamped to 0.
-character_effective_defense :: proc(ch: ^Character) -> int {
+character_effective_defense :: proc(ch: ^Character, clampValue: bool = true) -> int {
+	shouldClamp := clampValue
 	def := ch.stats.defense
 	for i in 0 ..< ch.condition_count {
+		// Hex will ignore clamp
 		if ch.conditions[i].kind == .Hex {
 			def -= ch.conditions[i].value
+			shouldClamp = false
 		}
 	}
-	return max(def, 0)
+	if shouldClamp { return max(def, 0) }
+	return def
 }
 
 // Check if a character has a specific condition kind active.
