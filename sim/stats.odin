@@ -67,6 +67,7 @@ Roll_Stats :: struct {
 	unmatched_count: int,
 	ability_damage:  int,
 	ability_fired:   bool,
+	enhanced:        bool,
 	scaling:         game.Ability_Scaling,
 }
 
@@ -118,31 +119,38 @@ Char_Totals :: struct {
 // --- Dice mechanics aggregation ---
 
 Dice_Aggregate :: struct {
-	die_type:           game.Die_Type,
-	total_rolls:        int,
-	total_matches:      int,
-	total_value:        int,
-	rolls_with_match:   int,
-	total_unmatched:    int,
-	total_dmg_match:    int,
-	rolls_match_scale:  int,
-	total_dmg_value:    int,
-	rolls_value_scale:  int,
-	total_dmg_hybrid:   int,
-	rolls_hybrid_scale: int,
+	die_type:            game.Die_Type,
+	total_rolls:         int,
+	total_matches:       int,
+	total_value:         int,
+	rolls_with_match:    int,
+	total_unmatched:     int,
+	total_dmg_match:     int,
+	rolls_match_scale:   int,
+	total_dmg_value:     int,
+	rolls_value_scale:   int,
+	total_dmg_hybrid:    int,
+	rolls_hybrid_scale:  int,
+	// Enhanced mode tracking
+	enhanced_fires:      int,
+	enhanced_dmg:        int,
+	normal_fires:        int,
+	normal_dmg:          int,
 }
 
 // --- Dice count × die type matrix ---
 
 // Bucket key: (die_type, normal_dice_count). die_count 0 is unused.
 Dice_Count_Bucket :: struct {
-	total_rolls:      int,
-	total_matches:    int, // sum of matched_count
-	total_value:      int, // sum of matched_value
-	rolls_with_match: int, // rolls where matched_count >= 2
-	total_unmatched:  int,
-	ability_fires:    int,
+	total_rolls:       int,
+	total_matches:     int, // sum of matched_count
+	total_value:       int, // sum of matched_value
+	rolls_with_match:  int, // rolls where matched_count >= 2
+	total_unmatched:   int,
+	ability_fires:     int,
 	total_ability_dmg: int, // sum of ability damage when ability fired
+	enhanced_fires:    int,
+	enhanced_dmg:      int,
 }
 
 // Indexed by [Die_Type][dice_count]. dice_count 1..MAX_CHARACTER_DICE.
@@ -166,6 +174,10 @@ aggregate_dice_count :: proc(rolls: ^Roll_Collector) -> Dice_Count_Matrix {
 		if r.ability_fired {
 			b.ability_fires += 1
 			b.total_ability_dmg += r.ability_damage
+			if r.enhanced {
+				b.enhanced_fires += 1
+				b.enhanced_dmg += r.ability_damage
+			}
 		}
 	}
 	return m
@@ -288,6 +300,7 @@ collect_roll_stats :: proc(
 				unmatched_count = roll.unmatched_count,
 				ability_damage  = ability_dmg,
 				ability_fired   = attacker.ability_fired,
+				enhanced        = attacker.ability_fired && game.ability_is_enhanced(&attacker.ability, roll.matched_value),
 				scaling         = attacker.ability.scaling,
 			}
 			rolls.count += 1
@@ -433,6 +446,14 @@ aggregate_dice :: proc(rolls: ^Roll_Collector) -> [game.Die_Type]Dice_Aggregate 
 			case .None:
 			// flat damage — not bucketed by die type
 			}
+
+			if r.enhanced {
+				a.enhanced_fires += 1
+				a.enhanced_dmg += r.ability_damage
+			} else {
+				a.normal_fires += 1
+				a.normal_dmg += r.ability_damage
+			}
 		}
 	}
 
@@ -497,6 +518,31 @@ print_summary :: proc(encounter: string, seed: u64, agg: ^Aggregate_Stats, dice_
 		)
 	}
 
+	// Enhanced mode breakdown
+	has_enhanced := false
+	for dt in game.Die_Type.D4 ..= game.Die_Type.D12 {
+		if dice_aggs[dt].enhanced_fires > 0 { has_enhanced = true; break }
+	}
+	if has_enhanced {
+		fmt.println()
+		fmt.println("Enhanced Mode:")
+		fmt.println("  Type | Normal fires | DMG/fire | Enhanced fires | DMG/fire | Enhanced%")
+		for dt in game.Die_Type.D4 ..= game.Die_Type.D12 {
+			a := &dice_aggs[dt]
+			if a.normal_fires + a.enhanced_fires == 0 {continue}
+			total_fires := a.normal_fires + a.enhanced_fires
+			fmt.printfln(
+				"  %-4s | %d | %.1f | %d | %.1f | %.1f%%",
+				game.DIE_TYPE_NAMES[dt],
+				a.normal_fires,
+				a.normal_fires > 0 ? f64(a.normal_dmg) / f64(a.normal_fires) : 0,
+				a.enhanced_fires,
+				a.enhanced_fires > 0 ? f64(a.enhanced_dmg) / f64(a.enhanced_fires) : 0,
+				pct(a.enhanced_fires, total_fires),
+			)
+		}
+	}
+
 	// Dice count × die type matrix
 	print_dice_count_matrix(dcm)
 }
@@ -521,8 +567,14 @@ print_dice_count_matrix :: proc(dcm: ^Dice_Count_Matrix) {
 			if b.ability_fires > 0 {
 				avg_dmg = f64(b.total_ability_dmg) / f64(b.ability_fires)
 			}
+			enhanced_str: string = ""
+			enhanced_buf: [64]u8
+			if b.enhanced_fires > 0 {
+				enh_dmg := f64(b.enhanced_dmg) / f64(b.enhanced_fires)
+				enhanced_str = fmt.bprintf(enhanced_buf[:], ", enhanced %d (%.1f dmg/fire)", b.enhanced_fires, enh_dmg)
+			}
 			fmt.printfln(
-				"    %d dice: %d rolls, %.1f%% match, avg[M] %.1f, avg[V] %.1f, fire %.1f%% (%d), dmg/fire %.1f, %.1f unmatched/roll",
+				"    %d dice: %d rolls, %.1f%% match, avg[M] %.1f, avg[V] %.1f, fire %.1f%% (%d), dmg/fire %.1f, %.1f unmatched/roll%s",
 				dc,
 				b.total_rolls,
 				pct(b.rolls_with_match, b.total_rolls),
@@ -532,6 +584,7 @@ print_dice_count_matrix :: proc(dcm: ^Dice_Count_Matrix) {
 				b.ability_fires,
 				avg_dmg,
 				f64(b.total_unmatched) / r,
+				enhanced_str,
 			)
 		}
 	}
