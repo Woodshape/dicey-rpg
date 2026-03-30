@@ -73,7 +73,11 @@ Absorption reduces shield stacks first; excess damage passes through.
   - tests/condition_test.odin
 ```
 
-Draft one message per bucket. If only one bucket has changes, there's only one commit. If multiple buckets have changes, commit in order: code → data → docs → other.
+For **code** changes, group files by topic — if the session touched multiple independent features or systems, draft a separate commit for each topic. For example, if both the value bonus system and the sim stats output were changed, those are two code commits, not one. Use your judgment: tightly coupled changes (e.g. a new field in `types.odin` + the ability that reads it + the test that exercises it) belong in one commit; unrelated changes in separate commits. Order code commits so foundational changes come first.
+
+For **data**, **docs**, and **other** — one commit per bucket is fine.
+
+Commit order: code (one or more) → data → docs → other.
 
 ## Step 4: Stage and commit
 
@@ -96,7 +100,7 @@ For each bucket (code first, then docs if both exist):
    ```
 3. Run `git status` after to confirm it worked
 
-If only one bucket has changes, make one commit. If multiple buckets have changes, make separate commits in sequence (code → data → docs → other).
+If only one topic has changes, make one commit. For code, make one commit per topic. Then data, docs, other as needed.
 
 ## Step 5: Report
 
