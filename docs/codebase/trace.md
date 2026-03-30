@@ -35,36 +35,42 @@ Trace_Log :: struct {
 Every line in `game_log.txt` is one of two classes:
 
 **Decision lines** — drive replay in `sim/main.odin`:
+
+Every decision line carries a side tag: `p` for player, `e` for enemy. This replaces the old `EPICK`/`EROLL`/`EDONE` prefixes — all decisions now use a unified format.
+
 ```
 SEED <u64>
 ENCOUNTER <name>
 ROUND <n>
-PICK <pool_idx> <die_type> hand
-PICK <pool_idx> <die_type> char <ci>
-ASSIGN <hand_idx> <die_type> char <ci>
-ROLL <ci> <die1> <die2> ...
-DISCARD <hand_idx> <die_type>
-DONE
+PICK <side> <pool_idx> <die_type> hand
+PICK <side> <pool_idx> <die_type> char <ci>
+ASSIGN <side> <hand_idx> <die_type> char <ci>
+ROLL <side> <ci> <die1> <die2> ...
+DISCARD <side> <hand_idx> <die_type>
+DONE <side>
 ```
 
-`ASSIGN` records hand→character drag moves (free action, no turn cost). These are the moves that were previously untraced and caused state drift in replays. `ROLL` still records the final assigned dice as ground truth — the replay uses `ASSIGN` lines to build up the assignment incrementally and only falls back to force-assigning from `ROLL` for traces that pre-date this format.
+`<side>` is `p` (player) or `e` (enemy). Side-level actions like `DONE` and `PICK ... hand` use the bare side tag since they don't target a specific character. Character-level event lines (see below) use `p0`–`p3` / `e0`–`e3` tags instead.
+
+`ASSIGN` records hand→character drag moves (free action, no turn cost). `ROLL` still records the final assigned dice as ground truth — the replay uses `ASSIGN` lines to build up the assignment incrementally and only falls back to force-assigning from `ROLL` for traces that pre-date this format.
+
+The replay parser (`sim/trace.odin`) skips enemy-side (`e`) decision lines since the enemy is AI-driven during replay.
 
 **Event lines** — diagnostics only; `HP` lines are also parsed for diff output:
 ```
-VALUES <name> <v1> <v2> ...        (normal dice values only, skulls omitted)
-SKULL <attacker> <count> <dmg> <target>
-MATCH <name> <matched_count> <matched_value>
-HP <name> <hp>                      (also parsed: last HP per character used for replay diff)
-DEAD <name>
-ABILITY <attacker> <ability> <DMG|HEAL|NONE> <amount> <target>
-RESOLVE <attacker> <ability> <DMG|HEAL|NONE> <amount> <target>
-CHARGE <name> +<amount> <resolve>/<resolve_max>
-PASSIVE <name> <passive_name>
-COND <name> <kind> <value> <remaining>
-EPICK <pool_idx> <die_type> <dest>  (enemy pick — char name or "hand")
-EROLL <name> <die1> <die2> ...      (enemy roll — assigned dice)
-EDONE                                (enemy done)
+VALUES <tag> <name> <v1> <v2> ...   (normal dice values only, skulls omitted)
+SKULL <atag> <attacker> <count> <dmg> <ttag> <target>
+MATCH <tag> <name> <matched_count> <matched_value>
+HP <tag> <name> <hp>                (also parsed: last HP per character used for replay diff)
+DEAD <tag> <name>
+ABILITY <atag> <attacker> <ability> <DMG|HEAL|NONE> <amount> <ttag> <target>
+RESOLVE <atag> <attacker> <ability> <DMG|HEAL|NONE> <amount> <ttag> <target>
+CHARGE <tag> <name> +<amount> <resolve>/<resolve_max>
+PASSIVE <tag> <name> <passive_name>
+COND <tag> <name> <kind> <value> <remaining>
 ```
+
+Event lines use character tags (`p0`–`p3`, `e0`–`e3`) as the first token after the keyword. Names follow for human readability.
 
 Ability and passive names with spaces have spaces replaced by underscores in event lines.
 
@@ -78,11 +84,11 @@ Event procs are called from `combat.odin` (inside `resolve_roll`) and `ai.odin` 
 | `trace_init` | `main.odin` | Application start |
 | `trace_close` | `main.odin` | Application exit |
 | `trace_round` | `combat.odin` | Round transition |
-| `trace_pick` | `combat.odin` | Player picks from pool |
+| `trace_pick` | `game.odin`, `ai.odin` | Player or enemy picks from pool |
 | `trace_assign` | `game.odin` | Player drags hand die to character |
-| `trace_roll` | `combat.odin` | Player rolls a character |
+| `trace_roll` | `combat.odin`, `ai.odin` | Player or enemy rolls a character |
 | `trace_discard` | `combat.odin` | Player discards from hand |
-| `trace_done` | `combat.odin` | Player presses Done |
+| `trace_done` | `combat.odin`, `ai.odin` | Player or enemy finishes rolling |
 | `trace_values` | `combat.odin` | After rolling, before resolution |
 | `trace_skull` | `combat.odin` | After skull damage applied |
 | `trace_match` | `combat.odin` | After match detection |
@@ -93,15 +99,12 @@ Event procs are called from `combat.odin` (inside `resolve_roll`) and `ai.odin` 
 | `trace_charge` | `combat.odin` | After resolve meter charges |
 | `trace_passive` | `combat.odin` | After passive fires |
 | `trace_cond` | `ability.odin` | After a condition is applied |
-| `trace_epick` | `ai.odin` | After enemy picks from pool |
-| `trace_eroll` | `ai.odin` | Before enemy rolls a character |
-| `trace_edone` | `ai.odin` | When enemy is done rolling |
 
 ## Replay
 
 `sim/trace.odin` parses `game_log.txt` into a `Trace_Reader`:
-- Decision lines (`PICK`, `ASSIGN`, `ROLL`, `DISCARD`, `DONE`, `ROUND`) are parsed into the `[dynamic]Trace_Action` array.
-- `HP` event lines are parsed into `Trace_Reader.baseline_hp` (a `map[string]int`, last HP per character name) for diff output.
+- Decision lines (`PICK`, `ASSIGN`, `ROLL`, `DISCARD`, `DONE`, `ROUND`) are parsed; only player-side (`p`) decisions are added to the `[dynamic]Trace_Action` array. Enemy-side (`e`) decisions are validated but skipped since the enemy is AI-driven in replay.
+- `HP` event lines are parsed into `Trace_Reader.baseline_hp` (a `map[string]int`, last HP per character tag) for diff output.
 - All other event lines are explicitly recognised and skipped. Unknown keywords cause a parse error (no silent skipping).
 
 `sim/main.odin` drives replay via `--replay=game_log.txt`. Player decisions come from the trace; the enemy side remains AI-driven. After the game ends, a diff table compares each character's final HP in the replay against the original run's last HP event.

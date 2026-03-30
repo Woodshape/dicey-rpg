@@ -6,23 +6,11 @@
 
 Read `CLAUDE.md` for build commands, conventions, and workflow rules.
 
-## Step 2: Read the design docs
+## Step 2: Read the game design
 
-Read ALL design documents to understand the architecture and design decisions:
+Read `docs/core-mechanics.md` — the source of truth for all game mechanics.
 
-- `docs/core-mechanics.md` — source of truth for game mechanics
-- `docs/codebase/types.md` — shared types, enums, constants
-- `docs/codebase/pool.md` — draft pool, weight groups, round state
-- `docs/codebase/dice.md` — rolling, match detection
-- `docs/codebase/hand.md` — hand management
-- `docs/codebase/character.md` — assignment, pure type constraint
-- `docs/codebase/combat.md` — turn state machine, resolution
-- `docs/codebase/ai.md` — enemy decision-making
-- `docs/codebase/ability.md` — effects, resolution, templates
-- `docs/codebase/game.md` — Game_State, drag-and-drop, draw
-- `docs/codebase/combat-log.md` — ring buffer, file output
-- `docs/codebase/condition.md` — status effects, Shield, Hex
-- `docs/codebase/config.md` — .cfg parser, character/encounter loading
+Do NOT read `docs/codebase/*.md` here. Those are read on-demand when you need to modify the corresponding source file (see "Design Docs Discipline" in CLAUDE.md).
 
 ## Step 3: Read open issues, TODOs, and ideas
 
