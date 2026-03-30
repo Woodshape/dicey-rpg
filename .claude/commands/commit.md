@@ -16,15 +16,14 @@ Run in parallel:
 - `git diff` — see unstaged changes
 - `git diff --cached` — see already-staged changes
 
-Classify every changed file into one of three buckets:
+Classify every changed file into one of four buckets:
 
 | Bucket | Paths |
 |--------|-------|
-| **code** | `src/`, `sim/`, `tests/`, `assets/`, build files, `CLAUDE.md`, `.claude/` (commands, config) |
+| **code** | `src/`, `sim/`, `tests/` |
 | **data** | `data/` (character configs, encounter definitions) |
 | **docs** | `docs/` (everything under it) |
-
-If a file doesn't fit any bucket (e.g. root config files, `.gitignore`), put it in **code**.
+| **other** | everything else — `assets/`, build files, `CLAUDE.md`, `.claude/`, root config files, `.gitignore`, etc. |
 
 ## Step 2: Summarize changes per bucket
 
@@ -34,6 +33,7 @@ For each bucket that has changes:
 2. For **code** changes — reference `docs/codebase/` and `docs/core-mechanics.md` if you need context on what a module does or what mechanic a change relates to.
 3. For **data** changes — note which character or encounter configs changed and what balance parameters were tuned.
 4. For **docs** changes — note which doc files were added, updated, or removed and what topic they cover.
+5. For **other** changes — note what changed and why (config, tooling, assets, etc.).
 
 ## Step 3: Draft commit messages
 
@@ -73,7 +73,7 @@ Absorption reduces shield stacks first; excess damage passes through.
   - tests/condition_test.odin
 ```
 
-Draft one message per bucket. If only one bucket has changes, there's only one commit. If multiple buckets have changes, commit in order: code → data → docs.
+Draft one message per bucket. If only one bucket has changes, there's only one commit. If multiple buckets have changes, commit in order: code → data → docs → other.
 
 ## Step 4: Stage and commit
 
@@ -96,7 +96,7 @@ For each bucket (code first, then docs if both exist):
    ```
 3. Run `git status` after to confirm it worked
 
-If only one bucket has changes, make one commit. If multiple buckets have changes, make separate commits in sequence (code → data → docs).
+If only one bucket has changes, make one commit. If multiple buckets have changes, make separate commits in sequence (code → data → docs → other).
 
 ## Step 5: Report
 
