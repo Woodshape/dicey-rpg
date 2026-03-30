@@ -47,14 +47,42 @@
 
 Skulls are currently "guaranteed value" — they always deal ATK damage on roll, regardless of match quality. Ability dice are "uncertain value" — they need matches to fire, and bad rolls waste them. This creates a dominant strategy of picking skulls over ability dice whenever possible.
 
-Options discussed:
+### Rejected: Skulls as direct board actions
 
-- **Skulls as direct board actions:** Picking a skull immediately deals damage instead of being assigned to a character. Makes skulls a tempo play (guaranteed small damage NOW) vs ability dice (investment for bigger payoff later). Removes skulls from character slots entirely, freeing assignment space for ability dice.
-- **Skull damage tied to match quality:** skull ATK = base ATK + (matched_count / 2). Rewards mixed skull+ability builds over pure skull stacking, since skulls benefit from having ability dice alongside them.
-- **Remove skulls from character slots:** Skulls don't occupy assignment slots. They're a board-level mechanic, not a character-level mechanic. Characters only hold ability dice. Skulls are tracked separately (per-character or per-party).
-- The per-hit loop design space (on-hit passives, damage shields, lifesteal) is valuable but may not require skulls to be in character slots to function.
+Picking a skull immediately deals damage — no assignment, no slot, no roll. Rejected because there's no strategic decision: you'd always pick every skull (free damage, no opportunity cost, no denial tradeoff).
 
-This is also related to the "Last-Resort Roll Deadlock" issue in issues/ai.md — skulls crowding out ability dice is the root cause of that deadlock scenario.
+### Rejected: Remove skulls from character slots
+
+Skulls tracked separately (per-character or per-party), don't occupy ability dice slots. Rejected because it removes the drafting tension between skull damage and ability dice entirely.
+
+### Exploring: Skulls roll as d12, participate in matches
+
+Instead of being blank fixed-damage dice, skulls roll as d12 and their value counts toward match detection like any normal die. This transforms skulls from "dead weight in the match system" into "high-risk match participants."
+
+Rules:
+- Skull dice roll 1-12 (same as d12) and participate in match detection normally.
+- Skull dice still deal ATK damage per skull per roll (the per-hit loop).
+- Skull damage becomes ATK + [VALUE] when the skull's rolled value is part of a match group. This rewards mixing skulls with normal dice — a skull that matches amplifies both the ability (via [MATCHES]) AND its own damage (via [VALUE]).
+- Skulls remain exempt from the pure type constraint.
+
+What this changes:
+- **Skulls enhance matches instead of competing with them.** A Healer with 2 d8 + 1 skull has a *better* chance of matching (3 dice in the match pool instead of 2) AND deals skull damage.
+- **Skull damage scales with roll quality.** A skull that matches at [V]=9 deals ATK+9 instead of just ATK. A skull that doesn't match deals ATK+0 = ATK (same as current). High-value matches are rewarded, misses are unchanged.
+- **Mixed builds become viable.** Currently you either stack ability dice (for matches) or stack skulls (for fixed damage), never both. With matching skulls, a 2 normal + 1 skull build gets 3-die match odds plus skull damage — best of both worlds, at the cost of a lower [VALUE] ceiling from fewer normal dice setting the match group.
+- **The d12 roll range creates a natural tension.** Skulls as d12 have the worst match probability (1/12 per face) but the highest [VALUE] ceiling. They're the ultimate gamble die — low chance of matching, devastating when they do.
+- **Pure skull builds become interesting.** 3 skulls = 3 d12 rolls in the match pool. Match probability for 3 d12s is ~24%. When it hits, every skull deals ATK + [V]. When it misses, just ATK per skull (same as current). Risk/reward aligned with the d12 identity.
+
+Open questions:
+- Does skull [VALUE] contribute to the ability's [VALUE] calculation? (If a skull matches at 10 and a d6 matches at 4, is [VALUE] = 10?)
+- Does this make skulls strictly better than d12? (Same roll range, plus ATK damage, plus type-agnostic.) Maybe skulls should roll as d8 or d10 instead to create a tier gap.
+- How does this interact with enhanced mode? A skull matching at [V]>=8 would trigger piercing — is that intended?
+
+### Other options discussed
+
+- **Skull damage tied to match quality:** skull ATK = base ATK + (matched_count / 2). Simpler than full match participation but less interesting — skulls still don't *contribute* to matches, they just benefit from them passively.
+- The per-hit loop design space (on-hit passives, damage shields, lifesteal) is valuable and works with any skull model.
+
+The slot competition problem is also related to the "Last-Resort Roll Deadlock" issue in issues/ai.md — skulls crowding out ability dice is the root cause of that deadlock scenario.
 
 ## Party Death — Assigned Dice
 

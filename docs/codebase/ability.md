@@ -185,13 +185,15 @@ Passives are always-on effects that fire at specific trigger points. Each charac
 
 ## Test Coverage
 
-`tests/ability_test.odin` — 12 tests:
+`tests/ability_test.odin` — 20 tests:
 
-**Effects:** `flurry_deals_one_per_match`, `flurry_respects_defense`, `smite_deals_value_damage`, `fireball_deals_matches_times_value`, `heal_restores_value_hp`
+**Effects:** `flurry_deals_value_per_match`, `flurry_respects_defense`, `smite_deals_value_damage`, `fireball_deals_matches_times_value`, `heal_restores_value_hp`
 
 **Resolution:** `resolve_fires_ability_when_threshold_met`, `resolve_skips_ability_when_threshold_not_met`, `resolve_zero_matches_skips_ability`
 
 **Resolve meter:** `resolve_charges_from_unmatched`, `resolve_accumulates_across_rolls`, `resolve_triggers_at_threshold`, `resolve_does_not_trigger_below_threshold`
+
+**Enhanced mode:** `flurry_ignores_def_when_enhanced`, `flurry_respects_def_below_threshold`, `fireball_ignores_def_when_enhanced`, `smite_ignores_def_when_enhanced`, `smite_respects_def_below_threshold`, `hex_applies_minus_two_when_enhanced`, `hex_applies_minus_one_below_threshold`, `no_enhanced_when_threshold_zero`
 
 `tests/passive_test.odin` — 15 tests:
 

@@ -159,6 +159,7 @@ effect = iron_skin
 | `[ability]` | `scaling` | string | `none`, `match`, `value`, `hybrid` |
 | `[ability]` | `min_matches` | int | Minimum [MATCHES] to trigger (0 = always) |
 | `[ability]` | `min_value` | int | Minimum [VALUE] to trigger (0 = always) |
+| `[ability]` | `value_threshold` | int | [VALUE] >= this activates enhanced mode (0 = no enhanced) |
 | `[ability]` | `description` | string | Static description for inspect overlay |
 
 ### Required Sections

@@ -57,6 +57,7 @@ Called after roll results have been displayed and resolved. Resets roll state, c
 | `detect_match(values)` | Yes | Core match detection algorithm |
 | `character_roll(character)` | No (RNG + mutation) | Full roll with skull separation |
 | `character_clear_roll(character)` | No (mutation) | Reset roll state, consume dice |
+| `ability_is_enhanced(ability, matched_value)` | Yes | Check if [VALUE] >= ability's value_threshold |
 
 ## How to Use
 
@@ -89,7 +90,7 @@ character_clear_roll(&character)
 
 ## Test Coverage
 
-`tests/dice_test.odin` — 27 tests:
+`tests/dice_test.odin` — 30 tests:
 
 **Match patterns:** `match_no_match`, `match_pair`, `match_pair_highest_value_wins`, `match_two_pairs_gives_four_matches`, `match_triple`, `match_triple_plus_pair_gives_five_matches`, `match_four_of_a_kind`, `match_five_of_a_kind`
 
@@ -100,3 +101,5 @@ character_clear_roll(&character)
 **Roll lifecycle:** `roll_result_cleared_properly`
 
 **Skull integration:** `skull_exempt_from_pure_type`, `skull_only_hand_is_valid`, `skull_does_not_set_normal_type`, `skull_mixed_type_rejected`, `skull_roll_mixed`, `skull_roll_all_skulls`, `skull_damage_calculation`, `skull_damage_respects_defense`, `skull_damage_cannot_go_below_zero_hp`
+
+**Enhanced mode:** `ability_is_enhanced_below_threshold`, `ability_is_enhanced_at_threshold`, `ability_is_enhanced_zero_threshold`
