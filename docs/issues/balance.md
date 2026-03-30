@@ -2,10 +2,44 @@
 
 Baseline: 1000 rounds, seed=42, encounter=tutorial (2v2, all Common).
 
-## Current Sim Stats
+## Current Sim Stats (post-AI patience fix)
 
-- **74.5% player wins**, 25.5% enemy wins, 0% draws
-- Average game length: 49.3 turns
+- **80.0% player wins**, 20.0% enemy wins, 0% draws
+- Average game length: 45.6 turns
+
+### AI Patience Fix (2026-03-30)
+
+The AI previously rolled as soon as a character had 2 normal dice. Now it waits until the character is at full capacity (`assigned_count >= max_dice`). This forces dice accumulation across rounds and dramatically improved match rates.
+
+Before/after (Common):
+- Ability fire rate: 19.5% → **28.4%**
+- 3-dice rolls: 25% → **56%** of all rolls
+- 0-match rolls: 81% → **72%**
+- Avg [M]: 0.4 → **0.6**
+
+### Rarity Now Matters
+
+With the patient AI, rarity became the strongest lever in the system:
+
+| Metric | Common (3) | Rare (4) | Epic (5) | Legendary (6) |
+|--------|-----------|----------|----------|----------------|
+| Ability fire rate | 28% | 48% | 66% | 79% |
+| 0-match rolls | 72% | 52% | 34% | 21% |
+| Avg [M] | 0.6 | 1.1 | 1.7 | 2.4 |
+| Avg turns | 45.6 | 41.1 | 38.0 | 37.7 |
+
+Die type match rates at full capacity (Legendary):
+- d4: 92%, d6: 88%, d8: 80%, d10: 74%, d12: 58%
+
+The d4 vs d12 tradeoff is working as designed: d4 matches almost always but caps at low [VALUE], d12 misses ~40% of the time but delivers ~3x the [VALUE] when it hits. Hybrid abilities (`[M]×[V]`) produce similar expected throughput for both — the risk/reward axis is live.
+
+### Resolve System Degrades at High Rarity
+
+Resolve fires drop sharply as rarity increases (0.9/game at Common → 0.3/game at Legendary). Fewer rolls per game + higher match rates = fewer unmatched dice = slower meter charging. At Legendary, resolve is nearly irrelevant. This is a structural consequence of the patient AI — characters bank dice and roll less often, so the resolve meter has fewer chances to charge.
+
+### Sim Stat Caveat: "Total Damage Per Game"
+
+The simulator's "DMG" stat shows total damage per game, which decreases at higher rarity (Warrior: 12.7 at Common → 6.2 at Legendary). This is misleading — games are shorter (45.6 → 37.7 turns) and enemy HP is fixed, so total damage is bounded by enemy HP pools. Higher rarity = fewer but more decisive rolls, not less damage output. The correct measure would be damage per roll or damage per turn, which the sim does not currently report.
 
 ## 1. Team Composition Asymmetry
 

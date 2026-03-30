@@ -49,11 +49,15 @@ There is no per-die pick step in the combat phase. All picking happened during t
 
 ### Roll Decision
 
-`ai_should_roll(gs)` returns `(should_roll, char_index)`. Two tiers, evaluated per character:
-1. **>= 2 normal dice** → roll (character has enough real dice to act)
-2. **Full (at max_dice) with any dice** → roll (skull damage is better than waiting)
+`ai_should_roll(gs)` returns `(should_roll, char_index)`. Rolls only when a character is at **full capacity** (`assigned_count >= max_dice`):
 
-Never rolls characters with 0 assigned dice. The full-character check ensures the AI never deadlocks when every die it holds is a skull: a full character rolls regardless.
+- Common (3 slots): needs 3 assigned dice before rolling
+- Rare (4 slots): needs 4
+- Characters with fewer dice **bank across rounds**, accumulating during subsequent drafts
+
+This patience strategy dramatically increases match rates — characters roll with 3 dice ~56% of the time (vs ~25% with the old eager threshold), pushing ability fire rates from ~20% to ~28%.
+
+Never rolls characters with 0 assigned dice. The full-character check handles skull-only builds: a full character of skulls rolls for skull damage rather than waiting indefinitely.
 
 ### Die Scoring
 
@@ -149,7 +153,7 @@ See `docs/issues/ai.md`:
 
 **Assignment:** `ai_assigns_compatible_from_hand`, `ai_does_not_assign_incompatible`
 
-**Roll decision:** `ai_rolls_when_character_full`, `ai_does_not_roll_empty_character`, `ai_does_not_roll_with_only_skulls`, `ai_rolls_with_normal_dice`, `ai_does_not_roll_full_with_only_skulls`, `ai_rolls_skulls_when_stuck`
+**Roll decision:** `ai_rolls_when_character_full`, `ai_does_not_roll_empty_character`, `ai_does_not_roll_with_only_skulls`, `ai_rolls_with_normal_dice`, `ai_does_not_roll_full_with_only_skulls`, `ai_rolls_skulls_when_stuck`, `ai_does_not_roll_partially_filled`
 
 **Pick:** `ai_picks_from_pool`, `ai_cannot_pick_with_full_hand`
 
