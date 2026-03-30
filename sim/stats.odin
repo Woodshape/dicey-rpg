@@ -464,11 +464,11 @@ print_summary :: proc(encounter: string, seed: u64, agg: ^Aggregate_Stats, dice_
 
 	fmt.println()
 	fmt.println("Player Party:")
-	print_party_stats(&agg.player_totals, agg.player_count, rounds)
+	print_party_stats(&agg.player_totals, agg.player_count, rounds, agg)
 
 	fmt.println()
 	fmt.println("Enemy Party:")
-	print_party_stats(&agg.enemy_totals, agg.enemy_count, rounds)
+	print_party_stats(&agg.enemy_totals, agg.enemy_count, rounds, agg)
 
 	// Dice mechanics table
 	fmt.println()
@@ -534,7 +534,7 @@ print_dice_count_matrix :: proc(dcm: ^Dice_Count_Matrix) {
 }
 
 @(private = "file")
-print_party_stats :: proc(totals: ^[game.MAX_PARTY_SIZE]Char_Totals, count, rounds: int) {
+print_party_stats :: proc(totals: ^[game.MAX_PARTY_SIZE]Char_Totals, count, rounds: int, agg: ^Aggregate_Stats) {
 	for i in 0 ..< count {
 		t := &totals[i]
 		r := f64(rounds)
@@ -547,11 +547,23 @@ print_party_stats :: proc(totals: ^[game.MAX_PARTY_SIZE]Char_Totals, count, roun
 			avg_hp = f64(t.total_hp_remaining) / f64(t.games_survived)
 		}
 
+		// Damage per roll and per turn
+		dmg_per_roll: f64 = 0
+		dmg_per_turn: f64 = 0
+		if t.total_ability_attempts > 0 {
+			dmg_per_roll = f64(t.total_damage_dealt) / f64(t.total_ability_attempts)
+		}
+		if agg.total_turns > 0 {
+			dmg_per_turn = f64(t.total_damage_dealt) / (f64(agg.total_turns) / f64(rounds)) / r
+		}
+
 		// Summary line
 		fmt.printfln(
-			"  %-10s | DMG: %.1f | HEAL: %.1f | Ability: %.1f%% | Resolve: %.1f/game | Survival: %.1f%% | Avg HP: %.1f",
+			"  %-10s | DMG: %.1f (%.1f/roll, %.1f/turn) | HEAL: %.1f | Ability: %.1f%% | Resolve: %.1f/game | Survival: %.1f%% | Avg HP: %.1f",
 			t.name,
 			f64(t.total_damage_dealt) / r,
+			dmg_per_roll,
+			dmg_per_turn,
 			f64(t.total_healing_done) / r,
 			fire_rate,
 			f64(t.total_resolve_fires) / r,
