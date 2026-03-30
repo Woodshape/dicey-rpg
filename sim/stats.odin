@@ -473,7 +473,7 @@ print_summary :: proc(encounter: string, seed: u64, agg: ^Aggregate_Stats, dice_
 	// Dice mechanics table
 	fmt.println()
 	fmt.println("Dice Mechanics:")
-	fmt.println("  Type | Rolls | Avg[M] | Avg[V] | Match% | DMG(match) | DMG(value) | DMG(hybrid) | Resolve/roll")
+	fmt.println("  Type | Rolls | Avg[M] | Avg[V] | Match% | DMG/fire(match) | DMG/fire(value) | DMG/fire(hybrid) | Resolve/roll")
 	for dt in game.Die_Type.D4 ..= game.Die_Type.D12 {
 		a := &dice_aggs[dt]
 		if a.total_rolls == 0 {
@@ -481,15 +481,18 @@ print_summary :: proc(encounter: string, seed: u64, agg: ^Aggregate_Stats, dice_
 		}
 		r := f64(a.total_rolls)
 		fmt.printfln(
-			"  %-4s | %d | %.1f | %.1f | %.1f%% | %.1f | %.1f | %.1f | %.1f",
+			"  %-4s | %d | %.1f | %.1f | %.1f%% | %.1f (%d) | %.1f (%d) | %.1f (%d) | %.1f",
 			game.DIE_TYPE_NAMES[dt],
 			a.total_rolls,
 			f64(a.total_matches) / r,
 			f64(a.total_value) / r,
 			pct(a.rolls_with_match, a.total_rolls),
 			a.rolls_match_scale > 0 ? f64(a.total_dmg_match) / f64(a.rolls_match_scale) : 0,
+			a.rolls_match_scale,
 			a.rolls_value_scale > 0 ? f64(a.total_dmg_value) / f64(a.rolls_value_scale) : 0,
+			a.rolls_value_scale,
 			a.rolls_hybrid_scale > 0 ? f64(a.total_dmg_hybrid) / f64(a.rolls_hybrid_scale) : 0,
+			a.rolls_hybrid_scale,
 			f64(a.total_unmatched) / r,
 		)
 	}
@@ -519,13 +522,14 @@ print_dice_count_matrix :: proc(dcm: ^Dice_Count_Matrix) {
 				avg_dmg = f64(b.total_ability_dmg) / f64(b.ability_fires)
 			}
 			fmt.printfln(
-				"    %d dice: %d rolls, %.1f%% match, avg[M] %.1f, avg[V] %.1f, fire %.1f%%, avg dmg %.1f, %.1f unmatched/roll",
+				"    %d dice: %d rolls, %.1f%% match, avg[M] %.1f, avg[V] %.1f, fire %.1f%% (%d), dmg/fire %.1f, %.1f unmatched/roll",
 				dc,
 				b.total_rolls,
 				pct(b.rolls_with_match, b.total_rolls),
 				f64(b.total_matches) / r,
 				f64(b.total_value) / r,
 				pct(b.ability_fires, b.total_rolls),
+				b.ability_fires,
 				avg_dmg,
 				f64(b.total_unmatched) / r,
 			)
