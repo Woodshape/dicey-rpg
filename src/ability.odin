@@ -22,46 +22,53 @@ attacker_party :: proc(gs: ^Game_State, attacker: ^Character) -> ^Party {
 // Each takes (gs, attacker, target, roll) and applies its effect.
 // gs provides full game context for abilities that need it (AoE, pool, hands, etc.).
 
-// Flurry: deal [VALUE] damage [MATCHES] times. Both axes matter:
-// small dice = more hits (high [MATCHES]), big dice = harder hits (high [VALUE]).
+// Flurry: deal [VALUE] damage [MATCHES] times. Both axes matter.
+// Enhanced: ignores DEF (piercing).
 ability_flurry :: proc(
 	gs: ^Game_State,
 	attacker: ^Character,
 	target: ^Character,
 	roll: ^Roll_Result,
 ) {
+	enhanced := ability_is_enhanced(&attacker.ability, roll.matched_value)
 	for _ in 0 ..< roll.matched_count {
-		dmg := max(roll.matched_value - character_effective_defense(target), 0)
+		dmg := enhanced ? roll.matched_value : max(roll.matched_value - character_effective_defense(target), 0)
 		dmg -= condition_absorb_damage(target, dmg)
 		target.stats.hp = max(target.stats.hp - dmg, 0)
 	}
 }
 
 // Smite: deal [VALUE] damage. Favors big dice.
+// Enhanced: ignores DEF (piercing).
 ability_smite :: proc(
 	gs: ^Game_State,
 	attacker: ^Character,
 	target: ^Character,
 	roll: ^Roll_Result,
 ) {
-	dmg := max(roll.matched_value - character_effective_defense(target), 0)
+	enhanced := ability_is_enhanced(&attacker.ability, roll.matched_value)
+	dmg := enhanced ? roll.matched_value : max(roll.matched_value - character_effective_defense(target), 0)
 	dmg -= condition_absorb_damage(target, dmg)
 	target.stats.hp = max(target.stats.hp - dmg, 0)
 }
 
 // Fireball: deal [MATCHES] x [VALUE] damage. Rewards both axes.
+// Enhanced: ignores DEF (piercing).
 ability_fireball :: proc(
 	gs: ^Game_State,
 	attacker: ^Character,
 	target: ^Character,
 	roll: ^Roll_Result,
 ) {
-	dmg := max(roll.matched_count * roll.matched_value - character_effective_defense(target), 0)
+	enhanced := ability_is_enhanced(&attacker.ability, roll.matched_value)
+	raw := roll.matched_count * roll.matched_value
+	dmg := enhanced ? raw : max(raw - character_effective_defense(target), 0)
 	dmg -= condition_absorb_damage(target, dmg)
 	target.stats.hp = max(target.stats.hp - dmg, 0)
 }
 
-// Heal: restore [VALUE] HP. Favors big dice.
+// Heal: restore [VALUE] HP to self. Favors big dice.
+// Enhanced: also heals lowest-HP alive ally for [VALUE].
 ability_heal :: proc(
 	gs: ^Game_State,
 	attacker: ^Character,
@@ -69,10 +76,29 @@ ability_heal :: proc(
 	roll: ^Roll_Result,
 ) {
 	attacker.stats.hp += roll.matched_value
+
+	enhanced := ability_is_enhanced(&attacker.ability, roll.matched_value)
+	if enhanced && gs != nil {
+		party := attacker_party(gs, attacker)
+		if party != nil {
+			best: ^Character = nil
+			for i in 0 ..< party.count {
+				ch := &party.characters[i]
+				if !character_is_alive(ch) {continue}
+				if ch == attacker {continue}
+				if best == nil || ch.stats.hp < best.stats.hp {
+					best = ch
+				}
+			}
+			if best != nil {
+				best.stats.hp += roll.matched_value
+			}
+		}
+	}
 }
 
 // Shield: apply Shield absorbing [VALUE] total damage to lowest-HP alive ally.
-// Big dice = stronger shield. d4 Shield absorbs ~2-4; d12 Shield absorbs up to 12.
+// Enhanced: shields ALL alive allies instead of just lowest-HP.
 ability_shield :: proc(
 	gs: ^Game_State,
 	attacker: ^Character,
@@ -82,32 +108,45 @@ ability_shield :: proc(
 	party := attacker_party(gs, attacker)
 	if party == nil {return}
 
-	// Find lowest-HP alive ally
-	best: ^Character = nil
-	for i in 0 ..< party.count {
-		ch := &party.characters[i]
-		if !character_is_alive(ch) {continue}
-		if best == nil || ch.stats.hp < best.stats.hp {
-			best = ch
-		}
-	}
+	enhanced := ability_is_enhanced(&attacker.ability, roll.matched_value)
 
-	if best != nil {
-		// value = absorption pool = [VALUE] from the roll
-		ok := condition_apply(best, .Shield, roll.matched_value, .On_Hit_Taken, 1)
-		if ok { trace_cond(&gs.trace, find_char_tag(gs, best), best, &best.conditions[best.condition_count - 1]) }
+	if enhanced {
+		// Shield all alive allies
+		for i in 0 ..< party.count {
+			ch := &party.characters[i]
+			if !character_is_alive(ch) {continue}
+			ok := condition_apply(ch, .Shield, roll.matched_value, .On_Hit_Taken, 1)
+			if ok { trace_cond(&gs.trace, find_char_tag(gs, ch), ch, &ch.conditions[ch.condition_count - 1]) }
+		}
+	} else {
+		// Shield lowest-HP alive ally
+		best: ^Character = nil
+		for i in 0 ..< party.count {
+			ch := &party.characters[i]
+			if !character_is_alive(ch) {continue}
+			if best == nil || ch.stats.hp < best.stats.hp {
+				best = ch
+			}
+		}
+		if best != nil {
+			ok := condition_apply(best, .Shield, roll.matched_value, .On_Hit_Taken, 1)
+			if ok { trace_cond(&gs.trace, find_char_tag(gs, best), best, &best.conditions[best.condition_count - 1]) }
+		}
 	}
 }
 
 // Hex: reduce target's DEF by 1 for 3 turns.
+// Enhanced: -2 DEF instead of -1.
 ability_hex :: proc(
 	gs: ^Game_State,
 	attacker: ^Character,
 	target: ^Character,
 	roll: ^Roll_Result,
 ) {
-	ok := condition_apply(target, .Hex, 1, .Turns, 3)
-	if ok { trace_cond(&gs.trace, find_char_tag(gs, target), target, &target.conditions[target.condition_count - 1]) }
+	enhanced := ability_is_enhanced(&attacker.ability, roll.matched_value)
+	hex_value := enhanced ? 2 : 1
+	ok := condition_apply(target, .Hex, hex_value, .Turns, 3)
+	if ok && gs != nil { trace_cond(&gs.trace, find_char_tag(gs, target), target, &target.conditions[target.condition_count - 1]) }
 }
 
 // --- Ability descriptions ---
@@ -120,6 +159,10 @@ describe_flurry :: proc(
 	target: ^Character,
 	roll: ^Roll_Result,
 ) -> cstring {
+	enhanced := ability_is_enhanced(&attacker.ability, roll.matched_value)
+	if enhanced {
+		return fmt.ctprintf("%d dmg x %d hits (PIERCING)", roll.matched_value, roll.matched_count)
+	}
 	return fmt.ctprintf("%d dmg x %d hits", roll.matched_value, roll.matched_count)
 }
 
@@ -129,6 +172,10 @@ describe_smite :: proc(
 	target: ^Character,
 	roll: ^Roll_Result,
 ) -> cstring {
+	enhanced := ability_is_enhanced(&attacker.ability, roll.matched_value)
+	if enhanced {
+		return fmt.ctprintf("%d dmg (PIERCING)", roll.matched_value)
+	}
 	return fmt.ctprintf("%d dmg", roll.matched_value)
 }
 
@@ -138,12 +185,12 @@ describe_fireball :: proc(
 	target: ^Character,
 	roll: ^Roll_Result,
 ) -> cstring {
-	return fmt.ctprintf(
-		"%d x %d = %d dmg",
-		roll.matched_count,
-		roll.matched_value,
-		roll.matched_count * roll.matched_value,
-	)
+	total := roll.matched_count * roll.matched_value
+	enhanced := ability_is_enhanced(&attacker.ability, roll.matched_value)
+	if enhanced {
+		return fmt.ctprintf("%d x %d = %d dmg (PIERCING)", roll.matched_count, roll.matched_value, total)
+	}
+	return fmt.ctprintf("%d x %d = %d dmg", roll.matched_count, roll.matched_value, total)
 }
 
 describe_heal :: proc(
@@ -152,6 +199,10 @@ describe_heal :: proc(
 	target: ^Character,
 	roll: ^Roll_Result,
 ) -> cstring {
+	enhanced := ability_is_enhanced(&attacker.ability, roll.matched_value)
+	if enhanced {
+		return fmt.ctprintf("+%d HP (PARTY HEAL)", roll.matched_value)
+	}
 	return fmt.ctprintf("+%d HP", roll.matched_value)
 }
 
@@ -161,6 +212,10 @@ describe_shield :: proc(
 	target: ^Character,
 	roll: ^Roll_Result,
 ) -> cstring {
+	enhanced := ability_is_enhanced(&attacker.ability, roll.matched_value)
+	if enhanced {
+		return fmt.ctprintf("Shield %d (PARTY SHIELD)", roll.matched_value)
+	}
 	// Find who would be shielded (lowest HP alive ally)
 	party := attacker_party(gs, attacker)
 	if party != nil {
@@ -185,6 +240,10 @@ describe_hex :: proc(
 	target: ^Character,
 	roll: ^Roll_Result,
 ) -> cstring {
+	enhanced := ability_is_enhanced(&attacker.ability, roll.matched_value)
+	if enhanced {
+		return fmt.ctprintf("-2 DEF on %s (DEEP HEX, 3 turns)", target.name)
+	}
 	return fmt.ctprintf("-1 DEF on %s (3 turns)", target.name)
 }
 

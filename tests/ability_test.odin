@@ -10,12 +10,13 @@ import "core:testing"
 test_warrior :: proc() -> game.Character {
 	ch := game.character_create("Warrior", .Common, {hp = 20, attack = 3, defense = 1})
 	ch.ability = game.Ability {
-		name        = "Flurry",
-		scaling     = .Hybrid,
-		min_matches = 2,
-		effect      = game.ability_flurry,
-		describe    = game.describe_flurry,
-		description = "{VALUE} dmg x {MATCHES} hits",
+		name            = "Flurry",
+		scaling         = .Hybrid,
+		min_matches     = 2,
+		value_threshold = 8,
+		effect          = game.ability_flurry,
+		describe        = game.describe_flurry,
+		description     = "{VALUE} dmg x {MATCHES} hits (piercing at {VALUE}>=8)",
 	}
 	ch.resolve_ability = game.Ability {
 		name        = "Heroic Strike",
@@ -33,12 +34,13 @@ test_warrior :: proc() -> game.Character {
 test_goblin :: proc() -> game.Character {
 	ch := game.character_create("Goblin", .Common, {hp = 15, attack = 3, defense = 0})
 	ch.ability = game.Ability {
-		name        = "Fireball",
-		scaling     = .Hybrid,
-		min_matches = 2,
-		effect      = game.ability_fireball,
-		describe    = game.describe_fireball,
-		description = "{MATCHES} x {VALUE} dmg",
+		name            = "Fireball",
+		scaling         = .Hybrid,
+		min_matches     = 2,
+		value_threshold = 8,
+		effect          = game.ability_fireball,
+		describe        = game.describe_fireball,
+		description     = "{MATCHES} x {VALUE} dmg (piercing at {VALUE}>=8)",
 	}
 	ch.resolve_ability = game.Ability {
 		name        = "Goblin Explosion",
@@ -90,13 +92,13 @@ smite_deals_value_damage :: proc(t: ^testing.T) {
 	target := game.character_create("Target", .Common, {hp = 20, attack = 1, defense = 1})
 	roll := game.Roll_Result {
 		matched_count = 2,
-		matched_value = 8,
+		matched_value = 6,
 	}
 
 	game.ability_smite(nil, &attacker, &target, &roll)
 
-	// max(8 - 1, 0) = 7 damage
-	testing.expect_value(t, target.stats.hp, 13)
+	// max(6 - 1, 0) = 5 damage (no value bonus at [V]=6)
+	testing.expect_value(t, target.stats.hp, 15)
 }
 
 @(test)
@@ -271,4 +273,145 @@ resolve_does_not_trigger_below_threshold :: proc(t: ^testing.T) {
 	testing.expect(t, !attacker.resolve_fired, "resolve should not fire below threshold")
 	testing.expect_value(t, attacker.resolve, 9)
 	testing.expect_value(t, target.stats.hp, 50)
+}
+
+// --- Enhanced mode tests ---
+
+@(test)
+flurry_ignores_def_when_enhanced :: proc(t: ^testing.T) {
+	attacker := test_warrior() // threshold=8
+	target := game.character_create("Tank", .Common, {hp = 50, attack = 1, defense = 5})
+	roll := game.Roll_Result {
+		matched_count = 3,
+		matched_value = 9, // >= 8, enhanced
+	}
+
+	game.ability_flurry(nil, &attacker, &target, &roll)
+
+	// Enhanced: ignores DEF. 3 hits of 9 = 27 damage
+	testing.expect_value(t, target.stats.hp, 23)
+}
+
+@(test)
+flurry_respects_def_below_threshold :: proc(t: ^testing.T) {
+	attacker := test_warrior() // threshold=8
+	target := game.character_create("Tank", .Common, {hp = 50, attack = 1, defense = 5})
+	roll := game.Roll_Result {
+		matched_count = 3,
+		matched_value = 7, // < 8, normal
+	}
+
+	game.ability_flurry(nil, &attacker, &target, &roll)
+
+	// Normal: 3 hits of max(7 - 5, 0) = 2 each = 6 damage
+	testing.expect_value(t, target.stats.hp, 44)
+}
+
+@(test)
+fireball_ignores_def_when_enhanced :: proc(t: ^testing.T) {
+	attacker := test_goblin() // threshold=8
+	target := game.character_create("Tank", .Common, {hp = 50, attack = 1, defense = 5})
+	roll := game.Roll_Result {
+		matched_count = 3,
+		matched_value = 10, // >= 8, enhanced
+	}
+
+	game.ability_fireball(nil, &attacker, &target, &roll)
+
+	// Enhanced: ignores DEF. 3 * 10 = 30 damage
+	testing.expect_value(t, target.stats.hp, 20)
+}
+
+@(test)
+smite_ignores_def_when_enhanced :: proc(t: ^testing.T) {
+	attacker := test_warrior()
+	attacker.ability.effect = game.ability_smite // threshold=8 from test_warrior
+	target := game.character_create("Tank", .Common, {hp = 30, attack = 1, defense = 5})
+	roll := game.Roll_Result {
+		matched_count = 2,
+		matched_value = 8, // >= 8, enhanced
+	}
+
+	game.ability_smite(nil, &attacker, &target, &roll)
+
+	// Enhanced: ignores DEF. 8 damage
+	testing.expect_value(t, target.stats.hp, 22)
+}
+
+@(test)
+smite_respects_def_below_threshold :: proc(t: ^testing.T) {
+	attacker := test_warrior()
+	attacker.ability.effect = game.ability_smite
+	target := game.character_create("Tank", .Common, {hp = 30, attack = 1, defense = 5})
+	roll := game.Roll_Result {
+		matched_count = 2,
+		matched_value = 7, // < 8, normal
+	}
+
+	game.ability_smite(nil, &attacker, &target, &roll)
+
+	// Normal: max(7 - 5, 0) = 2 damage
+	testing.expect_value(t, target.stats.hp, 28)
+}
+
+@(test)
+hex_applies_minus_two_when_enhanced :: proc(t: ^testing.T) {
+	target := game.character_create("Target", .Common, {hp = 20, attack = 1, defense = 3})
+	attacker := game.character_create("Shaman", .Common, {hp = 12, attack = 2, defense = 0})
+	attacker.ability = game.Ability {
+		name            = "Hex",
+		scaling         = .None,
+		min_matches     = 2,
+		value_threshold = 8,
+		effect          = game.ability_hex,
+	}
+	roll := game.Roll_Result {
+		matched_count = 2,
+		matched_value = 9, // >= 8, enhanced
+	}
+
+	game.ability_hex(nil, &attacker, &target, &roll)
+
+	// Enhanced: -2 DEF. Condition value should be 2.
+	testing.expect_value(t, target.condition_count, 1)
+	testing.expect_value(t, target.conditions[0].kind, game.Condition_Kind.Hex)
+	testing.expect_value(t, target.conditions[0].value, 2)
+}
+
+@(test)
+hex_applies_minus_one_below_threshold :: proc(t: ^testing.T) {
+	target := game.character_create("Target", .Common, {hp = 20, attack = 1, defense = 3})
+	attacker := game.character_create("Shaman", .Common, {hp = 12, attack = 2, defense = 0})
+	attacker.ability = game.Ability {
+		name            = "Hex",
+		scaling         = .None,
+		min_matches     = 2,
+		value_threshold = 8,
+		effect          = game.ability_hex,
+	}
+	roll := game.Roll_Result {
+		matched_count = 2,
+		matched_value = 6, // < 8, normal
+	}
+
+	game.ability_hex(nil, &attacker, &target, &roll)
+
+	// Normal: -1 DEF
+	testing.expect_value(t, target.conditions[0].value, 1)
+}
+
+@(test)
+no_enhanced_when_threshold_zero :: proc(t: ^testing.T) {
+	attacker := test_warrior()
+	attacker.ability.value_threshold = 0 // no enhanced mode
+	target := game.character_create("Tank", .Common, {hp = 30, attack = 1, defense = 5})
+	roll := game.Roll_Result {
+		matched_count = 2,
+		matched_value = 10, // high value, but no threshold
+	}
+
+	game.ability_flurry(nil, &attacker, &target, &roll)
+
+	// Normal: 2 hits of max(10 - 5, 0) = 5 each = 10 damage
+	testing.expect_value(t, target.stats.hp, 20)
 }

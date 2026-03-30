@@ -87,6 +87,9 @@ SKULL_CHANCE :: 10
 
 MAX_DIE_VALUE :: 12
 
+// Default value threshold — abilities with threshold=0 have no enhanced mode.
+DEFAULT_VALUE_THRESHOLD :: 0
+
 // Result of rolling and evaluating a character's dice.
 // Abilities read [MATCHES] (matched_count) and [VALUE] (matched_value) directly.
 Roll_Result :: struct {
@@ -255,13 +258,14 @@ Passive :: struct {
 }
 
 Ability :: struct {
-	name:        cstring,
-	scaling:     Ability_Scaling,
-	min_matches: int, // minimum [MATCHES] required to trigger (0 = always fires)
-	min_value:   int, // minimum [VALUE] required to trigger (0 = always fires, not yet wired)
-	effect:      Ability_Effect,
-	describe:    Ability_Describe, // post-roll dynamic description (resolved values)
-	description: cstring, // formula with {MATCHES}/{VALUE} placeholders, shown in inspect UI
+	name:            cstring,
+	scaling:         Ability_Scaling,
+	min_matches:     int, // minimum [MATCHES] required to trigger (0 = always fires)
+	min_value:       int, // minimum [VALUE] required to trigger (0 = always fires, not yet wired)
+	value_threshold: int, // [VALUE] >= this triggers enhanced behavior (0 = normal only)
+	effect:          Ability_Effect,
+	describe:        Ability_Describe, // post-roll dynamic description (resolved values)
+	description:     cstring, // formula with {MATCHES}/{VALUE} placeholders, shown in inspect UI
 }
 
 Character :: struct {

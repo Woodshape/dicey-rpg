@@ -355,3 +355,25 @@ skull_damage_cannot_go_below_zero_hp :: proc(t: ^testing.T) {
 	// damage = 10 x 3 = 30, but HP floors at 0
 	testing.expect_value(t, target.stats.hp, 0)
 }
+
+// --- Enhanced mode check ---
+
+@(test)
+ability_is_enhanced_below_threshold :: proc(t: ^testing.T) {
+	ability := game.Ability { value_threshold = 8 }
+	testing.expect(t, !game.ability_is_enhanced(&ability, 0), "should not be enhanced at 0")
+	testing.expect(t, !game.ability_is_enhanced(&ability, 7), "should not be enhanced at 7")
+}
+
+@(test)
+ability_is_enhanced_at_threshold :: proc(t: ^testing.T) {
+	ability := game.Ability { value_threshold = 8 }
+	testing.expect(t, game.ability_is_enhanced(&ability, 8), "should be enhanced at 8")
+	testing.expect(t, game.ability_is_enhanced(&ability, 12), "should be enhanced at 12")
+}
+
+@(test)
+ability_is_enhanced_zero_threshold :: proc(t: ^testing.T) {
+	ability := game.Ability {} // threshold=0
+	testing.expect(t, !game.ability_is_enhanced(&ability, 12), "should not be enhanced with threshold=0")
+}

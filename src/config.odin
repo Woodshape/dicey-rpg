@@ -438,6 +438,7 @@ load_ability_section :: proc(
 
 	ability.min_matches = config_get_int_or(cf, section, "min_matches", default_min_matches)
 	ability.min_value = config_get_int_or(cf, section, "min_value", 0)
+	ability.value_threshold = config_get_int_or(cf, section, "value_threshold", DEFAULT_VALUE_THRESHOLD)
 
 	desc_str := config_get_string(cf, section, "description") or_return
 	ability.description = strings.clone_to_cstring(desc_str)

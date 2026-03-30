@@ -124,3 +124,8 @@ detect_match :: proc(values: []int) -> Roll_Result {
 
 	return result
 }
+
+// Check if an ability's enhanced mode is active for the given matched value.
+ability_is_enhanced :: proc(ability: ^Ability, matched_value: int) -> bool {
+	return ability.value_threshold > 0 && matched_value >= ability.value_threshold
+}
