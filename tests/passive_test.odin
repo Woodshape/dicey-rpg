@@ -155,14 +155,17 @@ curse_weaver_deals_damage_per_condition :: proc(t: ^testing.T) {
 	target := &gs.player_party.characters[0]
 	hp_before := target.stats.hp
 
-	// Apply 2 non-absorbing conditions to target
+	// Apply 2 distinct conditions to target
 	game.condition_apply(target, .Hex, 1, .Turns, 3)
-	game.condition_apply(target, .Hex, 1, .Turns, 2)
+	game.condition_apply(target, .Shield, 5, .On_Hit_Taken, 1)
 
 	roll := game.Roll_Result{count = 1}
 	game.passive_curse_weaver(&gs, shaman, target, &roll)
-	// 2 conditions = 2 damage (ignores DEF, no Shield to absorb)
-	testing.expect_value(t, target.stats.hp, hp_before - 2)
+	// 2 conditions = 2 damage, but Shield absorbs 2 of it — net 0 HP lost.
+	// Curse Weaver computes dmg from condition_count (2), then Shield absorbs.
+	testing.expect_value(t, target.stats.hp, hp_before)
+	// Shield should have 3 pool remaining (5 - 2)
+	testing.expect_value(t, target.conditions[1].value, 3)
 }
 
 @(test)

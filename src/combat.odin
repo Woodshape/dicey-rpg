@@ -155,7 +155,14 @@ resolve_roll :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character) 
 	trace_match(&gs.trace, atag, attacker)
 
 	// Fire On_Roll passives first (e.g. Iron Skin applies DEF before any damage)
+	passive_attacker_hp := attacker.stats.hp
+	passive_target_hp := target != nil ? target.stats.hp : 0
 	fire_on_roll_passive(gs, attacker, target)
+	if attacker.passive_fired {
+		trace_passive(&gs.trace, atag, attacker)
+		if attacker.stats.hp != passive_attacker_hp { trace_hp(&gs.trace, atag, attacker) }
+		if target != nil && target.stats.hp != passive_target_hp { trace_hp(&gs.trace, ttag, target) }
+	}
 
 	// Skull damage
 	if roll.skull_count > 0 && target != nil {
@@ -352,7 +359,6 @@ resolve_roll :: proc(gs: ^Game_State, attacker: ^Character, target: ^Character) 
 			attacker.name,
 			attacker.passive.name,
 		)
-		trace_passive(&gs.trace, atag, attacker)
 	}
 
 	// Mark dead and log
