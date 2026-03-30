@@ -161,20 +161,9 @@ ai_should_roll :: proc(gs: ^Game_State) -> (bool, int) {
 		ch := &gs.enemy_party.characters[ci]
 		if !character_is_alive(ch) || ch.assigned_count <= 0 {continue}
 
-		// Count normal (non-skull) dice
-		normal_count := 0
-		for di in 0 ..< ch.assigned_count {
-			if die_type_is_normal(ch.assigned[di]) {
-				normal_count += 1
-			}
-		}
-
-		// Roll if character has at least 2 normal dice
-		if normal_count >= 2 {
-			return true, ci
-		}
-
-		// Roll if character is full (even skulls-only — skull damage is better than nothing)
+		// Roll only when the character is at full capacity.
+		// Banking dice across rounds lets characters accumulate more dice
+		// before rolling, increasing match probability significantly.
 		if ch.assigned_count >= ch.max_dice {
 			return true, ci
 		}

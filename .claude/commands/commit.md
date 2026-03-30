@@ -16,14 +16,15 @@ Run in parallel:
 - `git diff` — see unstaged changes
 - `git diff --cached` — see already-staged changes
 
-Classify every changed file into one of two buckets:
+Classify every changed file into one of three buckets:
 
 | Bucket | Paths |
 |--------|-------|
-| **code** | `src/`, `sim/`, `tests/`, `data/`, `assets/`, build files, `CLAUDE.md`, `.claude/` (commands, config) |
+| **code** | `src/`, `sim/`, `tests/`, `assets/`, build files, `CLAUDE.md`, `.claude/` (commands, config) |
+| **data** | `data/` (character configs, encounter definitions) |
 | **docs** | `docs/` (everything under it) |
 
-If a file doesn't fit either bucket (e.g. root config files, `.gitignore`), put it in **code**.
+If a file doesn't fit any bucket (e.g. root config files, `.gitignore`), put it in **code**.
 
 ## Step 2: Summarize changes per bucket
 
@@ -31,7 +32,8 @@ For each bucket that has changes:
 
 1. Read the diffs (and file contents if needed) to understand what changed and why.
 2. For **code** changes — reference `docs/codebase/` and `docs/core-mechanics.md` if you need context on what a module does or what mechanic a change relates to.
-3. For **docs** changes — note which doc files were added, updated, or removed and what topic they cover.
+3. For **data** changes — note which character or encounter configs changed and what balance parameters were tuned.
+4. For **docs** changes — note which doc files were added, updated, or removed and what topic they cover.
 
 ## Step 3: Draft commit messages
 
@@ -43,6 +45,7 @@ Follow the project's existing commit style:
 - **Lowercase**, terse, no conventional-commits prefix (no `feat:`, `fix:`, etc.)
 - Describe what changed in a few words — like a changelog entry, not a paragraph
 - For docs-only commits, prefix with `docs/` followed by the topic (e.g. `docs/ condition system`, `docs/ update plans`)
+- For data-only commits, prefix with `data/` followed by what changed (e.g. `data/ buff goblin HP and attack`, `data/ add forest encounter`)
 - For code commits, describe the change directly (e.g. `shield absorption blocks damage before HP`, `ai picks highest-value die when tied`)
 
 ### Body (detailed description)
@@ -70,7 +73,7 @@ Absorption reduces shield stacks first; excess damage passes through.
   - tests/condition_test.odin
 ```
 
-Draft one message per bucket. If only one bucket has changes, there's only one commit.
+Draft one message per bucket. If only one bucket has changes, there's only one commit. If multiple buckets have changes, commit in order: code → data → docs.
 
 ## Step 4: Stage and commit
 
@@ -93,7 +96,7 @@ For each bucket (code first, then docs if both exist):
    ```
 3. Run `git status` after to confirm it worked
 
-If only one bucket has changes, make one commit. If both, make two commits in sequence (code first, docs second).
+If only one bucket has changes, make one commit. If multiple buckets have changes, make separate commits in sequence (code → data → docs).
 
 ## Step 5: Report
 

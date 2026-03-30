@@ -154,6 +154,17 @@ ai_rolls_skulls_when_stuck :: proc(t: ^testing.T) {
 	testing.expect_value(t, ci, 0)
 }
 
+@(test)
+ai_does_not_roll_partially_filled :: proc(t: ^testing.T) {
+	gs, _ := game.game_init()
+	// 2 normal dice on a Common character (3 slots) — not full, should wait
+	game.character_assign_die(&gs.enemy_party.characters[0], .D6)
+	game.character_assign_die(&gs.enemy_party.characters[0], .D6)
+
+	should, _ := game.ai_should_roll(&gs)
+	testing.expect(t, !should, "AI should not roll partially filled character — bank dice for next round")
+}
+
 // --- AI pick from pool ---
 
 @(test)
