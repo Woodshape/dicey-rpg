@@ -60,7 +60,7 @@ The replay parser (`sim/trace.odin`) skips enemy-side (`e`) decision lines since
 ```
 VALUES <tag> <name> <v1> <v2> ...   (normal dice values only, skulls omitted)
 SKULL <atag> <attacker> <count> <dmg> <ttag> <target>
-MATCH <tag> <name> <matched_count> <matched_value>
+MATCH <tag> <name> <matched_count> <matched_value>   (matched_value is 0 when matched_count == 0)
 HP <tag> <name> <hp>                (also parsed: last HP per character used for replay diff)
 DEAD <tag> <name>
 ABILITY <atag> <attacker> <ability> <DMG|HEAL|NONE> <amount> <ttag> <target>
@@ -69,6 +69,8 @@ CHARGE <tag> <name> +<amount> <resolve>/<resolve_max>
 PASSIVE <tag> <name> <passive_name>
 COND <tag> <name> <kind> <value> <remaining>
 ```
+
+**Note on MATCH:** `detect_match` returns the highest die rolled as `matched_value` even when no pair exists (used by `ability_is_enhanced`). `trace_match` suppresses this, emitting `0` for `matched_value` when `matched_count == 0`, so the log clearly shows no match formed.
 
 Event lines use character tags (`p0`–`p3`, `e0`–`e3`) as the first token after the keyword. Names follow for human readability.
 
@@ -97,7 +99,7 @@ Event procs are called from `combat.odin` (inside `resolve_roll`) and `ai.odin` 
 | `trace_ability` | `combat.odin` | After main ability fires |
 | `trace_resolve_ability` | `combat.odin` | After resolve ability fires |
 | `trace_charge` | `combat.odin` | After resolve meter charges |
-| `trace_passive` | `combat.odin` | After passive fires |
+| `trace_passive` | `combat.odin` | After On_Roll passive fires (in `resolve_roll`) AND after On_Ally_Damaged passive fires (in `notify_ally_damaged`) |
 | `trace_cond` | `ability.odin` | After a condition is applied |
 
 ## Replay
