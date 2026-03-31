@@ -191,7 +191,7 @@ match_all_matched_zero_unmatched :: proc(t: ^testing.T) {
 
 @(test)
 roll_result_cleared_properly :: proc(t: ^testing.T) {
-	ch := game.character_create("Test", .Common, {hp = 20, attack = 3, defense = 1})
+	ch := game.character_create("Test", .Uncommon, {hp = 20, attack = 3, defense = 1})
 	game.character_assign_die(&ch, .D8)
 	game.character_assign_die(&ch, .D8)
 	game.character_assign_die(&ch, .D8)
@@ -215,7 +215,7 @@ roll_result_cleared_properly :: proc(t: ^testing.T) {
 
 @(test)
 skull_exempt_from_pure_type :: proc(t: ^testing.T) {
-	ch := game.character_create("Test", .Common, {hp = 20, attack = 3, defense = 1})
+	ch := game.character_create("Test", .Uncommon, {hp = 20, attack = 3, defense = 1})
 
 	// Assign a normal die first
 	game.character_assign_die(&ch, .D8)
@@ -232,7 +232,7 @@ skull_exempt_from_pure_type :: proc(t: ^testing.T) {
 
 @(test)
 skull_only_hand_is_valid :: proc(t: ^testing.T) {
-	ch := game.character_create("Test", .Common, {hp = 20, attack = 3, defense = 1})
+	ch := game.character_create("Test", .Uncommon, {hp = 20, attack = 3, defense = 1})
 
 	// All skulls should be fine
 	game.character_assign_die(&ch, .Skull)
@@ -245,7 +245,7 @@ skull_only_hand_is_valid :: proc(t: ^testing.T) {
 
 @(test)
 skull_does_not_set_normal_type :: proc(t: ^testing.T) {
-	ch := game.character_create("Test", .Common, {hp = 20, attack = 3, defense = 1})
+	ch := game.character_create("Test", .Uncommon, {hp = 20, attack = 3, defense = 1})
 
 	game.character_assign_die(&ch, .Skull)
 
@@ -260,7 +260,7 @@ skull_does_not_set_normal_type :: proc(t: ^testing.T) {
 
 @(test)
 skull_mixed_type_rejected :: proc(t: ^testing.T) {
-	ch := game.character_create("Test", .Common, {hp = 20, attack = 3, defense = 1})
+	ch := game.character_create("Test", .Uncommon, {hp = 20, attack = 3, defense = 1})
 
 	game.character_assign_die(&ch, .D6)
 	game.character_assign_die(&ch, .Skull)
@@ -271,7 +271,7 @@ skull_mixed_type_rejected :: proc(t: ^testing.T) {
 
 @(test)
 skull_roll_mixed :: proc(t: ^testing.T) {
-	ch := game.character_create("Test", .Common, {hp = 20, attack = 3, defense = 1})
+	ch := game.character_create("Test", .Uncommon, {hp = 20, attack = 3, defense = 1})
 	game.character_assign_die(&ch, .Skull)
 	game.character_assign_die(&ch, .D6)
 	game.character_assign_die(&ch, .D6)
@@ -288,8 +288,9 @@ skull_roll_mixed :: proc(t: ^testing.T) {
 	total := ch.roll.matched_count + ch.roll.unmatched_count + ch.roll.skull_count
 	testing.expect_value(t, total, ch.roll.count)
 
-	// Skull values should be 0
+	// Skull die rolled — values[0] stays 0 (skull value is in skulls[0])
 	testing.expect_value(t, ch.roll.values[0], 0)
+	testing.expect(t, ch.roll.skulls[0] >= 1 && ch.roll.skulls[0] <= 6, "Uncommon skull (d6) value should be 1-6")
 	// Normal values should be 1-6
 	testing.expect(t, ch.roll.values[1] >= 1 && ch.roll.values[1] <= 6, "D6 value should be 1-6")
 	testing.expect(t, ch.roll.values[2] >= 1 && ch.roll.values[2] <= 6, "D6 value should be 1-6")
@@ -297,7 +298,7 @@ skull_roll_mixed :: proc(t: ^testing.T) {
 
 @(test)
 skull_roll_all_skulls :: proc(t: ^testing.T) {
-	ch := game.character_create("Test", .Common, {hp = 20, attack = 3, defense = 1})
+	ch := game.character_create("Test", .Uncommon, {hp = 20, attack = 3, defense = 1})
 	game.character_assign_die(&ch, .Skull)
 	game.character_assign_die(&ch, .Skull)
 	game.character_assign_die(&ch, .Skull)
@@ -316,15 +317,19 @@ skull_damage_calculation :: proc(t: ^testing.T) {
 	attacker := game.character_create("Attacker", .Common, {hp = 20, attack = 5, defense = 0})
 	target := game.character_create("Target", .Common, {hp = 20, attack = 2, defense = 1})
 
-	// Simulate a roll with 2 skull dice
+	// Simulate a roll with 2 skull dice (values 2 and 3)
+	// damage per hit = skull_val + attack(5) - defense(1)
+	// hit 1: 2+5-1 = 6, hit 2: 3+5-1 = 7, total = 13
 	attacker.has_rolled = true
+	attacker.roll.count = 2
 	attacker.roll.skull_count = 2
+	attacker.roll.skulls[0] = 2
+	attacker.roll.skulls[1] = 3
 
 	dmg := game.apply_skull_damage(&attacker, &target)
 
-	// damage per hit = attack(5) - defense(1) = 4, x2 skulls = 8
-	testing.expect_value(t, dmg, 8)
-	testing.expect_value(t, target.stats.hp, 12)  // 20 - 8
+	testing.expect_value(t, dmg, 13)
+	testing.expect_value(t, target.stats.hp, 7) // 20 - 13
 }
 
 @(test)
@@ -332,12 +337,16 @@ skull_damage_respects_defense :: proc(t: ^testing.T) {
 	attacker := game.character_create("Attacker", .Common, {hp = 20, attack = 2, defense = 0})
 	target := game.character_create("Tank", .Common, {hp = 20, attack = 1, defense = 5})
 
+	// skull_val(1) + attack(2) - defense(5) = -2 -> clamped to 0 per hit
 	attacker.has_rolled = true
+	attacker.roll.count = 3
 	attacker.roll.skull_count = 3
+	attacker.roll.skulls[0] = 1
+	attacker.roll.skulls[1] = 1
+	attacker.roll.skulls[2] = 1
 
 	dmg := game.apply_skull_damage(&attacker, &target)
 
-	// damage per hit = attack(2) - defense(5) = 0 (clamped), x3 = 0
 	testing.expect_value(t, dmg, 0)
 	testing.expect_value(t, target.stats.hp, 20)
 }
@@ -347,12 +356,16 @@ skull_damage_cannot_go_below_zero_hp :: proc(t: ^testing.T) {
 	attacker := game.character_create("Attacker", .Common, {hp = 20, attack = 10, defense = 0})
 	target := game.character_create("Weak", .Common, {hp = 5, attack = 1, defense = 0})
 
+	// skull_val(4) + attack(10) = 14 per hit, x3 = 42 total, but HP floors at 0
 	attacker.has_rolled = true
+	attacker.roll.count = 3
 	attacker.roll.skull_count = 3
+	attacker.roll.skulls[0] = 4
+	attacker.roll.skulls[1] = 4
+	attacker.roll.skulls[2] = 4
 
 	game.apply_skull_damage(&attacker, &target)
 
-	// damage = 10 x 3 = 30, but HP floors at 0
 	testing.expect_value(t, target.stats.hp, 0)
 }
 

@@ -56,16 +56,17 @@ character_rejects_mixed_type :: proc(t: ^testing.T) {
 
 @(test)
 character_respects_rarity_max :: proc(t: ^testing.T) {
-	ch := game.character_create("Test", .Common, {hp = 20, attack = 3, defense = 1})  // max 3
+	ch := game.character_create("Test", .Common, {hp = 20, attack = 3, defense = 1})
+	max := game.RARITY_MAX_DICE[game.Character_Rarity.Common]
 
-	for _ in 0 ..< 3 {
+	for _ in 0 ..< max {
 		game.character_assign_die(&ch, .D6)
 	}
 
 	testing.expect(t, !game.character_can_assign_die(&ch, .D6), "should be full at rarity max")
 	ok := game.character_assign_die(&ch, .D6)
 	testing.expect(t, !ok, "should not exceed rarity max")
-	testing.expect_value(t, ch.assigned_count, 3)
+	testing.expect_value(t, ch.assigned_count, max)
 }
 
 @(test)

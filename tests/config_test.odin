@@ -19,7 +19,7 @@ parse_character_file :: proc(t: ^testing.T) {
 
 	rarity, rar_ok := game.config_get_string(&cf, "", "rarity")
 	testing.expect(t, rar_ok, "root 'rarity' should exist")
-	testing.expect_value(t, rarity, "Common")
+	testing.expect_value(t, rarity, "Uncommon")
 
 	resolve_max, rm_ok := game.config_get_int(&cf, "", "resolve_max")
 	testing.expect(t, rm_ok, "root 'resolve_max' should exist")
@@ -107,11 +107,12 @@ get_int_or_returns_value_when_present :: proc(t: ^testing.T) {
 @(test)
 load_warrior_stats :: proc(t: ^testing.T) {
 	ch, ok := game.config_load_character("warrior")
+	defer game.character_free(&ch)
 	testing.expect(t, ok, "warrior.cfg should load")
 	testing.expect_value(t, ch.stats.hp, 20)
 	testing.expect_value(t, ch.stats.attack, 3)
 	testing.expect_value(t, ch.stats.defense, 1)
-	testing.expect_value(t, ch.rarity, game.Character_Rarity.Common)
+	testing.expect_value(t, ch.rarity, game.Character_Rarity.Uncommon)
 	testing.expect_value(t, ch.resolve_max, 10)
 	testing.expect_value(t, ch.state, game.Character_State.Alive)
 }
@@ -119,6 +120,7 @@ load_warrior_stats :: proc(t: ^testing.T) {
 @(test)
 load_warrior_abilities :: proc(t: ^testing.T) {
 	ch, ok := game.config_load_character("warrior")
+	defer game.character_free(&ch)
 	testing.expect(t, ok, "warrior.cfg should load")
 
 	testing.expect(t, ch.ability.effect != nil, "main ability effect should be set")
@@ -135,7 +137,8 @@ load_warrior_abilities :: proc(t: ^testing.T) {
 load_all_characters :: proc(t: ^testing.T) {
 	// All four character files should load without error
 	for name in ([?]string{"warrior", "healer", "goblin", "shaman"}) {
-		_, ok := game.config_load_character(name)
+		ch, ok := game.config_load_character(name)
+		game.character_free(&ch)
 		testing.expectf(t, ok, "%s.cfg should load", name)
 	}
 }
@@ -151,6 +154,7 @@ ability_min_matches_defaults :: proc(t: ^testing.T) {
 	// Main ability defaults to min_matches=2, resolve defaults to 0.
 	// healer.cfg may omit min_matches — should still load with defaults.
 	ch, ok := game.config_load_character("healer")
+	defer game.character_free(&ch)
 	testing.expect(t, ok, "healer.cfg should load")
 	testing.expect_value(t, ch.ability.min_matches, 2)
 	testing.expect_value(t, ch.resolve_ability.min_matches, 0)
@@ -161,6 +165,8 @@ ability_min_matches_defaults :: proc(t: ^testing.T) {
 @(test)
 load_tutorial_encounter :: proc(t: ^testing.T) {
 	player, enemy, ok := game.config_load_encounter("tutorial")
+	defer game.party_free(&player)
+	defer game.party_free(&enemy)
 	testing.expect(t, ok, "tutorial.cfg should load")
 	testing.expect_value(t, player.count, 2)
 	testing.expect_value(t, enemy.count, 2)

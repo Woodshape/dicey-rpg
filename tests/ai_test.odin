@@ -57,6 +57,7 @@ ai_scaling_fit_hybrid_prefers_mid :: proc(t: ^testing.T) {
 @(test)
 ai_assigns_compatible_from_hand :: proc(t: ^testing.T) {
 	gs, _ := game.game_init()
+	defer game.game_free(&gs)
 	game.hand_add(&gs.enemy_hand, .D6)
 
 	game.ai_assign_from_hand(&gs)
@@ -69,6 +70,7 @@ ai_assigns_compatible_from_hand :: proc(t: ^testing.T) {
 @(test)
 ai_does_not_assign_incompatible :: proc(t: ^testing.T) {
 	gs, _ := game.game_init()
+	defer game.game_free(&gs)
 	// Commit all enemy characters to D6
 	for i in 0 ..< gs.enemy_party.count {
 		game.character_assign_die(&gs.enemy_party.characters[i], .D6)
@@ -87,6 +89,7 @@ ai_does_not_assign_incompatible :: proc(t: ^testing.T) {
 @(test)
 ai_rolls_when_character_full :: proc(t: ^testing.T) {
 	gs, _ := game.game_init()
+	defer game.game_free(&gs)
 	// Fill all 3 slots (Common = 3 max) with normal dice
 	for _ in 0 ..< 3 {
 		game.character_assign_die(&gs.enemy_party.characters[0], .D6)
@@ -99,9 +102,11 @@ ai_rolls_when_character_full :: proc(t: ^testing.T) {
 @(test)
 ai_does_not_roll_full_with_only_skulls :: proc(t: ^testing.T) {
 	gs, _ := game.game_init()
-	// Fill all 3 slots with skulls — character is full but only skulls
-	for _ in 0 ..< game.RARITY_MAX_DICE[game.Character_Rarity.Common] {
-		game.character_assign_die(&gs.enemy_party.characters[0], .Skull)
+	defer game.game_free(&gs)
+	// Fill all slots with skulls — character is full but only skulls
+	ch := &gs.enemy_party.characters[0]
+	for _ in 0 ..< ch.max_dice {
+		game.character_assign_die(ch, .Skull)
 	}
 
 	should, _ := game.ai_should_roll(&gs)
@@ -112,6 +117,7 @@ ai_does_not_roll_full_with_only_skulls :: proc(t: ^testing.T) {
 @(test)
 ai_does_not_roll_empty_character :: proc(t: ^testing.T) {
 	gs, _ := game.game_init()
+	defer game.game_free(&gs)
 	should, _ := game.ai_should_roll(&gs)
 	testing.expect(t, !should, "AI should not roll with no assigned dice")
 }
@@ -119,6 +125,7 @@ ai_does_not_roll_empty_character :: proc(t: ^testing.T) {
 @(test)
 ai_does_not_roll_with_only_skulls :: proc(t: ^testing.T) {
 	gs, _ := game.game_init()
+	defer game.game_free(&gs)
 	// Assign 2 skull dice — not full, no normal dice
 	game.character_assign_die(&gs.enemy_party.characters[0], .Skull)
 	game.character_assign_die(&gs.enemy_party.characters[0], .Skull)
@@ -130,6 +137,7 @@ ai_does_not_roll_with_only_skulls :: proc(t: ^testing.T) {
 @(test)
 ai_rolls_with_normal_dice :: proc(t: ^testing.T) {
 	gs, _ := game.game_init()
+	defer game.game_free(&gs)
 	// Assign 2 normal + 1 skull, character is full (Common = 3)
 	game.character_assign_die(&gs.enemy_party.characters[0], .D6)
 	game.character_assign_die(&gs.enemy_party.characters[0], .D6)
@@ -142,6 +150,7 @@ ai_rolls_with_normal_dice :: proc(t: ^testing.T) {
 @(test)
 ai_rolls_skulls_when_stuck :: proc(t: ^testing.T) {
 	gs, _ := game.game_init()
+	defer game.game_free(&gs)
 	// Fill character with 2 skulls + 1 normal (full, Common = 3)
 	game.character_assign_die(&gs.enemy_party.characters[0], .Skull)
 	game.character_assign_die(&gs.enemy_party.characters[0], .Skull)
@@ -157,6 +166,7 @@ ai_rolls_skulls_when_stuck :: proc(t: ^testing.T) {
 @(test)
 ai_does_not_roll_partially_filled :: proc(t: ^testing.T) {
 	gs, _ := game.game_init()
+	defer game.game_free(&gs)
 	// 2 normal dice on a Common character (3 slots) — not full, should wait
 	game.character_assign_die(&gs.enemy_party.characters[0], .D6)
 	game.character_assign_die(&gs.enemy_party.characters[0], .D6)
@@ -170,6 +180,7 @@ ai_does_not_roll_partially_filled :: proc(t: ^testing.T) {
 @(test)
 ai_picks_from_pool :: proc(t: ^testing.T) {
 	gs, _ := game.game_init()
+	defer game.game_free(&gs)
 
 	idx, found := game.ai_pick_best_pool_die(&gs)
 	testing.expect(t, found, "AI should find a pickable die in a fresh pool")
@@ -179,6 +190,7 @@ ai_picks_from_pool :: proc(t: ^testing.T) {
 @(test)
 ai_cannot_pick_with_full_hand :: proc(t: ^testing.T) {
 	gs, _ := game.game_init()
+	defer game.game_free(&gs)
 	for _ in 0 ..< game.MAX_HAND_SIZE {
 		game.hand_add(&gs.enemy_hand, .D4)
 	}

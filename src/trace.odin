@@ -126,7 +126,7 @@ trace_values :: proc(trace: ^Trace_Log, tag: string, attacker: ^Character) {
 	pos = len(name_part)
 
 	for i in 0 ..< roll.count {
-		if roll.skulls[i] == 1 {continue}
+		if roll.skulls[i] > 0 {continue}
 		v := roll.values[i]
 		digit := fmt.bprintf(buf[pos:], " %d", v)
 		pos += len(digit)

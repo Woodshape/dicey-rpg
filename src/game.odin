@@ -60,6 +60,20 @@ game_init :: proc(encounter: string = "tutorial", prev_log: ^Combat_Log = nil, s
 	return gs, true
 }
 
+// Free cstrings for all config-loaded characters in a party.
+party_free :: proc(party: ^Party) {
+	for i in 0 ..< party.count {
+		character_free(&party.characters[i])
+	}
+}
+
+// Free cstrings allocated when loading characters from config.
+// Call when discarding a Game_State created by game_init (e.g. in tests).
+game_free :: proc(gs: ^Game_State) {
+	party_free(&gs.player_party)
+	party_free(&gs.enemy_party)
+}
+
 game_update :: proc(gs: ^Game_State) {
 	input := Input_State {
 		mouse_x       = rl.GetMouseX(),

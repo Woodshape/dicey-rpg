@@ -253,6 +253,7 @@ fire_on_roll_passive_skips_non_roll_trigger :: proc(t: ^testing.T) {
 @(test)
 passive_loads_from_config :: proc(t: ^testing.T) {
 	ch, ok := game.config_load_character("warrior")
+	defer game.character_free(&ch)
 	testing.expect(t, ok, "warrior config should load")
 	testing.expect(t, ch.passive.effect != nil, "warrior should have a passive effect")
 	testing.expect_value(t, ch.passive.trigger, game.Passive_Trigger.On_Roll)
@@ -261,6 +262,7 @@ passive_loads_from_config :: proc(t: ^testing.T) {
 @(test)
 passive_empathy_loads_correct_trigger :: proc(t: ^testing.T) {
 	ch, ok := game.config_load_character("healer")
+	defer game.character_free(&ch)
 	testing.expect(t, ok, "healer config should load")
 	testing.expect(t, ch.passive.effect != nil, "healer should have a passive effect")
 	testing.expect_value(t, ch.passive.trigger, game.Passive_Trigger.On_Ally_Damaged)

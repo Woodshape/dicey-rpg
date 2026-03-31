@@ -69,14 +69,17 @@ shield_reduces_skull_damage :: proc(t: ^testing.T) {
 	// Shield with 7 absorption pool
 	game.condition_apply(&target, .Shield, 7, .On_Hit_Taken, 1)
 
-	// 2 skull dice, 5 dmg each. Shield absorbs 5 (first hit) + 2 of second hit.
+	// 2 skull dice with value 1 each. Per hit: 1+5-0 = 6 dmg.
+	// First hit: 6 dmg, Shield absorbs 6, 1 pool left. 0 dealt.
+	// Second hit: 6 dmg, Shield absorbs 1, breaks. 5 dealt.
+	attacker.roll.count = 2
 	attacker.roll.skull_count = 2
+	attacker.roll.skulls[0] = 1
+	attacker.roll.skulls[1] = 1
 	dmg := game.apply_skull_damage(&attacker, &target)
 
-	// First hit: 5 dmg, Shield absorbs 5, 2 pool left. 0 dealt.
-	// Second hit: 5 dmg, Shield absorbs 2, breaks. 3 dealt.
-	testing.expect_value(t, dmg, 3)
-	testing.expect_value(t, target.stats.hp, 17)
+	testing.expect_value(t, dmg, 5)
+	testing.expect_value(t, target.stats.hp, 15)
 	testing.expect_value(t, target.condition_count, 0) // Shield consumed
 }
 

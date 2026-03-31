@@ -79,7 +79,7 @@ DIE_FACES := [Die_Type]int {
 	.D8    = 8,
 	.D10   = 10,
 	.D12   = 12,
-	.Skull = 0, // skull dice are not rolled for a value
+	.Skull = 0, // skull dice roll via RARITY_SKULL_DIE, not DIE_FACES
 }
 
 // Probability (out of 100) that any pool die becomes a skull die
@@ -95,7 +95,7 @@ DEFAULT_VALUE_THRESHOLD :: 0
 Roll_Result :: struct {
 	values:          [MAX_CHARACTER_DICE]int, // rolled face values (1-12), 0 for skull dice
 	count:           int, // total dice rolled (skull + normal)
-	skulls:          [MAX_CHARACTER_DICE]int, // 1 if this die is a skull (for now, we can think of even bigger skull dice that have a different value)
+	skulls:          [MAX_CHARACTER_DICE]int, // rolled skull value (1-N) if this die is a skull, 0 otherwise
 	skull_count:     int, // number of skull dice in this roll
 	matched_value:   int, // [VALUE]: face value of the best match group
 	matched:         [MAX_CHARACTER_DICE]bool, // true = part of a match group (never true for skulls)
@@ -143,14 +143,16 @@ Hand :: struct {
 MAX_CHARACTER_DICE :: 6 // legendary max
 
 Character_Rarity :: enum u8 {
-	Common, // 3 dice
-	Rare, // 4 dice
-	Epic, // 5 dice
-	Legendary, // 6 dice
+	Common,    // 2 dice, skull die = d4
+	Uncommon,  // 3 dice, skull die = d6
+	Rare,      // 4 dice, skull die = d8
+	Epic,      // 5 dice, skull die = d10
+	Legendary, // 6 dice, skull die = d12
 }
 
 RARITY_MAX_DICE := [Character_Rarity]int {
-	.Common    = 3,
+	.Common    = 2,
+	.Uncommon  = 3,
 	.Rare      = 4,
 	.Epic      = 5,
 	.Legendary = 6,
@@ -158,9 +160,20 @@ RARITY_MAX_DICE := [Character_Rarity]int {
 
 RARITY_NAMES := [Character_Rarity]cstring {
 	.Common    = "Common",
+	.Uncommon  = "Uncommon",
 	.Rare      = "Rare",
 	.Epic      = "Epic",
 	.Legendary = "Legendary",
+}
+
+// Skull die type per rarity — each rarity tier has its own skull die size.
+// Skull damage = skull_roll + ATK - DEF per hit.
+RARITY_SKULL_DIE := [Character_Rarity]Die_Type {
+	.Common    = .D4,
+	.Uncommon  = .D6,
+	.Rare      = .D8,
+	.Epic      = .D10,
+	.Legendary = .D12,
 }
 
 MAX_PARTY_SIZE :: 4

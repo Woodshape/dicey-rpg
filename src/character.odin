@@ -15,6 +15,7 @@ character_create :: proc(name: cstring, rarity: Character_Rarity, stats: Charact
 }
 
 // Apply skull dice damage: each skull die is a separate attack.
+// Damage per hit = skull_roll + ATK - DEF, clamped to 0.
 // Looped per-hit so per-hit triggers (Shield, passives) can hook in.
 // Returns total damage dealt (after defense and conditions).
 apply_skull_damage :: proc(attacker: ^Character, target: ^Character) -> int {
@@ -24,14 +25,29 @@ apply_skull_damage :: proc(attacker: ^Character, target: ^Character) -> int {
 
 	total := 0
 
-	for _ in 0 ..< attacker.roll.skull_count {
-		dmg := max(attacker.stats.attack - character_effective_defense(target), 0)
+	for i in 0 ..< attacker.roll.count {
+		skull_val := attacker.roll.skulls[i]
+		if skull_val == 0 { continue }
+		dmg := max(skull_val + attacker.stats.attack - character_effective_defense(target), 0)
 		dmg -= condition_absorb_damage(target, dmg)
 		target.stats.hp = max(target.stats.hp - dmg, 0)
 		total += dmg
 	}
 
 	return total
+}
+
+// Free cstrings allocated when loading a character from config.
+// Only call on characters loaded via config_load_character — not on characters
+// created with character_create using string literals.
+character_free :: proc(ch: ^Character) {
+	if ch.name != nil { delete(ch.name) }
+	if ch.ability.name != nil { delete(ch.ability.name) }
+	if ch.ability.description != nil { delete(ch.ability.description) }
+	if ch.resolve_ability.name != nil { delete(ch.resolve_ability.name) }
+	if ch.resolve_ability.description != nil { delete(ch.resolve_ability.description) }
+	if ch.passive.name != nil { delete(ch.passive.name) }
+	if ch.passive.description != nil { delete(ch.passive.description) }
 }
 
 // Get the normal (non-skull) die type currently assigned to a character, if any.
@@ -314,7 +330,8 @@ draw_rolled_dice_at :: proc(character: ^Character, panel_x, panel_y: i32, intera
 
 	// Skull damage
 	if roll.skull_count > 0 {
-		dmg_str := fmt.ctprintf("Skull x%d -> ATK %d", roll.skull_count, character.stats.attack)
+		skull_die := RARITY_SKULL_DIE[character.rarity]
+		dmg_str := fmt.ctprintf("Skull x%d (%s+ATK) -> ATK %d", roll.skull_count, DIE_TYPE_NAMES[skull_die], character.stats.attack)
 		rl.DrawText(dmg_str, panel_x, line, 14, rl.Color{200, 60, 60, 255})
 		line += 18
 	}

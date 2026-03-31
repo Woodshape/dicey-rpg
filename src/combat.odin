@@ -391,10 +391,13 @@ log_rolled_values :: proc(gs: ^Game_State, attacker: ^Character, roll: ^Roll_Res
 			buf[pos] = ','; pos += 1
 			buf[pos] = ' '; pos += 1
 		}
-		if roll.skulls[i] == 1 {
+		if roll.skulls[i] > 0 {
+			sv := roll.skulls[i]
+			if sv >= 10 {
+				buf[pos] = '0' + u8(sv / 10); pos += 1
+			}
+			buf[pos] = '0' + u8(sv % 10); pos += 1
 			buf[pos] = 'S'; pos += 1
-			buf[pos] = 'k'; pos += 1
-			buf[pos] = 'l'; pos += 1
 		} else {
 			v := roll.values[i]
 			if v >= 10 {

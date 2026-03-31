@@ -24,7 +24,8 @@ character_roll :: proc(character: ^Character) {
 
 	for i in 0 ..< character.assigned_count {
 		if character.assigned[i] == .Skull {
-			result.skulls[i] = 1	// 1 if this die is a skull (for now, we can think of even bigger skull dice that have a different value)
+			skull_die := RARITY_SKULL_DIE[character.rarity]
+			result.skulls[i] = roll_die(skull_die)
 			result.skull_count += 1
 		} else {
 			val := roll_die(character.assigned[i])
@@ -43,7 +44,7 @@ character_roll :: proc(character: ^Character) {
 		// Map matched flags back to full array (skipping skull slots)
 		normal_idx := 0
 		for i in 0 ..< result.count {
-			if result.skulls[i] == 0 {
+			if result.skulls[i] == 0 { // skulls[i] > 0 means skull die
 				result.matched[i] = match_result.matched[normal_idx]
 				if result.matched[i] {
 					result.matched_count += 1

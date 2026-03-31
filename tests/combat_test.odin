@@ -8,6 +8,7 @@ import game "../src"
 @(test)
 game_starts_on_draft_player_pick :: proc(t: ^testing.T) {
 	gs, _ := game.game_init()
+	defer game.game_free(&gs)
 	testing.expect_value(t, gs.turn, game.Turn_Phase.Draft_Player_Pick)
 }
 
@@ -15,6 +16,7 @@ game_starts_on_draft_player_pick :: proc(t: ^testing.T) {
 assign_does_not_end_turn :: proc(t: ^testing.T) {
 	// Hand-to-character is a free Assign, should not change turn
 	gs, _ := game.game_init()
+	defer game.game_free(&gs)
 	gs.turn = .Combat_Player_Turn // move to combat phase for assign test
 	game.hand_add(&gs.hand, .D6)
 
@@ -27,12 +29,14 @@ assign_does_not_end_turn :: proc(t: ^testing.T) {
 @(test)
 cannot_roll_empty_character :: proc(t: ^testing.T) {
 	gs, _ := game.game_init()
+	defer game.game_free(&gs)
 	testing.expect(t, !game.can_roll(&gs.player_party.characters[0]), "should not be able to roll with no assigned dice")
 }
 
 @(test)
 can_roll_with_assigned_dice :: proc(t: ^testing.T) {
 	gs, _ := game.game_init()
+	defer game.game_free(&gs)
 	game.character_assign_die(&gs.player_party.characters[0], .D6)
 	testing.expect(t, game.can_roll(&gs.player_party.characters[0]), "should be able to roll with assigned dice")
 }
@@ -40,6 +44,7 @@ can_roll_with_assigned_dice :: proc(t: ^testing.T) {
 @(test)
 cannot_pick_with_full_hand :: proc(t: ^testing.T) {
 	gs, _ := game.game_init()
+	defer game.game_free(&gs)
 	for _ in 0 ..< game.MAX_HAND_SIZE {
 		game.hand_add(&gs.hand, .D4)
 	}
@@ -49,6 +54,7 @@ cannot_pick_with_full_hand :: proc(t: ^testing.T) {
 @(test)
 can_pick_with_space_in_hand :: proc(t: ^testing.T) {
 	gs, _ := game.game_init()
+	defer game.game_free(&gs)
 	testing.expect(t, game.can_pick(&gs.pool, &gs.hand), "should be able to pick with empty hand and pool dice available")
 }
 
@@ -57,6 +63,7 @@ can_pick_with_space_in_hand :: proc(t: ^testing.T) {
 @(test)
 enemy_death_triggers_victory :: proc(t: ^testing.T) {
 	gs, _ := game.game_init()
+	defer game.game_free(&gs)
 	for i in 0 ..< gs.enemy_party.count {
 		gs.enemy_party.characters[i].stats.hp = 0
 		gs.enemy_party.characters[i].state = .Dead
@@ -69,6 +76,7 @@ enemy_death_triggers_victory :: proc(t: ^testing.T) {
 @(test)
 player_death_triggers_defeat :: proc(t: ^testing.T) {
 	gs, _ := game.game_init()
+	defer game.game_free(&gs)
 	for i in 0 ..< gs.player_party.count {
 		gs.player_party.characters[i].stats.hp = 0
 		gs.player_party.characters[i].state = .Dead
@@ -81,6 +89,7 @@ player_death_triggers_defeat :: proc(t: ^testing.T) {
 @(test)
 both_alive_returns_default :: proc(t: ^testing.T) {
 	gs, _ := game.game_init()
+	defer game.game_free(&gs)
 
 	result := game.check_win_lose(&gs, .Combat_Enemy_Turn)
 	testing.expect_value(t, result, game.Turn_Phase.Combat_Enemy_Turn)
@@ -89,6 +98,7 @@ both_alive_returns_default :: proc(t: ^testing.T) {
 @(test)
 partial_enemy_death_not_victory :: proc(t: ^testing.T) {
 	gs, _ := game.game_init()
+	defer game.game_free(&gs)
 	gs.enemy_party.characters[0].stats.hp = 0
 
 	result := game.check_win_lose(&gs, .Combat_Player_Turn)
@@ -98,6 +108,7 @@ partial_enemy_death_not_victory :: proc(t: ^testing.T) {
 @(test)
 all_dead_enemy_takes_priority :: proc(t: ^testing.T) {
 	gs, _ := game.game_init()
+	defer game.game_free(&gs)
 	for i in 0 ..< gs.player_party.count {
 		gs.player_party.characters[i].stats.hp = 0
 		gs.player_party.characters[i].state = .Dead
@@ -116,6 +127,7 @@ all_dead_enemy_takes_priority :: proc(t: ^testing.T) {
 @(test)
 draft_pool_not_empty_on_start :: proc(t: ^testing.T) {
 	gs, _ := game.game_init()
+	defer game.game_free(&gs)
 	testing.expect(t, gs.pool.remaining > 0, "pool should have dice at game start")
 	testing.expect_value(t, gs.pool.remaining, game.DEFAULT_POOL_SIZE)
 }
@@ -123,6 +135,7 @@ draft_pool_not_empty_on_start :: proc(t: ^testing.T) {
 @(test)
 draft_pick_reduces_pool :: proc(t: ^testing.T) {
 	gs, _ := game.game_init()
+	defer game.game_free(&gs)
 	initial := gs.pool.remaining
 	game.pool_remove_die(&gs.pool, 0)
 	testing.expect_value(t, gs.pool.remaining, initial - 1)
@@ -131,6 +144,7 @@ draft_pick_reduces_pool :: proc(t: ^testing.T) {
 @(test)
 no_assigned_dice_means_no_rollable :: proc(t: ^testing.T) {
 	gs, _ := game.game_init()
+	defer game.game_free(&gs)
 	// All characters start with 0 assigned dice
 	has_dice := game.party_has_assigned_dice(&gs.player_party)
 	testing.expect(t, !has_dice, "no characters should have assigned dice at start")
@@ -141,6 +155,7 @@ no_assigned_dice_means_no_rollable :: proc(t: ^testing.T) {
 @(test)
 play_again_resets_game_state :: proc(t: ^testing.T) {
 	gs, _ := game.game_init()
+	defer game.game_free(&gs)
 
 	// Simulate a game that ended
 	gs.turn = .Victory
@@ -148,7 +163,8 @@ play_again_resets_game_state :: proc(t: ^testing.T) {
 	gs.enemy_party.characters[0].stats.hp = 0
 	game.hand_add(&gs.hand, .D6)
 
-	// Reset
+	// Reset — free first game state before reinitializing
+	game.game_free(&gs)
 	gs, _ = game.game_init()
 
 	testing.expect_value(t, gs.turn, game.Turn_Phase.Draft_Player_Pick)

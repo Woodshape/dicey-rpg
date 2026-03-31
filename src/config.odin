@@ -364,6 +364,8 @@ parse_rarity :: proc(s: string) -> (Character_Rarity, bool) {
 	switch s {
 	case "Common":
 		return .Common, true
+	case "Uncommon":
+		return .Uncommon, true
 	case "Rare":
 		return .Rare, true
 	case "Epic":
