@@ -333,11 +333,12 @@ skull_damage_calculation :: proc(t: ^testing.T) {
 }
 
 @(test)
-skull_damage_respects_defense :: proc(t: ^testing.T) {
+skull_damage_is_raw_damage :: proc(t: ^testing.T) {
 	attacker := game.character_create("Attacker", .Common, {hp = 20, attack = 2, defense = 0})
 	target := game.character_create("Tank", .Common, {hp = 20, attack = 1, defense = 5})
 
-	// skull_val(1) + attack(2) - defense(5) = -2 -> clamped to 0 per hit
+	// skull_val(1) is always raw; max(ATK(2) - DEF(5), 0) = 0 atk bonus
+	// per hit: 1 + 0 = 1, x3 = 3 total — DEF can't negate the skull roll itself
 	attacker.has_rolled = true
 	attacker.roll.count = 3
 	attacker.roll.skull_count = 3
@@ -347,8 +348,8 @@ skull_damage_respects_defense :: proc(t: ^testing.T) {
 
 	dmg := game.apply_skull_damage(&attacker, &target)
 
-	testing.expect_value(t, dmg, 0)
-	testing.expect_value(t, target.stats.hp, 20)
+	testing.expect_value(t, dmg, 3)
+	testing.expect_value(t, target.stats.hp, 17)
 }
 
 @(test)

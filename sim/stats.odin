@@ -244,9 +244,10 @@ collect_roll_stats :: proc(
 		cs.damage_dealt += dmg
 
 		if roll.skull_count > 0 {
+			atk_bonus := max(attacker.stats.attack - target.stats.defense, 0)
 			for si in 0 ..< roll.count {
 				if roll.skulls[si] == 0 { continue }
-				skull_dmg += max(roll.skulls[si] + attacker.stats.attack - target.stats.defense, 0)
+				skull_dmg += roll.skulls[si] + atk_bonus
 			}
 			// Cap to actual HP available so skull_dmg doesn't exceed real damage dealt
 			skull_dmg = min(skull_dmg, dmg)

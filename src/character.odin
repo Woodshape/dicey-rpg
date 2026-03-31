@@ -15,7 +15,8 @@ character_create :: proc(name: cstring, rarity: Character_Rarity, stats: Charact
 }
 
 // Apply skull dice damage: each skull die is a separate attack.
-// Damage per hit = skull_roll + ATK - DEF, clamped to 0.
+// Damage per hit = skull_roll + max(ATK - DEF, 0). The skull roll is always
+// dealt raw — DEF can only reduce the ATK bonus, never the skull value itself.
 // Looped per-hit so per-hit triggers (Shield, passives) can hook in.
 // Returns total damage dealt (after defense and conditions).
 apply_skull_damage :: proc(attacker: ^Character, target: ^Character) -> int {
@@ -24,11 +25,12 @@ apply_skull_damage :: proc(attacker: ^Character, target: ^Character) -> int {
 	}
 
 	total := 0
+	atk_bonus := max(attacker.stats.attack - character_effective_defense(target), 0)
 
 	for i in 0 ..< attacker.roll.count {
 		skull_val := attacker.roll.skulls[i]
 		if skull_val == 0 { continue }
-		dmg := max(skull_val + attacker.stats.attack - character_effective_defense(target), 0)
+		dmg := skull_val + atk_bonus
 		dmg -= condition_absorb_damage(target, dmg)
 		target.stats.hp = max(target.stats.hp - dmg, 0)
 		total += dmg
