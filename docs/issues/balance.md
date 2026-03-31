@@ -1,26 +1,24 @@
 # Balance Issues
 
-Baseline: 1000 rounds, seed=42, encounter=tutorial (2v2, all Common).
+Baseline: 1000 rounds, seed=42, encounter=tutorial (2v2, all Uncommon).
 
-## Current Sim Stats (post-AI patience fix)
+## Current Sim Stats (post-skull rework, 2026-03-31)
 
-- **80.0% player wins**, 20.0% enemy wins, 0% draws
-- Average game length: 45.6 turns
-- Sim now reports DMG/roll and DMG/turn alongside DMG/game
+- **75.1% player wins**, 24.9% enemy wins, 0% draws
+- Average game length: 34.7 turns
+- Skull damage formula: `skull_roll + max(ATK - DEF, 0)` — skull roll is raw, DEF only reduces ATK bonus
 
-### AI Patience Fix (2026-03-30)
+### Skull Rework (2026-03-31)
 
-The AI previously rolled as soon as a character had 2 normal dice. Now it waits until the character is at full capacity (`assigned_count >= max_dice`). This forces dice accumulation across rounds and dramatically improved match rates.
+Tutorial characters bumped from Common → Uncommon (3 dice, d6 skull die). Skull dice now roll a rarity-gated die (`RARITY_SKULL_DIE` table: Common=d4, Uncommon=d6 ... Legendary=d12), storing the actual roll in `Roll_Result.skulls[i]`. Formula changed from flat ATK-DEF to `skull_roll + max(ATK-DEF, 0)`, guaranteeing skull rolls always deal minimum damage regardless of DEF.
 
-Before/after (Common):
-- Ability fire rate: 19.5% → **28.4%**
-- 3-dice rolls: 25% → **56%** of all rolls
-- 0-match rolls: 81% → **72%**
-- Avg [M]: 0.4 → **0.6**
+Win rate dropped from 80% → 75.1% post-rework (skulls now more variable, lower average than old formula for Uncommon characters).
 
-### Rarity Now Matters
+### Rarity Scale
 
-With the patient AI, rarity became the strongest lever in the system:
+5 tiers: Common=2 dice, Uncommon=3, Rare=4, Epic=5, Legendary=6. Each tier has a matching skull die size.
+
+Pre-rework rarity stats (old Common=3 dice baseline, still directionally valid):
 
 | Metric | Common (3) | Rare (4) | Epic (5) | Legendary (6) |
 |--------|-----------|----------|----------|----------------|

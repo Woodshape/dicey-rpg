@@ -29,11 +29,13 @@ The constraint is enforced in `character_can_assign_die`:
 ### Skull Damage — Per-Hit Loop
 
 `apply_skull_damage(attacker, target)` applies `skull_count` individual attacks. Each hit:
-1. Computes raw damage: `max(Attack - character_effective_defense(target), 0)` — uses effective DEF which accounts for Hex debuffs
+1. Computes raw damage: `skull_roll + max(Attack - character_effective_defense(target), 0)` — the skull roll is always dealt in full; DEF can only reduce the ATK bonus, never the skull value itself. Effective DEF accounts for Hex debuffs.
 2. Subtracts Shield absorption: `condition_absorb_damage(target, dmg)` — Shield pool absorbs up to `dmg`, removed when depleted
 3. Applies remaining damage to target HP
 
-The loop processes each skull die as a discrete hit, enabling per-hit condition interactions (Shield breaks mid-volley, Hex stacks compound, etc.). Returns total damage dealt after all reductions.
+DEF is re-evaluated on every hit inside the loop (not cached before) so mid-roll DEF changes (from passives or future mechanics) are reflected immediately. Returns total damage dealt after all reductions.
+
+The skull roll value itself comes from `RARITY_SKULL_DIE[attacker.rarity]` — each rarity tier rolls a different die (Common=d4 up to Legendary=d12), stored in `Roll_Result.skulls[i]` as the actual rolled value (>0 means skull, 0 means normal die).
 
 ### Dice Slot Pattern
 

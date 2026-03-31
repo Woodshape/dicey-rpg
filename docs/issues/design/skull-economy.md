@@ -10,11 +10,13 @@ This is counterintuitive — at higher rarity with more dice slots and higher ma
 
 ## Root Cause
 
-Skulls always deal damage on roll (no match needed) and don't benefit from more dice. They're a fixed tax on character slots. As rarity increases:
+Skulls always deal damage on roll (no match needed) and don't benefit from more dice. They're a tax on character slots. As rarity increases:
 
 1. **Slots become more valuable for matching** — each extra normal die dramatically improves match probability (d8 at 4 dice: 59% match vs 3 dice: 34%). A skull occupying one of those slots costs more in match potential.
 2. **Fewer rolls per game** — banking for full capacity means fewer total rolls. Ability damage per game drops because there are fewer opportunities. Skull damage drops too but more slowly because skulls fire on every roll.
-3. **Skulls are guaranteed value** — skull damage = ATK × skull_count every roll, regardless of match quality. This floor doesn't scale with rarity, while the match-dependent ceiling does.
+3. **Skulls are guaranteed value** — skull damage = skull_roll + max(ATK-DEF, 0) every roll, regardless of match quality. This floor scales with rarity via `RARITY_SKULL_DIE` (d4→d12), but the match-dependent ability ceiling scales faster.
+
+**Partial mitigation (2026-03-31):** Skull rolls are now rarity-gated (Common=d4 up to Legendary=d12). This increases skull variance and average damage at higher rarities, making skulls feel more rewarding to pick. The slot-opportunity-cost tension remains.
 
 ## Consequence
 
