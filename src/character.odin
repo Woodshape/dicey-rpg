@@ -25,12 +25,11 @@ apply_skull_damage :: proc(attacker: ^Character, target: ^Character) -> int {
 	}
 
 	total := 0
-	atk_bonus := max(attacker.stats.attack - character_effective_defense(target), 0)
 
 	for i in 0 ..< attacker.roll.count {
 		skull_val := attacker.roll.skulls[i]
 		if skull_val == 0 { continue }
-		dmg := skull_val + atk_bonus
+		dmg := skull_val + max(attacker.stats.attack - character_effective_defense(target), 0)
 		dmg -= condition_absorb_damage(target, dmg)
 		target.stats.hp = max(target.stats.hp - dmg, 0)
 		total += dmg
