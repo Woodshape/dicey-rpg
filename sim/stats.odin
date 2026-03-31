@@ -60,15 +60,18 @@ Game_Stats :: struct {
 // --- Per-roll stats for dice mechanics analysis ---
 
 Roll_Stats :: struct {
-	die_type:        game.Die_Type,
-	die_count:       int,
-	matched_count:   int,
-	matched_value:   int,
-	unmatched_count: int,
-	ability_damage:  int,
-	ability_fired:   bool,
-	enhanced:        bool,
-	scaling:         game.Ability_Scaling,
+	die_type:            game.Die_Type,
+	die_count:           int,
+	matched_count:       int,
+	matched_value:       int,
+	unmatched_count:     int,
+	ability_damage:      int,
+	ability_fired:       bool,
+	enhanced:            bool,
+	scaling:             game.Ability_Scaling,
+	// True when the ability actually reduced target HP (not healing/condition abilities).
+	// Used to exclude Shield/Hex from the enhanced-mode damage-per-fire metric.
+	deals_target_damage: bool,
 }
 
 // --- Aggregated stats across all rounds ---
@@ -174,7 +177,7 @@ aggregate_dice_count :: proc(rolls: ^Roll_Collector) -> Dice_Count_Matrix {
 		if r.ability_fired {
 			b.ability_fires += 1
 			b.total_ability_dmg += r.ability_damage
-			if r.enhanced {
+			if r.enhanced && r.deals_target_damage {
 				b.enhanced_fires += 1
 				b.enhanced_dmg += r.ability_damage
 			}
@@ -241,8 +244,12 @@ collect_roll_stats :: proc(
 		cs.damage_dealt += dmg
 
 		if roll.skull_count > 0 {
-			skull_per_hit := max(attacker.stats.attack - target.stats.defense, 0)
-			skull_dmg = skull_per_hit * roll.skull_count
+			for si in 0 ..< roll.count {
+				if roll.skulls[si] == 0 { continue }
+				skull_dmg += max(roll.skulls[si] + attacker.stats.attack - target.stats.defense, 0)
+			}
+			// Cap to actual HP available so skull_dmg doesn't exceed real damage dealt
+			skull_dmg = min(skull_dmg, dmg)
 		}
 		cs.skull_damage_dealt += skull_dmg
 		cs.ability_damage_dealt += max(dmg - skull_dmg, 0)
@@ -292,16 +299,22 @@ collect_roll_stats :: proc(
 				ability_dmg = max(total_dmg - skull_dmg, 0)
 			}
 
+			// An ability "deals target damage" if target HP actually dropped due to the
+			// ability. Shield (applies ally condition) and Hex (applies target condition)
+			// never reduce target HP, so they should not dilute the enhanced DMG/fire metric.
+			deals_dmg := attacker.ability_fired && ability_dmg > 0
+
 			rolls.rolls[rolls.count] = Roll_Stats{
-				die_type        = dt,
-				die_count       = roll.count - roll.skull_count,
-				matched_count   = roll.matched_count,
-				matched_value   = roll.matched_value,
-				unmatched_count = roll.unmatched_count,
-				ability_damage  = ability_dmg,
-				ability_fired   = attacker.ability_fired,
-				enhanced        = attacker.ability_fired && game.ability_is_enhanced(&attacker.ability, roll.matched_value),
-				scaling         = attacker.ability.scaling,
+				die_type            = dt,
+				die_count           = roll.count - roll.skull_count,
+				matched_count       = roll.matched_count,
+				matched_value       = roll.matched_value,
+				unmatched_count     = roll.unmatched_count,
+				ability_damage      = ability_dmg,
+				ability_fired       = attacker.ability_fired,
+				enhanced            = attacker.ability_fired && game.ability_is_enhanced(&attacker.ability, roll.matched_value),
+				scaling             = attacker.ability.scaling,
+				deals_target_damage = deals_dmg,
 			}
 			rolls.count += 1
 		}
@@ -447,12 +460,17 @@ aggregate_dice :: proc(rolls: ^Roll_Collector) -> [game.Die_Type]Dice_Aggregate 
 			// flat damage — not bucketed by die type
 			}
 
-			if r.enhanced {
-				a.enhanced_fires += 1
-				a.enhanced_dmg += r.ability_damage
-			} else {
-				a.normal_fires += 1
-				a.normal_dmg += r.ability_damage
+			// Enhanced/normal tracking: only count fires that dealt target HP damage.
+			// Shield and Hex never reduce target HP so they would otherwise dilute
+			// the DMG/fire metric with 0-damage entries.
+			if r.deals_target_damage {
+				if r.enhanced {
+					a.enhanced_fires += 1
+					a.enhanced_dmg += r.ability_damage
+				} else {
+					a.normal_fires += 1
+					a.normal_dmg += r.ability_damage
+				}
 			}
 		}
 	}
