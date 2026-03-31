@@ -141,16 +141,15 @@ trace_skull :: proc(trace: ^Trace_Log, atag: string, attacker: ^Character, ttag:
 	trace_write(trace, "SKULL %s %s %d %d %s %s", atag, attacker.name, count, dmg, ttag, target.name)
 }
 
-// MATCH <tag> <name> <matched_count> <matched_value>  (0 0 if no match)
+// MATCH <tag> <name> <matched_count> <matched_value>
+// matched_value is 0 when matched_count == 0 (no match group formed).
+// detect_match returns the highest die as matched_value on a miss, but
+// that value is only meaningful when an ability fires — suppress it here
+// so the trace clearly shows no match occurred.
 trace_match :: proc(trace: ^Trace_Log, tag: string, attacker: ^Character) {
-	trace_write(
-		trace,
-		"MATCH %s %s %d %d",
-		tag,
-		attacker.name,
-		attacker.roll.matched_count,
-		attacker.roll.matched_value,
-	)
+	roll := &attacker.roll
+	value := roll.matched_count > 0 ? roll.matched_value : 0
+	trace_write(trace, "MATCH %s %s %d %d", tag, attacker.name, roll.matched_count, value)
 }
 
 // HP <tag> <name> <hp>

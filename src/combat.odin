@@ -138,7 +138,14 @@ notify_ally_damaged :: proc(gs: ^Game_State, damaged: ^Character) {
 		if ally == damaged {continue}
 		if !character_is_alive(ally) {continue}
 		if ally.passive.trigger != .On_Ally_Damaged || ally.passive.effect == nil {continue}
+		ally.passive_fired = false
+		hp_before := ally.stats.hp
 		ally.passive.effect(gs, ally, damaged, nil)
+		if ally.passive_fired {
+			atag := find_char_tag(gs, ally)
+			trace_passive(&gs.trace, atag, ally)
+			if ally.stats.hp != hp_before { trace_hp(&gs.trace, atag, ally) }
+		}
 	}
 }
 
