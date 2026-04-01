@@ -87,6 +87,8 @@ SKULL_CHANCE :: 10
 
 MAX_DIE_VALUE :: 12
 
+// Default min value - not yet implemented
+DEFAULT_MIN_VALUE :: 0
 // Default value threshold — abilities with threshold=0 have no enhanced mode.
 DEFAULT_VALUE_THRESHOLD :: 0
 

@@ -439,7 +439,7 @@ load_ability_section :: proc(
 	ability.scaling = scaling
 
 	ability.min_matches = config_get_int_or(cf, section, "min_matches", default_min_matches)
-	ability.min_value = config_get_int_or(cf, section, "min_value", 0)
+	ability.min_value = config_get_int_or(cf, section, "min_value", DEFAULT_MIN_VALUE)
 	ability.value_threshold = config_get_int_or(cf, section, "value_threshold", DEFAULT_VALUE_THRESHOLD)
 
 	desc_str := config_get_string(cf, section, "description") or_return
@@ -507,7 +507,7 @@ config_load_character :: proc(name: string) -> (ch: Character, ok: bool) {
 	rarity, rarity_ok := parse_rarity(rarity_str)
 	if !rarity_ok {
 		fmt.eprintfln(
-			"config error: %s: unknown rarity '%s' — valid: Common, Rare, Epic, Legendary",
+			"config error: %s: unknown rarity '%s' — valid: Common, Uncommon, Rare, Epic, Legendary",
 			path,
 			rarity_str,
 		)
